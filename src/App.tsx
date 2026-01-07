@@ -11,6 +11,17 @@ import Discover from "./pages/Discover";
 import Games from "./pages/Games";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import Landing from "./pages/Landing";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Courts from "./pages/Courts";
+import CourtDetail from "./pages/CourtDetail";
+import ManagerDashboard from "./pages/manager/ManagerDashboard";
+import ManagerVenues from "./pages/manager/ManagerVenues";
+import ManagerVenueForm from "./pages/manager/ManagerVenueForm";
+import ManagerCourts from "./pages/manager/ManagerCourts";
+import ManagerCourtForm from "./pages/manager/ManagerCourtForm";
+import ManagerAvailability from "./pages/manager/ManagerAvailability";
 
 const queryClient = new QueryClient();
 
@@ -23,11 +34,23 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/landing" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/groups" element={<Groups />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/games" element={<Games />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/courts" element={<Courts />} />
+            <Route path="/courts/:id" element={<CourtDetail />} />
+            {/* Manager Routes */}
+            <Route path="/manager" element={<ManagerDashboard />} />
+            <Route path="/manager/venues" element={<ManagerVenues />} />
+            <Route path="/manager/venues/:venueId" element={<ManagerVenueForm />} />
+            <Route path="/manager/venues/:venueId/courts" element={<ManagerCourts />} />
+            <Route path="/manager/venues/:venueId/courts/:courtId" element={<ManagerCourtForm />} />
+            <Route path="/manager/availability" element={<ManagerAvailability />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

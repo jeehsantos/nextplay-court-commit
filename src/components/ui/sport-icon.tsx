@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "other";
+type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "hockey" | "other";
 
 interface SportIconProps {
   sport: SportType;
@@ -15,6 +15,7 @@ const sportEmojis: Record<SportType, string> = {
   basketball: "🏀",
   turf_hockey: "🏑",
   badminton: "🏸",
+  hockey: "�,",
   other: "🎯",
 };
 
@@ -25,6 +26,7 @@ const sportLabels: Record<SportType, string> = {
   basketball: "Basketball",
   turf_hockey: "Turf Hockey",
   badminton: "Badminton",
+  hockey: "Hockey",
   other: "Other",
 };
 

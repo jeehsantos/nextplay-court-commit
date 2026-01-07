@@ -22,7 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Constants } from "@/integrations/supabase/types";
 
-const sportTypes = Constants.sport_type;
+const sportTypes = Constants.public.Enums.sport_type;
 
 const courtSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
