@@ -4,10 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SessionBadge } from "@/components/ui/session-badge";
 import { PlayerCount } from "@/components/ui/player-count";
 import { SportIcon, getSportLabel } from "@/components/ui/sport-icon";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
 type SessionState = "protected" | "rescue" | "released";
-type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "other";
+type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "hockey" | "other";
 
 interface GameCardProps {
   id: string;
@@ -42,7 +43,7 @@ export function GameCard({
 }: GameCardProps) {
   return (
     <Link to={`/games/${id}`}>
-      <Card className="overflow-hidden hover:shadow-card-hover transition-shadow duration-200">
+      <Card className="overflow-hidden hover:shadow-card-hover transition-shadow duration-200 h-full">
         <CardContent className="p-4 space-y-3">
           {/* Header */}
           <div className="flex items-start justify-between">
@@ -75,8 +76,16 @@ export function GameCard({
               <span>{time}</span>
             </div>
             <div className="flex items-center gap-2 font-semibold text-foreground">
-              <DollarSign className="h-4 w-4 shrink-0" />
-              <span>${price.toFixed(2)}</span>
+              {price === 0 ? (
+                <Badge variant="secondary" className="bg-success/10 text-success border-0">
+                  Free
+                </Badge>
+              ) : (
+                <>
+                  <DollarSign className="h-4 w-4 shrink-0" />
+                  <span>${price.toFixed(2)}</span>
+                </>
+              )}
             </div>
           </div>
 

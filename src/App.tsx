@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import Groups from "./pages/Groups";
 import Discover from "./pages/Discover";
 import Games from "./pages/Games";
+import GameDetail from "./pages/GameDetail";
+import GroupDetail from "./pages/GroupDetail";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import Landing from "./pages/Landing";
@@ -39,8 +41,10 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/groups" element={<Groups />} />
+            <Route path="/groups/:id" element={<GroupDetail />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/games" element={<Games />} />
+            <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/courts" element={<Courts />} />
             <Route path="/courts/:id" element={<CourtDetail />} />

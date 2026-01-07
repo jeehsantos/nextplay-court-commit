@@ -84,29 +84,38 @@ export default function Games() {
 
   return (
     <MobileLayout>
-      <div className="px-4 py-4 space-y-4">
+      <div className="px-4 py-4 space-y-4 max-w-6xl mx-auto lg:px-6 lg:py-6">
         {/* Header */}
-        <div>
-          <h1 className="font-display text-2xl font-bold">My Games</h1>
-          <p className="text-muted-foreground text-sm">
-            Track your upcoming and past games
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="font-display text-2xl lg:text-3xl font-bold">My Games</h1>
+            <p className="text-muted-foreground text-sm">
+              Track your upcoming and past games
+            </p>
+          </div>
+          <Link to="/discover">
+            <Button className="btn-athletic w-full sm:w-auto">
+              Find Games
+            </Button>
+          </Link>
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="upcoming">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
             <TabsTrigger value="past">Past</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="upcoming" className="space-y-3 mt-4">
+          <TabsContent value="upcoming" className="mt-4">
             {upcomingGames.length > 0 ? (
-              upcomingGames.map((game) => (
-                <GameCard key={game.id} {...game} />
-              ))
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {upcomingGames.map((game) => (
+                  <GameCard key={game.id} {...game} />
+                ))}
+              </div>
             ) : (
-              <Card>
+              <Card className="max-w-md mx-auto">
                 <CardContent className="p-6 text-center">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <Calendar className="h-8 w-8 text-primary" />
@@ -125,11 +134,13 @@ export default function Games() {
             )}
           </TabsContent>
 
-          <TabsContent value="past" className="space-y-3 mt-4">
+          <TabsContent value="past" className="mt-4">
             {pastGames.length > 0 ? (
-              pastGames.map((game) => (
-                <GameCard key={game.id} {...game} />
-              ))
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {pastGames.map((game) => (
+                  <GameCard key={game.id} {...game} />
+                ))}
+              </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No past games yet</p>

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "hockey" | "other";
+export type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "hockey" | "other";
 
 interface SportIconProps {
   sport: SportType;
@@ -15,7 +15,7 @@ const sportEmojis: Record<SportType, string> = {
   basketball: "🏀",
   turf_hockey: "🏑",
   badminton: "🏸",
-  hockey: "�,",
+  hockey: "🏒",
   other: "🎯",
 };
 
@@ -45,13 +45,13 @@ export function SportIcon({ sport, size = "md", className }: SportIconProps) {
         className
       )}
       role="img"
-      aria-label={sportLabels[sport]}
+      aria-label={sportLabels[sport] || sport}
     >
-      {sportEmojis[sport]}
+      {sportEmojis[sport] || "🎯"}
     </div>
   );
 }
 
 export function getSportLabel(sport: SportType): string {
-  return sportLabels[sport];
+  return sportLabels[sport] || sport;
 }

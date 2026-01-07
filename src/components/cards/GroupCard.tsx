@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
-import { Users, Calendar, MapPin } from "lucide-react";
+import { Users, Calendar, MapPin, DollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { SportIcon, getSportLabel } from "@/components/ui/sport-icon";
 import { Badge } from "@/components/ui/badge";
 
-type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "other";
+type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "hockey" | "other";
 
 interface GroupCardProps {
   id: string;
@@ -12,9 +12,10 @@ interface GroupCardProps {
   sport: SportType;
   city: string;
   memberCount: number;
-  schedule: string; // e.g., "Wednesdays at 7:00 PM"
+  schedule: string;
   isPublic: boolean;
   photoUrl?: string;
+  weeklyPrice?: number;
 }
 
 export function GroupCard({
@@ -26,12 +27,13 @@ export function GroupCard({
   schedule,
   isPublic,
   photoUrl,
+  weeklyPrice = 0,
 }: GroupCardProps) {
   return (
     <Link to={`/groups/${id}`}>
-      <Card className="overflow-hidden hover:shadow-card-hover transition-shadow duration-200">
+      <Card className="overflow-hidden hover:shadow-card-hover transition-shadow duration-200 h-full">
         {/* Photo banner */}
-        <div className="h-24 bg-gradient-to-br from-primary/20 to-primary/5 relative">
+        <div className="h-24 lg:h-28 bg-gradient-to-br from-primary/20 to-primary/5 relative">
           {photoUrl && (
             <img
               src={photoUrl}
@@ -39,9 +41,22 @@ export function GroupCard({
               className="w-full h-full object-cover"
             />
           )}
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-2 right-2 flex gap-2">
             <Badge variant={isPublic ? "secondary" : "outline"} className="text-xs">
               {isPublic ? "Public" : "Private"}
+            </Badge>
+          </div>
+          {/* Price badge */}
+          <div className="absolute bottom-2 right-2">
+            <Badge 
+              variant="default" 
+              className={`text-xs font-semibold ${
+                weeklyPrice === 0 
+                  ? "bg-success text-success-foreground" 
+                  : "bg-primary text-primary-foreground"
+              }`}
+            >
+              {weeklyPrice === 0 ? "Free" : `$${weeklyPrice.toFixed(0)}/session`}
             </Badge>
           </div>
         </div>

@@ -2,11 +2,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+type AppRole = "court_manager" | "organizer" | "player";
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, role?: AppRole) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -38,19 +40,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+  const signUp = async (email: string, password: string, fullName: string, role: AppRole = "player") => {
+    const redirectUrl = `${window.location.origin}/games`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
+          role: role,
         },
       },
     });
+
+    // If signup successful and we have a user, create the role entry
+    if (!error && data.user) {
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({
+          user_id: data.user.id,
+          role: role,
+        });
+      
+      if (roleError) {
+        console.error("Error creating user role:", roleError);
+      }
+    }
 
     return { error: error as Error | null };
   };

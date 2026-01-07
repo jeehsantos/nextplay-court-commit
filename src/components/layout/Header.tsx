@@ -13,7 +13,7 @@ export function Header({ title, showBack = false, rightAction }: HeaderProps) {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-50 glass border-b border-border/50 safe-top">
+    <header className="sticky top-0 z-50 glass border-b border-border/50 safe-top lg:hidden">
       <div className="flex items-center justify-between h-14 px-4">
         <div className="flex items-center gap-3">
           {showBack ? (

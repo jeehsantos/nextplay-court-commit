@@ -24,8 +24,11 @@ export function MobileLayout({
       {showHeader && (
         <Header title={title} showBack={showBack} rightAction={rightAction} />
       )}
-      <main className="flex-1 overflow-y-auto pb-20">
-        {children}
+      {/* Main content with responsive padding for sidebar on desktop */}
+      <main className="flex-1 overflow-y-auto pb-20 lg:pb-6 lg:pl-64">
+        <div className="max-w-7xl mx-auto">
+          {children}
+        </div>
       </main>
       {showBottomNav && <BottomNav />}
     </div>

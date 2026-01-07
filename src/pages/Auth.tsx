@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users, Building2 } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -22,6 +23,9 @@ const signUpSchema = z.object({
   email: z.string().email("Please enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
+  role: z.enum(["player", "court_manager"], {
+    required_error: "Please select a role",
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -44,12 +48,12 @@ export default function Auth() {
 
   const signUpForm = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "", role: "player" },
   });
 
   useEffect(() => {
     if (!isLoading && user) {
-      navigate("/", { replace: true });
+      navigate("/games", { replace: true });
     }
   }, [user, isLoading, navigate]);
 
@@ -71,7 +75,7 @@ export default function Auth() {
 
   const handleSignUp = async (data: SignUpFormData) => {
     setIsSubmitting(true);
-    const { error } = await signUp(data.email, data.password, data.fullName);
+    const { error } = await signUp(data.email, data.password, data.fullName, data.role);
     setIsSubmitting(false);
 
     if (error) {
@@ -213,6 +217,65 @@ export default function Auth() {
                       </FormItem>
                     )}
                   />
+                  
+                  {/* Role Selection */}
+                  <FormField
+                    control={signUpForm.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>I want to join as</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="grid grid-cols-2 gap-3 pt-2"
+                          >
+                            <label
+                              htmlFor="player"
+                              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                field.value === "player"
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover:border-primary/50"
+                              }`}
+                            >
+                              <RadioGroupItem value="player" id="player" className="sr-only" />
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                                field.value === "player" ? "bg-primary text-primary-foreground" : "bg-muted"
+                              }`}>
+                                <Users className="h-6 w-6" />
+                              </div>
+                              <span className="font-semibold text-sm">Player</span>
+                              <span className="text-xs text-muted-foreground text-center">
+                                Join games & groups
+                              </span>
+                            </label>
+                            <label
+                              htmlFor="court_manager"
+                              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                field.value === "court_manager"
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover:border-primary/50"
+                              }`}
+                            >
+                              <RadioGroupItem value="court_manager" id="court_manager" className="sr-only" />
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                                field.value === "court_manager" ? "bg-primary text-primary-foreground" : "bg-muted"
+                              }`}>
+                                <Building2 className="h-6 w-6" />
+                              </div>
+                              <span className="font-semibold text-sm">Court Manager</span>
+                              <span className="text-xs text-muted-foreground text-center">
+                                Manage venues & courts
+                              </span>
+                            </label>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <FormField
                     control={signUpForm.control}
                     name="password"
