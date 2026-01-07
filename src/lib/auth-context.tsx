@@ -7,9 +7,10 @@ type AppRole = "court_manager" | "organizer" | "player";
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  userRole: AppRole | null;
   isLoading: boolean;
   signUp: (email: string, password: string, fullName: string, role?: AppRole) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; role?: AppRole }>;
   signOut: () => Promise<void>;
 }
 
@@ -18,22 +19,58 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [userRole, setUserRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const fetchUserRole = async (userId: string): Promise<AppRole | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .single();
+
+      if (error) {
+        console.error("Error fetching user role:", error);
+        return "player"; // Default to player if no role found
+      }
+
+      return data?.role as AppRole || "player";
+    } catch (error) {
+      console.error("Error fetching user role:", error);
+      return "player";
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Fetch user role when session changes
+          const role = await fetchUserRole(session.user.id);
+          setUserRole(role);
+        } else {
+          setUserRole(null);
+        }
+        
         setIsLoading(false);
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        const role = await fetchUserRole(session.user.id);
+        setUserRole(role);
+      }
+      
       setIsLoading(false);
     });
 
@@ -41,7 +78,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, role: AppRole = "player") => {
-    const redirectUrl = `${window.location.origin}/games`;
+    const redirectUrl = role === "court_manager" 
+      ? `${window.location.origin}/manager`
+      : `${window.location.origin}/games`;
     
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -66,6 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (roleError) {
         console.error("Error creating user role:", roleError);
+      } else {
+        setUserRole(role);
       }
     }
 
@@ -73,16 +114,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    return { error: error as Error | null };
+    let role: AppRole | undefined;
+    
+    if (!error && data.user) {
+      role = await fetchUserRole(data.user.id);
+      setUserRole(role);
+    }
+
+    return { error: error as Error | null, role };
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUserRole(null);
   };
 
   return (
@@ -90,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         session,
+        userRole,
         isLoading,
         signUp,
         signIn,

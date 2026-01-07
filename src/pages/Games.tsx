@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { GameCard } from "@/components/cards/GameCard";
@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Calendar } from "lucide-react";
-import { Link } from "react-router-dom";
 import { addDays, subDays } from "date-fns";
 
 // Demo data
@@ -86,18 +85,11 @@ export default function Games() {
     <MobileLayout>
       <div className="px-4 py-4 space-y-4 max-w-6xl mx-auto lg:px-6 lg:py-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl lg:text-3xl font-bold">My Games</h1>
-            <p className="text-muted-foreground text-sm">
-              Track your upcoming and past games
-            </p>
-          </div>
-          <Link to="/discover">
-            <Button className="btn-athletic w-full sm:w-auto">
-              Find Games
-            </Button>
-          </Link>
+        <div>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold">My Games</h1>
+          <p className="text-muted-foreground text-sm">
+            Track your upcoming and past games
+          </p>
         </div>
 
         {/* Tabs */}

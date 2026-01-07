@@ -3,19 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2,
   Settings,
   CreditCard,
-  Bell,
   Shield,
   LogOut,
   ChevronRight,
   User,
-  Building2,
 } from "lucide-react";
 
 export default function Profile() {
@@ -51,22 +49,10 @@ export default function Profile() {
       path: "/profile/edit",
     },
     {
-      icon: Building2,
-      label: "Become a Court Manager",
-      description: "List your venue",
-      path: "/become-manager",
-    },
-    {
       icon: CreditCard,
       label: "Payment Methods",
       description: "Manage your cards",
       path: "/profile/payments",
-    },
-    {
-      icon: Bell,
-      label: "Notifications",
-      description: "Customize alerts",
-      path: "/profile/notifications",
     },
     {
       icon: Shield,
@@ -86,7 +72,7 @@ export default function Profile() {
 
   return (
     <MobileLayout>
-      <div className="px-4 py-4 space-y-6">
+      <div className="px-4 py-4 space-y-6 max-w-2xl mx-auto lg:px-6">
         {/* Profile header */}
         <Card>
           <CardContent className="p-6">

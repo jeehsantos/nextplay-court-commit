@@ -37,7 +37,7 @@ type SignUpFormData = z.infer<typeof signUpSchema>;
 export default function Auth() {
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, signIn, signUp, isLoading } = useAuth();
+  const { user, userRole, signIn, signUp, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -52,14 +52,19 @@ export default function Auth() {
   });
 
   useEffect(() => {
-    if (!isLoading && user) {
-      navigate("/games", { replace: true });
+    if (!isLoading && user && userRole) {
+      // Redirect based on role
+      if (userRole === "court_manager") {
+        navigate("/manager", { replace: true });
+      } else {
+        navigate("/games", { replace: true });
+      }
     }
-  }, [user, isLoading, navigate]);
+  }, [user, userRole, isLoading, navigate]);
 
   const handleLogin = async (data: LoginFormData) => {
     setIsSubmitting(true);
-    const { error } = await signIn(data.email, data.password);
+    const { error, role } = await signIn(data.email, data.password);
     setIsSubmitting(false);
 
     if (error) {
@@ -70,6 +75,13 @@ export default function Auth() {
           ? "Incorrect email or password. Please try again."
           : error.message,
       });
+    } else if (role) {
+      // Redirect based on role after successful login
+      if (role === "court_manager") {
+        navigate("/manager", { replace: true });
+      } else {
+        navigate("/games", { replace: true });
+      }
     }
   };
 
@@ -94,6 +106,13 @@ export default function Auth() {
         title: "Account created!",
         description: "Welcome to NextPlay. Let's get you started.",
       });
+      
+      // Redirect based on selected role
+      if (data.role === "court_manager") {
+        navigate("/manager", { replace: true });
+      } else {
+        navigate("/games", { replace: true });
+      }
     }
   };
 
