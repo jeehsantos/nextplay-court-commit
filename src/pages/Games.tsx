@@ -6,7 +6,7 @@ import { GameCard } from "@/components/cards/GameCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Calendar } from "lucide-react";
+import { Loader2, Calendar, Search } from "lucide-react";
 import { addDays, subDays } from "date-fns";
 
 // Demo data
@@ -85,11 +85,19 @@ export default function Games() {
     <MobileLayout>
       <div className="px-4 py-4 space-y-4 max-w-6xl mx-auto lg:px-6 lg:py-6">
         {/* Header */}
-        <div>
-          <h1 className="font-display text-2xl lg:text-3xl font-bold">My Games</h1>
-          <p className="text-muted-foreground text-sm">
-            Track your upcoming and past games
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="font-display text-2xl lg:text-3xl font-bold">My Games</h1>
+            <p className="text-muted-foreground text-sm">
+              Track your upcoming and past games
+            </p>
+          </div>
+          <Link to="/discover">
+            <Button className="btn-athletic w-full sm:w-auto gap-2">
+              <Search className="h-4 w-4" />
+              Find Games
+            </Button>
+          </Link>
         </div>
 
         {/* Tabs */}
@@ -119,7 +127,10 @@ export default function Games() {
                     Join a group or find a rescue game
                   </p>
                   <Link to="/discover">
-                    <Button className="btn-athletic">Find Games</Button>
+                    <Button className="btn-athletic gap-2">
+                      <Search className="h-4 w-4" />
+                      Find Games
+                    </Button>
                   </Link>
                 </CardContent>
               </Card>

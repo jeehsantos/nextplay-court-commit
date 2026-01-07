@@ -17,7 +17,6 @@ import { useAuth } from "@/lib/auth-context";
 export default function ManagerDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
-    venues: 0,
     courts: 0,
     upcomingBookings: 0,
     revenue: 0,
@@ -32,13 +31,7 @@ export default function ManagerDashboard() {
 
   const fetchStats = async () => {
     try {
-      // Fetch venues count
-      const { count: venuesCount } = await supabase
-        .from("venues")
-        .select("*", { count: "exact", head: true })
-        .eq("owner_id", user?.id);
-
-      // Fetch courts count through venues
+      // Fetch courts count through venues owned by user
       const { data: venues } = await supabase
         .from("venues")
         .select("id")
@@ -55,10 +48,9 @@ export default function ManagerDashboard() {
       }
 
       setStats({
-        venues: venuesCount || 0,
         courts: courtsCount,
-        upcomingBookings: 0, // Will implement with availability
-        revenue: 0, // Will implement with payments
+        upcomingBookings: 0,
+        revenue: 0,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -68,8 +60,7 @@ export default function ManagerDashboard() {
   };
 
   const statCards = [
-    { label: "Venues", value: stats.venues, icon: Building2, color: "text-blue-500" },
-    { label: "Courts", value: stats.courts, icon: Calendar, color: "text-green-500" },
+    { label: "My Courts", value: stats.courts, icon: Building2, color: "text-blue-500" },
     { label: "Upcoming Bookings", value: stats.upcomingBookings, icon: TrendingUp, color: "text-orange-500" },
     { label: "This Month", value: `$${stats.revenue}`, icon: DollarSign, color: "text-primary" },
   ];
@@ -83,16 +74,16 @@ export default function ManagerDashboard() {
             <h1 className="font-display text-2xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Manage your courts and bookings</p>
           </div>
-          <Link to="/manager/venues/new">
+          <Link to="/manager/courts/new">
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Venue
+              Add Court
             </Button>
           </Link>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {statCards.map((stat) => (
             <Card key={stat.label}>
               <CardContent className="p-4">
@@ -110,21 +101,21 @@ export default function ManagerDashboard() {
         <div className="grid md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Your Venues</CardTitle>
+              <CardTitle className="text-lg">Your Courts</CardTitle>
             </CardHeader>
             <CardContent>
-              {stats.venues === 0 ? (
+              {stats.courts === 0 ? (
                 <div className="text-center py-8">
                   <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No venues yet</p>
-                  <Link to="/manager/venues/new">
-                    <Button>Add Your First Venue</Button>
+                  <p className="text-muted-foreground mb-4">No courts yet</p>
+                  <Link to="/manager/courts/new">
+                    <Button>Add Your First Court</Button>
                   </Link>
                 </div>
               ) : (
-                <Link to="/manager/venues">
+                <Link to="/manager/courts">
                   <Button variant="outline" className="w-full justify-between">
-                    Manage Venues
+                    Manage Courts
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
@@ -141,8 +132,8 @@ export default function ManagerDashboard() {
                 <div className="text-center py-8">
                   <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground mb-4">Add courts first</p>
-                  <Link to="/manager/venues">
-                    <Button variant="outline">Go to Venues</Button>
+                  <Link to="/manager/courts/new">
+                    <Button variant="outline">Add Court</Button>
                   </Link>
                 </div>
               ) : (

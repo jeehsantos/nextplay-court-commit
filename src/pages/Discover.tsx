@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, Search, AlertTriangle, Users } from "lucide-react";
 import { addDays } from "date-fns";
 
 type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "other";
 
-// Demo data
+// Demo data - Rescue Games (games that need more players)
 const rescueGames = [
   {
     id: "3",
@@ -73,6 +74,7 @@ const rescueGames = [
   },
 ];
 
+// Demo data - Public Groups looking for members
 const publicGroups = [
   {
     id: "5",
@@ -140,7 +142,7 @@ export default function Discover() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<string>(
-    searchParams.get("filter") === "rescue" ? "rescue" : "groups"
+    searchParams.get("filter") === "groups" ? "groups" : "rescue"
   );
   const [selectedSport, setSelectedSport] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -189,20 +191,31 @@ export default function Discover() {
     <MobileLayout>
       <div className="px-4 py-4 space-y-4 max-w-6xl mx-auto lg:px-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl lg:text-3xl font-bold">Discover</h1>
-            <p className="text-muted-foreground text-sm">
-              Find games and groups near you
-            </p>
-          </div>
+        <div>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold">Find Games</h1>
+          <p className="text-muted-foreground text-sm">
+            Join rescue games or discover public groups
+          </p>
         </div>
+
+        {/* Info Banner */}
+        <Card className="bg-warning/10 border-warning/20">
+          <CardContent className="p-4 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-sm">Rescue Games Need You!</p>
+              <p className="text-sm text-muted-foreground">
+                These games are short on players. Join now and help save the game!
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by sport, venue, or location..."
+            placeholder="Search games, groups, or sports..."
             className="pl-10 h-11"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -215,7 +228,7 @@ export default function Discover() {
             <Badge
               key={sport.value}
               variant={selectedSport === sport.value ? "default" : "outline"}
-              className={`cursor-pointer whitespace-nowrap px-3 py-1.5 text-sm transition-all ${
+              className={`cursor-pointer whitespace-nowrap px-3 py-1.5 text-sm transition-all shrink-0 ${
                 selectedSport === sport.value 
                   ? "bg-primary text-primary-foreground" 
                   : "hover:bg-muted"
@@ -231,15 +244,19 @@ export default function Discover() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="rescue" className="relative">
+            <TabsTrigger value="rescue" className="relative gap-2">
+              <AlertTriangle className="h-4 w-4" />
               Rescue Games
               {filteredRescueGames.length > 0 && (
-                <span className="ml-2 px-1.5 py-0.5 bg-warning text-warning-foreground rounded-full text-xs font-bold">
+                <span className="ml-1 px-1.5 py-0.5 bg-warning text-warning-foreground rounded-full text-xs font-bold">
                   {filteredRescueGames.length}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="groups">Public Groups</TabsTrigger>
+            <TabsTrigger value="groups" className="gap-2">
+              <Users className="h-4 w-4" />
+              Public Groups
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="rescue" className="mt-4">
@@ -252,13 +269,13 @@ export default function Discover() {
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                  <Search className="h-8 w-8 opacity-50" />
+                  <AlertTriangle className="h-8 w-8 opacity-50" />
                 </div>
                 <p className="font-medium">No rescue games found</p>
                 <p className="text-sm mt-1">
                   {selectedSport !== "all" 
                     ? `Try selecting a different sport or clear filters`
-                    : "Check back later for new games"}
+                    : "Check back later for games that need players"}
                 </p>
                 {selectedSport !== "all" && (
                   <Button 
@@ -283,7 +300,7 @@ export default function Discover() {
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                  <Search className="h-8 w-8 opacity-50" />
+                  <Users className="h-8 w-8 opacity-50" />
                 </div>
                 <p className="font-medium">No groups found</p>
                 <p className="text-sm mt-1">

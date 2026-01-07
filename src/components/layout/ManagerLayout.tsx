@@ -1,7 +1,6 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
-import { useUserRole } from "@/hooks/useUserRole";
 import { 
   LayoutDashboard, 
   Building2, 
@@ -15,7 +14,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 
 interface ManagerLayoutProps {
   children: ReactNode;
@@ -23,7 +21,7 @@ interface ManagerLayoutProps {
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/manager" },
-  { icon: Building2, label: "Venues", path: "/manager/venues" },
+  { icon: Building2, label: "Courts", path: "/manager/courts" },
   { icon: Calendar, label: "Availability", path: "/manager/availability" },
   { icon: CreditCard, label: "Bookings", path: "/manager/bookings" },
   { icon: User, label: "Profile", path: "/profile" },
@@ -32,21 +30,25 @@ const navItems = [
 export function ManagerLayout({ children }: ManagerLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut, isLoading: authLoading } = useAuth();
-  const { isCourtManager, isLoading: roleLoading } = useUserRole();
+  const { user, userRole, signOut, isLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !roleLoading) {
+    // Only redirect after loading is complete
+    if (!isLoading) {
+      setHasCheckedAuth(true);
+      
       if (!user) {
-        navigate("/auth");
-      } else if (!isCourtManager) {
-        navigate("/games");
+        navigate("/auth", { replace: true });
+      } else if (userRole && userRole !== "court_manager") {
+        navigate("/", { replace: true });
       }
     }
-  }, [user, isCourtManager, authLoading, roleLoading, navigate]);
+  }, [user, userRole, isLoading, navigate]);
 
-  if (authLoading || roleLoading) {
+  // Show loading while checking auth
+  if (isLoading || !hasCheckedAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -54,13 +56,14 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
     );
   }
 
-  if (!user || !isCourtManager) {
+  // Don't render if not authenticated or not a court manager
+  if (!user || (userRole && userRole !== "court_manager")) {
     return null;
   }
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   return (
