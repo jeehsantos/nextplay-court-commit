@@ -185,11 +185,14 @@ export type Database = {
         Row: {
           capacity: number
           created_at: string
+          ground_type: Database["public"]["Enums"]["ground_type"] | null
           hourly_rate: number
           id: string
           is_active: boolean | null
           is_indoor: boolean | null
           name: string
+          payment_hours_before: number | null
+          payment_timing: Database["public"]["Enums"]["payment_timing"] | null
           photo_url: string | null
           sport_type: Database["public"]["Enums"]["sport_type"]
           updated_at: string
@@ -198,11 +201,14 @@ export type Database = {
         Insert: {
           capacity?: number
           created_at?: string
+          ground_type?: Database["public"]["Enums"]["ground_type"] | null
           hourly_rate: number
           id?: string
           is_active?: boolean | null
           is_indoor?: boolean | null
           name: string
+          payment_hours_before?: number | null
+          payment_timing?: Database["public"]["Enums"]["payment_timing"] | null
           photo_url?: string | null
           sport_type: Database["public"]["Enums"]["sport_type"]
           updated_at?: string
@@ -211,11 +217,14 @@ export type Database = {
         Update: {
           capacity?: number
           created_at?: string
+          ground_type?: Database["public"]["Enums"]["ground_type"] | null
           hourly_rate?: number
           id?: string
           is_active?: boolean | null
           is_indoor?: boolean | null
           name?: string
+          payment_hours_before?: number | null
+          payment_timing?: Database["public"]["Enums"]["payment_timing"] | null
           photo_url?: string | null
           sport_type?: Database["public"]["Enums"]["sport_type"]
           updated_at?: string
@@ -549,6 +558,9 @@ export type Database = {
           min_players: number
           notes: string | null
           payment_deadline: string
+          payment_type:
+            | Database["public"]["Enums"]["booking_payment_type"]
+            | null
           session_date: string
           start_time: string
           state: Database["public"]["Enums"]["session_state"]
@@ -567,6 +579,9 @@ export type Database = {
           min_players: number
           notes?: string | null
           payment_deadline: string
+          payment_type?:
+            | Database["public"]["Enums"]["booking_payment_type"]
+            | null
           session_date: string
           start_time: string
           state?: Database["public"]["Enums"]["session_state"]
@@ -585,6 +600,9 @@ export type Database = {
           min_players?: number
           notes?: string | null
           payment_deadline?: string
+          payment_type?:
+            | Database["public"]["Enums"]["booking_payment_type"]
+            | null
           session_date?: string
           start_time?: string
           state?: Database["public"]["Enums"]["session_state"]
@@ -633,6 +651,7 @@ export type Database = {
           address: string
           amenities: string[] | null
           city: string
+          country: string | null
           created_at: string
           description: string | null
           email: string | null
@@ -644,12 +663,14 @@ export type Database = {
           owner_id: string
           phone: string | null
           photo_url: string | null
+          suburb: string | null
           updated_at: string
         }
         Insert: {
           address: string
           amenities?: string[] | null
           city: string
+          country?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
@@ -661,12 +682,14 @@ export type Database = {
           owner_id: string
           phone?: string | null
           photo_url?: string | null
+          suburb?: string | null
           updated_at?: string
         }
         Update: {
           address?: string
           amenities?: string[] | null
           city?: string
+          country?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
@@ -678,6 +701,7 @@ export type Database = {
           owner_id?: string
           phone?: string | null
           photo_url?: string | null
+          suburb?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -701,6 +725,8 @@ export type Database = {
     }
     Enums: {
       app_role: "court_manager" | "organizer" | "player"
+      booking_payment_type: "single" | "split"
+      ground_type: "grass" | "turf" | "sand" | "hard" | "clay" | "other"
       notification_type:
         | "game_reminder"
         | "payment_due"
@@ -710,6 +736,7 @@ export type Database = {
         | "player_joined"
         | "group_invite"
       payment_status: "pending" | "completed" | "failed" | "refunded"
+      payment_timing: "at_booking" | "before_session"
       session_state: "protected" | "rescue" | "released"
       sport_type:
         | "futsal"
@@ -847,6 +874,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["court_manager", "organizer", "player"],
+      booking_payment_type: ["single", "split"],
+      ground_type: ["grass", "turf", "sand", "hard", "clay", "other"],
       notification_type: [
         "game_reminder",
         "payment_due",
@@ -857,6 +886,7 @@ export const Constants = {
         "group_invite",
       ],
       payment_status: ["pending", "completed", "failed", "refunded"],
+      payment_timing: ["at_booking", "before_session"],
       session_state: ["protected", "rescue", "released"],
       sport_type: [
         "futsal",
