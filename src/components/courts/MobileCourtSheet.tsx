@@ -13,29 +13,13 @@ interface CourtWithVenue extends Court {
 interface MobileCourtSheetProps {
   courts: CourtWithVenue[];
   loading: boolean;
-  selectedSport: string;
-  onSportChange: (sport: string) => void;
   highlightedCourtId: string | null;
   onHighlight: (id: string | null) => void;
 }
 
-const sportFilters = ["all", "futsal", "basketball", "tennis", "volleyball", "badminton", "turf_hockey"] as const;
-
-const sportData: Record<string, { emoji: string; label: string }> = {
-  all: { emoji: "🎯", label: "All" },
-  futsal: { emoji: "⚽", label: "Futsal" },
-  basketball: { emoji: "🏀", label: "Basketball" },
-  tennis: { emoji: "🎾", label: "Tennis" },
-  volleyball: { emoji: "🏐", label: "Volleyball" },
-  badminton: { emoji: "🏸", label: "Badminton" },
-  turf_hockey: { emoji: "🏑", label: "Hockey" },
-};
-
 export function MobileCourtSheet({
   courts,
   loading,
-  selectedSport,
-  onSportChange,
   highlightedCourtId,
   onHighlight,
 }: MobileCourtSheetProps) {
@@ -58,37 +42,13 @@ export function MobileCourtSheet({
             maxHeight: '92vh'
           }}
         >
-          {/* Drag handle */}
-          <div className="mx-auto mt-3 mb-2 h-1.5 w-12 shrink-0 rounded-full bg-muted" />
-          
-          {/* Header with court count */}
-          <div className="px-4 pb-3 border-b border-border">
-            <p className="text-center font-semibold text-sm">
-              {courts.length} court{courts.length !== 1 ? "s" : ""} available
+          {/* Drag handle area - larger touch target */}
+          <div className="flex flex-col items-center pt-2 pb-4 cursor-grab active:cursor-grabbing">
+            <div className="h-1.5 w-12 rounded-full bg-muted-foreground/40 mb-3" />
+            <p className="text-base font-semibold text-foreground">
+              {courts.length >= 100 ? `Over ${Math.floor(courts.length / 10) * 10}` : courts.length} court{courts.length !== 1 ? "s" : ""}
             </p>
-          </div>
-
-          {/* Sport filter pills - horizontal scroll */}
-          <div className="flex gap-2 overflow-x-auto px-4 py-3 scrollbar-hide border-b border-border flex-shrink-0">
-            {sportFilters.map((sport) => {
-              const isActive = selectedSport === sport;
-              const data = sportData[sport];
-              
-              return (
-                <button
-                  key={sport}
-                  onClick={() => onSportChange(sport)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 transition-all ${
-                    isActive
-                      ? "bg-foreground text-background"
-                      : "bg-card border border-border text-foreground"
-                  }`}
-                >
-                  <span>{data.emoji}</span>
-                  <span>{data.label}</span>
-                </button>
-              );
-            })}
+            <p className="text-xs text-muted-foreground mt-0.5">Drag up to explore</p>
           </div>
 
           {/* Scrollable cards list */}

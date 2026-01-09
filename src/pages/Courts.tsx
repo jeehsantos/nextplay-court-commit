@@ -288,8 +288,6 @@ export default function Courts() {
           <MobileCourtSheet
             courts={filteredCourts}
             loading={loading}
-            selectedSport={selectedSport}
-            onSportChange={setSelectedSport}
             highlightedCourtId={highlightedCourtId}
             onHighlight={setHighlightedCourtId}
           />
