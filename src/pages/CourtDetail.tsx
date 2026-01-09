@@ -180,14 +180,24 @@ export default function CourtDetail() {
           .single();
 
         if (venue) {
-          // Create chat conversation with court manager
-          await supabase
+          // Check if conversation already exists
+          const { data: existingConv } = await supabase
             .from("chat_conversations")
-            .upsert({
-              organizer_id: user.id,
-              court_manager_id: venue.owner_id,
-              booking_id: selectedSlot.id,
-            }, { onConflict: "organizer_id,court_manager_id" });
+            .select("id")
+            .eq("organizer_id", user.id)
+            .eq("court_manager_id", venue.owner_id)
+            .maybeSingle();
+
+          // Only create if doesn't exist
+          if (!existingConv) {
+            await supabase
+              .from("chat_conversations")
+              .insert({
+                organizer_id: user.id,
+                court_manager_id: venue.owner_id,
+                booking_id: selectedSlot.id,
+              });
+          }
         }
       }
 
