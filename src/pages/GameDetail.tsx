@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SessionBadge } from "@/components/ui/session-badge";
 import { PlayerCount } from "@/components/ui/player-count";
 import { SportIcon, getSportLabel } from "@/components/ui/sport-icon";
+import { SessionChat } from "@/components/chat/SessionChat";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
@@ -64,6 +65,7 @@ interface GameData {
   court?: Court & { venues?: Venue };
   players: PlayerWithProfile[];
   waitingList: PlayerWithProfile[];
+  courtManagerId?: string;
 }
 
 export default function GameDetail() {
@@ -159,12 +161,16 @@ export default function GameDetail() {
         isWaitingList: true
       }));
 
+      // Get court manager ID from venue
+      const courtManagerId = (sessionData.courts as any)?.venues?.owner_id;
+
       setGameData({
         session: sessionData,
         group: groupData,
         court: sessionData.courts as (Court & { venues?: Venue }) | undefined,
         players: confirmedPlayers,
         waitingList: waitingList,
+        courtManagerId,
       });
     } catch (error) {
       console.error("Error fetching game data:", error);
@@ -378,7 +384,7 @@ export default function GameDetail() {
     );
   }
 
-  const { session, group, court, players, waitingList } = gameData;
+  const { session, group, court, players, waitingList, courtManagerId } = gameData;
   const sessionDate = new Date(session.session_date);
   const isGamePast = isPast(sessionDate);
   const paidCount = players.filter(p => p.isPaid).length;
@@ -388,6 +394,7 @@ export default function GameDetail() {
   const isInWaitingList = waitingList.some(p => p.user_id === user.id);
   const currentPlayerPayment = players.find(p => p.user_id === user.id);
   const isRescueActive = session.state === "rescue" && session.is_rescue_open;
+  const isCourtManager = courtManagerId === user.id;
 
   return (
     <MobileLayout showHeader={false} showBottomNav={false}>
@@ -682,6 +689,18 @@ export default function GameDetail() {
                 <p className="text-muted-foreground">{session.notes}</p>
               </CardContent>
             </Card>
+          )}
+
+          {/* Session Chat - Only for organizer or court manager */}
+          {(isOrganizer || isCourtManager) && (
+            <SessionChat
+              sessionId={session.id}
+              sessionDate={session.session_date}
+              sessionStartTime={session.start_time}
+              sessionDurationMinutes={session.duration_minutes}
+              courtManagerId={courtManagerId}
+              isOrganizer={isOrganizer}
+            />
           )}
 
           {/* Organizer Cancel Session */}

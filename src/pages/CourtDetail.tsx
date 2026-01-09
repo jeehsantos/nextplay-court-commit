@@ -171,7 +171,7 @@ export default function CourtDetail() {
 
       if (bookingError) throw bookingError;
 
-      // Get court manager ID to create chat conversation
+      // Get court manager ID to create chat conversation for this session
       if (court.venues) {
         const { data: venue } = await supabase
           .from("venues")
@@ -180,23 +180,22 @@ export default function CourtDetail() {
           .single();
 
         if (venue) {
-          // Check if conversation already exists
-          const { data: existingConv } = await supabase
-            .from("chat_conversations")
-            .select("id")
-            .eq("organizer_id", user.id)
-            .eq("court_manager_id", venue.owner_id)
-            .maybeSingle();
+          // Calculate expires_at (48h after session ends)
+          const sessionEndTime = new Date(`${selectedSlot.available_date}T${selectedSlot.end_time}`);
+          const expiresAt = new Date(sessionEndTime.getTime() + 48 * 60 * 60 * 1000);
 
-          // Only create if doesn't exist
-          if (!existingConv) {
+          // Create chat conversation for this session (wrapped in try-catch to not block booking)
+          try {
             await supabase
               .from("chat_conversations")
               .insert({
                 organizer_id: user.id,
                 court_manager_id: venue.owner_id,
                 booking_id: selectedSlot.id,
-              });
+              } as any); // Type assertion since session_id/expires_at are new columns
+          } catch (chatError) {
+            // Chat creation failed, but booking should still succeed
+            console.error("Error creating chat conversation:", chatError);
           }
         }
       }
