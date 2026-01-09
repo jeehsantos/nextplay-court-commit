@@ -77,8 +77,8 @@ export function GameCard({
             </div>
             <div className="flex items-center gap-2 font-semibold text-foreground">
               {price === 0 ? (
-                <Badge variant="secondary" className="bg-success/10 text-success border-0">
-                  Free
+                <Badge className="bg-success text-success-foreground border-0 shadow-sm">
+                  ✓ FREE
                 </Badge>
               ) : (
                 <>

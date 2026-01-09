@@ -14,6 +14,7 @@ import Games from "./pages/Games";
 import GameDetail from "./pages/GameDetail";
 import GroupDetail from "./pages/GroupDetail";
 import Profile from "./pages/Profile";
+import ProfileEdit from "./pages/ProfileEdit";
 import NotFound from "./pages/NotFound";
 import Landing from "./pages/Landing";
 import About from "./pages/About";
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/games" element={<Games />} />
             <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/edit" element={<ProfileEdit />} />
             <Route path="/courts" element={<Courts />} />
             <Route path="/courts/:id" element={<CourtDetail />} />
             {/* Manager Routes */}
