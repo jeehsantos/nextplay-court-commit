@@ -44,6 +44,30 @@ CREATE TYPE public.app_role AS ENUM (
 
 
 --
+-- Name: booking_payment_type; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.booking_payment_type AS ENUM (
+    'single',
+    'split'
+);
+
+
+--
+-- Name: ground_type; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.ground_type AS ENUM (
+    'grass',
+    'turf',
+    'sand',
+    'hard',
+    'clay',
+    'other'
+);
+
+
+--
 -- Name: notification_type; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -71,6 +95,16 @@ CREATE TYPE public.payment_status AS ENUM (
 
 
 --
+-- Name: payment_timing; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.payment_timing AS ENUM (
+    'at_booking',
+    'before_session'
+);
+
+
+--
 -- Name: session_state; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -94,6 +128,90 @@ CREATE TYPE public.sport_type AS ENUM (
     'badminton',
     'other'
 );
+
+
+--
+-- Name: can_view_group(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.can_view_group(_group_id uuid, _user_id uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT
+    -- Public groups
+    EXISTS (
+      SELECT 1 FROM public.groups g
+      WHERE g.id = _group_id AND g.is_public = true
+    )
+    OR
+    -- Organizer
+    EXISTS (
+      SELECT 1 FROM public.groups g
+      WHERE g.id = _group_id AND g.organizer_id = _user_id
+    )
+    OR
+    -- Group member
+    EXISTS (
+      SELECT 1 FROM public.group_members gm
+      WHERE gm.group_id = _group_id AND gm.user_id = _user_id
+    )
+    OR
+    -- Has open rescue session
+    EXISTS (
+      SELECT 1 FROM public.sessions s
+      WHERE s.group_id = _group_id
+        AND s.is_cancelled = false
+        AND s.is_rescue_open = true
+        AND s.state = 'rescue'::session_state
+    )
+$$;
+
+
+--
+-- Name: cancel_session_and_release_court(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.cancel_session_and_release_court(session_id uuid) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+DECLARE
+  v_group_id uuid;
+  v_organizer_id uuid;
+BEGIN
+  -- Get the group_id and verify the user is the organizer
+  SELECT s.group_id, g.organizer_id INTO v_group_id, v_organizer_id
+  FROM sessions s
+  JOIN groups g ON g.id = s.group_id
+  WHERE s.id = session_id;
+  
+  -- Check if user is the organizer
+  IF v_organizer_id IS NULL OR v_organizer_id != auth.uid() THEN
+    RETURN false;
+  END IF;
+  
+  -- Release the court availability
+  UPDATE court_availability
+  SET 
+    is_booked = false,
+    booked_by_session_id = NULL,
+    booked_by_group_id = NULL,
+    booked_by_user_id = NULL,
+    payment_status = 'pending'
+  WHERE booked_by_session_id = session_id;
+  
+  -- Delete all session players
+  DELETE FROM session_players WHERE session_players.session_id = cancel_session_and_release_court.session_id;
+  
+  -- Mark session as cancelled
+  UPDATE sessions
+  SET is_cancelled = true
+  WHERE id = session_id;
+  
+  RETURN true;
+END;
+$$;
 
 
 --
@@ -135,6 +253,31 @@ $$;
 
 
 --
+-- Name: is_group_member(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_group_member(_group_id uuid, _user_id uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT
+    EXISTS (
+      SELECT 1
+      FROM public.groups g
+      WHERE g.id = _group_id
+        AND g.organizer_id = _user_id
+    )
+    OR
+    EXISTS (
+      SELECT 1
+      FROM public.group_members gm
+      WHERE gm.group_id = _group_id
+        AND gm.user_id = _user_id
+    );
+$$;
+
+
+--
 -- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -150,6 +293,36 @@ $$;
 
 
 SET default_table_access_method = heap;
+
+--
+-- Name: chat_conversations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chat_conversations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organizer_id uuid NOT NULL,
+    court_manager_id uuid NOT NULL,
+    booking_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    session_id uuid,
+    expires_at timestamp with time zone
+);
+
+
+--
+-- Name: chat_messages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chat_messages (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    conversation_id uuid NOT NULL,
+    sender_id uuid NOT NULL,
+    content text NOT NULL,
+    is_read boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 
 --
 -- Name: contact_messages; Type: TABLE; Schema: public; Owner: -
@@ -180,7 +353,10 @@ CREATE TABLE public.court_availability (
     booked_by_group_id uuid,
     booked_by_session_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    booked_by_user_id uuid,
+    payment_status public.payment_status DEFAULT 'pending'::public.payment_status NOT NULL,
+    template_id uuid
 );
 
 
@@ -199,7 +375,27 @@ CREATE TABLE public.courts (
     photo_url text,
     is_active boolean DEFAULT true,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    ground_type public.ground_type DEFAULT 'turf'::public.ground_type,
+    payment_timing public.payment_timing DEFAULT 'at_booking'::public.payment_timing,
+    payment_hours_before integer DEFAULT 24
+);
+
+
+--
+-- Name: group_invitations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.group_invitations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    group_id uuid NOT NULL,
+    invite_code text NOT NULL,
+    created_by uuid NOT NULL,
+    expires_at timestamp with time zone,
+    max_uses integer,
+    use_count integer DEFAULT 0,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -330,7 +526,8 @@ CREATE TABLE public.sessions (
     notes text,
     is_cancelled boolean DEFAULT false,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    payment_type public.booking_payment_type DEFAULT 'single'::public.booking_payment_type
 );
 
 
@@ -365,8 +562,35 @@ CREATE TABLE public.venues (
     amenities text[] DEFAULT '{}'::text[],
     is_active boolean DEFAULT true,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    country text DEFAULT 'New Zealand'::text,
+    suburb text,
+    stripe_account_id text
 );
+
+
+--
+-- Name: chat_conversations chat_conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_conversations
+    ADD CONSTRAINT chat_conversations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chat_conversations chat_conversations_session_id_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_conversations
+    ADD CONSTRAINT chat_conversations_session_id_unique UNIQUE (session_id);
+
+
+--
+-- Name: chat_messages chat_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_messages
+    ADD CONSTRAINT chat_messages_pkey PRIMARY KEY (id);
 
 
 --
@@ -399,6 +623,22 @@ ALTER TABLE ONLY public.court_availability
 
 ALTER TABLE ONLY public.courts
     ADD CONSTRAINT courts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: group_invitations group_invitations_invite_code_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_invitations
+    ADD CONSTRAINT group_invitations_invite_code_key UNIQUE (invite_code);
+
+
+--
+-- Name: group_invitations group_invitations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_invitations
+    ADD CONSTRAINT group_invitations_pkey PRIMARY KEY (id);
 
 
 --
@@ -474,14 +714,6 @@ ALTER TABLE ONLY public.session_players
 
 
 --
--- Name: sessions sessions_group_id_session_date_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.sessions
-    ADD CONSTRAINT sessions_group_id_session_date_key UNIQUE (group_id, session_date);
-
-
---
 -- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -511,6 +743,27 @@ ALTER TABLE ONLY public.user_roles
 
 ALTER TABLE ONLY public.venues
     ADD CONSTRAINT venues_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_court_availability_template_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_court_availability_template_id ON public.court_availability USING btree (template_id) WHERE (template_id IS NOT NULL);
+
+
+--
+-- Name: idx_venues_stripe_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_venues_stripe_account_id ON public.venues USING btree (stripe_account_id);
+
+
+--
+-- Name: chat_conversations update_chat_conversations_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_chat_conversations_updated_at BEFORE UPDATE ON public.chat_conversations FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -563,6 +816,54 @@ CREATE TRIGGER update_venues_updated_at BEFORE UPDATE ON public.venues FOR EACH 
 
 
 --
+-- Name: chat_conversations chat_conversations_booking_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_conversations
+    ADD CONSTRAINT chat_conversations_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.court_availability(id) ON DELETE SET NULL;
+
+
+--
+-- Name: chat_conversations chat_conversations_court_manager_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_conversations
+    ADD CONSTRAINT chat_conversations_court_manager_id_fkey FOREIGN KEY (court_manager_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: chat_conversations chat_conversations_organizer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_conversations
+    ADD CONSTRAINT chat_conversations_organizer_id_fkey FOREIGN KEY (organizer_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: chat_conversations chat_conversations_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_conversations
+    ADD CONSTRAINT chat_conversations_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.sessions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: chat_messages chat_messages_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_messages
+    ADD CONSTRAINT chat_messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.chat_conversations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: chat_messages chat_messages_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_messages
+    ADD CONSTRAINT chat_messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: court_availability court_availability_booked_by_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -592,6 +893,22 @@ ALTER TABLE ONLY public.court_availability
 
 ALTER TABLE ONLY public.courts
     ADD CONSTRAINT courts_venue_id_fkey FOREIGN KEY (venue_id) REFERENCES public.venues(id) ON DELETE CASCADE;
+
+
+--
+-- Name: group_invitations group_invitations_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_invitations
+    ADD CONSTRAINT group_invitations_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: group_invitations group_invitations_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_invitations
+    ADD CONSTRAINT group_invitations_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE;
 
 
 --
@@ -710,7 +1027,14 @@ ALTER TABLE ONLY public.venues
 -- Name: contact_messages Anyone can submit contact messages; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Anyone can submit contact messages" ON public.contact_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can submit contact messages" ON public.contact_messages FOR INSERT WITH CHECK (((name IS NOT NULL) AND (btrim(name) <> ''::text) AND (email IS NOT NULL) AND (btrim(email) <> ''::text) AND (subject IS NOT NULL) AND (btrim(subject) <> ''::text) AND (message IS NOT NULL) AND (btrim(message) <> ''::text)));
+
+
+--
+-- Name: group_invitations Anyone can view active invitations by code; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can view active invitations by code" ON public.group_invitations FOR SELECT USING ((is_active = true));
 
 
 --
@@ -732,6 +1056,24 @@ CREATE POLICY "Authenticated users receive notifications" ON public.notification
 --
 
 CREATE POLICY "Available slots viewable by everyone" ON public.court_availability FOR SELECT USING (true);
+
+
+--
+-- Name: chat_messages Conversation participants can send messages; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Conversation participants can send messages" ON public.chat_messages FOR INSERT WITH CHECK (((auth.uid() = sender_id) AND (EXISTS ( SELECT 1
+   FROM public.chat_conversations cc
+  WHERE ((cc.id = chat_messages.conversation_id) AND ((cc.organizer_id = auth.uid()) OR (cc.court_manager_id = auth.uid())))))));
+
+
+--
+-- Name: chat_messages Conversation participants can view messages; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Conversation participants can view messages" ON public.chat_messages FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM public.chat_conversations cc
+  WHERE ((cc.id = chat_messages.conversation_id) AND ((cc.organizer_id = auth.uid()) OR (cc.court_manager_id = auth.uid()))))));
 
 
 --
@@ -796,11 +1138,16 @@ CREATE POLICY "Courts are viewable by everyone" ON public.courts FOR SELECT USIN
 -- Name: group_members Group members can view members; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Group members can view members" ON public.group_members FOR SELECT USING (((EXISTS ( SELECT 1
-   FROM public.group_members gm
-  WHERE ((gm.group_id = gm.group_id) AND (gm.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+CREATE POLICY "Group members can view members" ON public.group_members FOR SELECT USING (public.is_group_member(group_id, auth.uid()));
+
+
+--
+-- Name: group_invitations Group organizers can manage invitations; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Group organizers can manage invitations" ON public.group_invitations USING ((EXISTS ( SELECT 1
    FROM public.groups g
-  WHERE ((g.id = group_members.group_id) AND (g.organizer_id = auth.uid()))))));
+  WHERE ((g.id = group_invitations.group_id) AND (g.organizer_id = auth.uid())))));
 
 
 --
@@ -829,6 +1176,15 @@ CREATE POLICY "Organizers can manage members" ON public.group_members FOR DELETE
 
 
 --
+-- Name: group_members Organizers can update members; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Organizers can update members" ON public.group_members FOR UPDATE USING ((EXISTS ( SELECT 1
+   FROM public.groups g
+  WHERE ((g.id = group_members.group_id) AND (g.organizer_id = auth.uid())))));
+
+
+--
 -- Name: groups Organizers can update own groups; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -842,6 +1198,13 @@ CREATE POLICY "Organizers can update own groups" ON public.groups FOR UPDATE USI
 CREATE POLICY "Organizers can update sessions" ON public.sessions FOR UPDATE USING ((EXISTS ( SELECT 1
    FROM public.groups g
   WHERE ((g.id = sessions.group_id) AND (g.organizer_id = auth.uid())))));
+
+
+--
+-- Name: court_availability Players can book available slots; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Players can book available slots" ON public.court_availability FOR UPDATE USING ((is_booked = false)) WITH CHECK (((is_booked = true) AND (booked_by_user_id = auth.uid()) AND (payment_status = 'pending'::public.payment_status)));
 
 
 --
@@ -876,9 +1239,49 @@ CREATE POLICY "Profiles are viewable by everyone" ON public.profiles FOR SELECT 
 -- Name: groups Public groups are viewable; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Public groups are viewable" ON public.groups FOR SELECT USING (((is_public = true) OR (auth.uid() = organizer_id) OR (EXISTS ( SELECT 1
-   FROM public.group_members
-  WHERE ((group_members.group_id = group_members.id) AND (group_members.user_id = auth.uid()))))));
+CREATE POLICY "Public groups are viewable" ON public.groups FOR SELECT USING (public.can_view_group(id, auth.uid()));
+
+
+--
+-- Name: chat_messages Recipients can mark messages as read; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Recipients can mark messages as read" ON public.chat_messages FOR UPDATE USING (((EXISTS ( SELECT 1
+   FROM public.chat_conversations cc
+  WHERE ((cc.id = chat_messages.conversation_id) AND ((cc.organizer_id = auth.uid()) OR (cc.court_manager_id = auth.uid()))))) AND (sender_id <> auth.uid())));
+
+
+--
+-- Name: chat_conversations Session participants can create conversations; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Session participants can create conversations" ON public.chat_conversations FOR INSERT WITH CHECK (((auth.uid() = organizer_id) AND (session_id IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM (((public.sessions s
+     JOIN public.groups g ON ((g.id = s.group_id)))
+     JOIN public.courts c ON ((c.id = s.court_id)))
+     JOIN public.venues v ON ((v.id = c.venue_id)))
+  WHERE ((s.id = chat_conversations.session_id) AND (g.organizer_id = auth.uid()) AND (v.owner_id = chat_conversations.court_manager_id))))));
+
+
+--
+-- Name: chat_conversations Session participants can delete expired conversations; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Session participants can delete expired conversations" ON public.chat_conversations FOR DELETE USING (((expires_at IS NOT NULL) AND (expires_at <= now()) AND ((auth.uid() = organizer_id) OR (auth.uid() = court_manager_id))));
+
+
+--
+-- Name: chat_conversations Session participants can update conversations; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Session participants can update conversations" ON public.chat_conversations FOR UPDATE USING (((auth.uid() = organizer_id) OR (auth.uid() = court_manager_id)));
+
+
+--
+-- Name: chat_conversations Session participants can view conversations; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Session participants can view conversations" ON public.chat_conversations FOR SELECT USING (((auth.uid() = organizer_id) OR (auth.uid() = court_manager_id)));
 
 
 --
@@ -900,7 +1303,7 @@ CREATE POLICY "Session players viewable" ON public.session_players FOR SELECT US
 
 CREATE POLICY "Sessions viewable by group members or rescue" ON public.sessions FOR SELECT USING (((EXISTS ( SELECT 1
    FROM public.group_members gm
-  WHERE ((gm.group_id = gm.group_id) AND (gm.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+  WHERE ((gm.group_id = sessions.group_id) AND (gm.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
    FROM public.groups g
   WHERE ((g.id = sessions.group_id) AND (g.organizer_id = auth.uid())))) OR ((is_rescue_open = true) AND (state = 'rescue'::public.session_state))));
 
@@ -910,6 +1313,13 @@ CREATE POLICY "Sessions viewable by group members or rescue" ON public.sessions 
 --
 
 CREATE POLICY "Users can create own payments" ON public.payments FOR INSERT WITH CHECK ((auth.uid() = user_id));
+
+
+--
+-- Name: profiles Users can insert own profile; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK ((auth.uid() = user_id));
 
 
 --
@@ -996,6 +1406,18 @@ CREATE POLICY "Venues are viewable by everyone" ON public.venues FOR SELECT USIN
 
 
 --
+-- Name: chat_conversations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.chat_conversations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: chat_messages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: contact_messages; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1012,6 +1434,12 @@ ALTER TABLE public.court_availability ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.courts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: group_invitations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.group_invitations ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: group_members; Type: ROW SECURITY; Schema: public; Owner: -
