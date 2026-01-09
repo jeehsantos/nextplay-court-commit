@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: Calendar, label: "Games", path: "/games" },
-  { icon: Search, label: "Explore", path: "/" },
+  { icon: Search, label: "Explore", path: "/courts" },
   { icon: Users, label: "Groups", path: "/groups" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
@@ -17,7 +17,8 @@ export function BottomNav() {
       {/* Mobile bottom nav */}
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {navItems.map(({ icon: Icon, label, path }) => {
-          const isActive = location.pathname === path;
+          const isActive = location.pathname === path || 
+            (path !== "/" && location.pathname.startsWith(path));
           return (
             <Link
               key={path}

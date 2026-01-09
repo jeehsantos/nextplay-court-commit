@@ -15,7 +15,10 @@ import {
   CheckCircle2,
   Loader2,
   CalendarDays,
-  LogIn
+  LogIn,
+  ChevronLeft,
+  ChevronRight,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -45,6 +48,8 @@ export default function CourtDetail() {
   const [selectedSlot, setSelectedSlot] = useState<Availability | null>(null);
   const [booking, setBooking] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showGallery, setShowGallery] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -277,6 +282,24 @@ export default function CourtDetail() {
 
   const datesWithAvailability = availability.map(slot => new Date(slot.available_date));
 
+  // Get all photos (photo_urls or fallback to photo_url)
+  const getCourtPhotos = (): string[] => {
+    if (!court) return [];
+    if (court.photo_urls && court.photo_urls.length > 0) return court.photo_urls;
+    if (court.photo_url) return [court.photo_url];
+    return [];
+  };
+
+  const photos = court ? getCourtPhotos() : [];
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % photos.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + photos.length) % photos.length);
+  };
+
   // Use public layout for unauthenticated users
   const Layout = user ? MobileLayout : PublicLayout;
   if (loading) {
@@ -313,24 +336,184 @@ export default function CourtDetail() {
           </Button>
         </div>
 
-        {/* Hero Image */}
-        <div className="aspect-video bg-muted relative">
-          {court.photo_url ? (
-            <img 
-              src={court.photo_url} 
-              alt={court.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <SportIcon sport={court.sport_type} className="h-16 w-16 text-muted-foreground" />
-            </div>
-          )}
-          <Badge className="absolute top-4 left-4 capitalize">
-            <SportIcon sport={court.sport_type} className="h-3 w-3 mr-1" />
-            {court.sport_type}
-          </Badge>
-        </div>
+        {/* Image Gallery */}
+        {photos.length > 0 ? (
+          <>
+            {/* Main Gallery View */}
+            {photos.length === 1 ? (
+              // Single image
+              <div className="aspect-video bg-muted relative">
+                <img 
+                  src={photos[0]} 
+                  alt={court.name}
+                  className="w-full h-full object-cover cursor-pointer"
+                  onClick={() => setShowGallery(true)}
+                />
+                <Badge className="absolute top-4 left-4 capitalize">
+                  <SportIcon sport={court.sport_type} className="h-3 w-3 mr-1" />
+                  {court.sport_type}
+                </Badge>
+              </div>
+            ) : photos.length === 2 ? (
+              // Two images side by side
+              <div className="grid grid-cols-2 gap-1 aspect-video">
+                {photos.map((photo, index) => (
+                  <div key={index} className="relative overflow-hidden">
+                    <img 
+                      src={photo} 
+                      alt={`${court.name} ${index + 1}`}
+                      className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => {
+                        setCurrentImageIndex(index);
+                        setShowGallery(true);
+                      }}
+                    />
+                    {index === 0 && (
+                      <Badge className="absolute top-4 left-4 capitalize">
+                        <SportIcon sport={court.sport_type} className="h-3 w-3 mr-1" />
+                        {court.sport_type}
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // 3-4 images in grid layout
+              <div className="grid grid-cols-4 grid-rows-2 gap-1 aspect-[2/1]">
+                {/* Main large image */}
+                <div className="col-span-2 row-span-2 relative overflow-hidden">
+                  <img 
+                    src={photos[0]} 
+                    alt={court.name}
+                    className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => {
+                      setCurrentImageIndex(0);
+                      setShowGallery(true);
+                    }}
+                  />
+                  <Badge className="absolute top-4 left-4 capitalize">
+                    <SportIcon sport={court.sport_type} className="h-3 w-3 mr-1" />
+                    {court.sport_type}
+                  </Badge>
+                </div>
+                {/* Secondary images */}
+                {photos.slice(1, 5).map((photo, index) => (
+                  <div key={index} className="relative overflow-hidden">
+                    <img 
+                      src={photo} 
+                      alt={`${court.name} ${index + 2}`}
+                      className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => {
+                        setCurrentImageIndex(index + 1);
+                        setShowGallery(true);
+                      }}
+                    />
+                    {/* Show all photos button on last visible image */}
+                    {index === Math.min(photos.length - 2, 3) && photos.length > 4 && (
+                      <div 
+                        className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer"
+                        onClick={() => setShowGallery(true)}
+                      >
+                        <span className="text-white font-medium">+{photos.length - 4} more</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Show all photos button */}
+            {photos.length > 1 && (
+              <div className="px-4 py-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => setShowGallery(true)}
+                >
+                  Show all {photos.length} photos
+                </Button>
+              </div>
+            )}
+
+            {/* Fullscreen Gallery Modal */}
+            {showGallery && (
+              <div className="fixed inset-0 z-50 bg-black flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 text-white">
+                  <span className="font-medium">{currentImageIndex + 1} / {photos.length}</span>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="text-white hover:bg-white/20"
+                    onClick={() => setShowGallery(false)}
+                  >
+                    <X className="h-6 w-6" />
+                  </Button>
+                </div>
+
+                {/* Image */}
+                <div className="flex-1 flex items-center justify-center relative px-4">
+                  <img 
+                    src={photos[currentImageIndex]} 
+                    alt={`${court.name} ${currentImageIndex + 1}`}
+                    className="max-w-full max-h-full object-contain"
+                  />
+
+                  {/* Navigation arrows */}
+                  {photos.length > 1 && (
+                    <>
+                      <button
+                        onClick={prevImage}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-lg"
+                      >
+                        <ChevronLeft className="h-6 w-6 text-gray-800" />
+                      </button>
+                      <button
+                        onClick={nextImage}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-lg"
+                      >
+                        <ChevronRight className="h-6 w-6 text-gray-800" />
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Thumbnail strip */}
+                {photos.length > 1 && (
+                  <div className="p-4 flex justify-center gap-2 overflow-x-auto">
+                    {photos.map((photo, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
+                          index === currentImageIndex 
+                            ? 'border-white opacity-100' 
+                            : 'border-transparent opacity-60 hover:opacity-80'
+                        }`}
+                      >
+                        <img 
+                          src={photo} 
+                          alt={`Thumbnail ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          // No photos placeholder
+          <div className="aspect-video bg-muted relative flex items-center justify-center">
+            <SportIcon sport={court.sport_type} className="h-16 w-16 text-muted-foreground" />
+            <Badge className="absolute top-4 left-4 capitalize">
+              <SportIcon sport={court.sport_type} className="h-3 w-3 mr-1" />
+              {court.sport_type}
+            </Badge>
+          </div>
+        )}
 
         {/* Court Info */}
         <div className="p-4 space-y-6">

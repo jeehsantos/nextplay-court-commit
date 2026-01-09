@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth-context";
 import Index from "./pages/Index";
-import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import JoinGroup from "./pages/JoinGroup";
 import Groups from "./pages/Groups";
@@ -43,8 +42,6 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/courts" element={<Home />} />
             <Route path="/landing" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/about" element={<About />} />
@@ -57,6 +54,7 @@ const App = () => (
             <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/edit" element={<ProfileEdit />} />
+            <Route path="/courts" element={<Courts />} />
             <Route path="/courts/:id" element={<CourtDetail />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             {/* Manager Routes */}

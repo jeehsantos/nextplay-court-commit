@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
-import { CourtCardAirbnb } from "./CourtCardAirbnb";
+import { CourtCard } from "./CourtCard";
 import type { Database } from "@/integrations/supabase/types";
 
 type Court = Database["public"]["Tables"]["courts"]["Row"];
@@ -76,7 +76,7 @@ export function MobileCourtSheet({
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {courts.map((court) => (
-                    <CourtCardAirbnb
+                    <CourtCard
                       key={court.id}
                       court={court}
                       onHover={onHighlight}

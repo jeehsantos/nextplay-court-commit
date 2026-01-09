@@ -13,18 +13,24 @@ interface CourtWithVenue extends Court {
   venues: Venue | null;
 }
 
-interface CourtCardAirbnbProps {
+interface CourtCardProps {
   court: CourtWithVenue;
   onHover?: (courtId: string | null) => void;
   isHighlighted?: boolean;
 }
 
-export function CourtCardAirbnb({ court, onHover, isHighlighted }: CourtCardAirbnbProps) {
+export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
   
-  // For now we only have one image, but structure supports multiple
-  const images = court.photo_url ? [court.photo_url] : [];
+  // Support multiple images from photo_urls or fallback to photo_url
+  const getImages = (): string[] => {
+    if (court.photo_urls && court.photo_urls.length > 0) return court.photo_urls;
+    if (court.photo_url) return [court.photo_url];
+    return [];
+  };
+  
+  const images = getImages();
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();

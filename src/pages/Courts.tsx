@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { CourtCardAirbnb } from "@/components/courts/CourtCardAirbnb";
+import { CourtCard } from "@/components/courts/CourtCard";
 import { CourtsMap } from "@/components/courts/CourtsMap";
 import { CourtsPagination } from "@/components/courts/CourtsPagination";
 import { MobileCourtSheet } from "@/components/courts/MobileCourtSheet";
@@ -133,7 +133,7 @@ export default function Courts() {
   // Desktop Filter bar component
   const FilterBar = () => (
     <div className="space-y-6">
-      {/* Search Bar - Airbnb style pill */}
+      {/* Search Bar */}
       <div className="relative">
         <div className="flex items-center gap-3 bg-card border border-border rounded-full px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
           <Search className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -155,7 +155,7 @@ export default function Courts() {
         </div>
       </div>
 
-      {/* Sport Category Tabs - Icon-focused Airbnb style */}
+      {/* Sport Category Tabs */}
       <div className="flex gap-1 overflow-x-auto pb-3 scrollbar-hide -mx-6 px-6">
         {sportFilters.map((sport) => {
           const isActive = selectedSport === sport;
@@ -351,7 +351,7 @@ export default function Courts() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {paginatedCourts.map((court) => (
-                    <CourtCardAirbnb
+                    <CourtCard
                       key={court.id}
                       court={court}
                       onHover={setHighlightedCourtId}

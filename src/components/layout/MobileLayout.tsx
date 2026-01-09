@@ -26,7 +26,7 @@ interface MobileLayoutProps {
 
 const navItems = [
   { icon: Calendar, label: "Games", path: "/games" },
-  { icon: Search, label: "Explore", path: "/" },
+  { icon: Search, label: "Explore", path: "/courts" },
   { icon: Users, label: "Groups", path: "/groups" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
