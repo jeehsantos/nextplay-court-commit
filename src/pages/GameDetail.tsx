@@ -379,6 +379,39 @@ export default function GameDetail() {
     }
   };
 
+  const handleConfirmAttendance = async () => {
+    if (!gameData || !id || !user) return;
+
+    setActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from("session_players")
+        .update({ 
+          is_confirmed: true, 
+          confirmed_at: new Date().toISOString() 
+        })
+        .eq("session_id", id)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Attendance confirmed",
+        description: "You've confirmed you're coming to this game.",
+      });
+      fetchGameData();
+    } catch (error) {
+      console.error("Error confirming attendance:", error);
+      toast({
+        title: "Error",
+        description: "Failed to confirm attendance.",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleCancelSession = async () => {
     if (!gameData || !id) return;
 
@@ -604,7 +637,7 @@ export default function GameDetail() {
           {/* Price & Payment Status */}
           <Card>
             <CardContent className="p-4 lg:p-6">
-              {session.payment_type === "single" ? (
+                {session.payment_type === "single" ? (
                 // Organizer pays full amount
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -617,12 +650,31 @@ export default function GameDetail() {
                       <p className="text-sm text-muted-foreground">Total: ${session.court_price.toFixed(2)}</p>
                     </div>
                   </div>
-                  {isOrganizer && !isGamePast && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg">
-                      <DollarSign className="h-5 w-5 text-muted-foreground" />
-                      <span className="font-semibold">${session.court_price.toFixed(2)}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {isOrganizer && !isGamePast && (
+                      <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg">
+                        <DollarSign className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-semibold">${session.court_price.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {!isOrganizer && isPlayerInGame && !isGamePast && (
+                      currentPlayerPayment?.is_confirmed ? (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-success/10 text-success rounded-lg">
+                          <CheckCircle2 className="h-5 w-5" />
+                          <span className="font-semibold">Confirmed</span>
+                        </div>
+                      ) : (
+                        <Button 
+                          className="bg-success hover:bg-success/90 text-success-foreground"
+                          onClick={handleConfirmAttendance}
+                          disabled={actionLoading}
+                        >
+                          {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                          Confirm Attendance
+                        </Button>
+                      )
+                    )}
+                  </div>
                 </div>
               ) : (
                 // Split payment
@@ -730,14 +782,28 @@ export default function GameDetail() {
                           {player.user_id === user.id && " (You)"}
                         </p>
                         <div className="flex items-center gap-1">
-                          {player.isPaid ? (
-                            <span className="text-xs text-success flex items-center gap-1">
-                              <CheckCircle2 className="h-3 w-3" /> Confirmed
-                            </span>
+                      {session.payment_type === "single" ? (
+                            // For organizer-paid sessions, check is_confirmed
+                            player.is_confirmed ? (
+                              <span className="text-xs text-success flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" /> Confirmed
+                              </span>
+                            ) : (
+                              <span className="text-xs text-warning flex items-center gap-1">
+                                <XCircle className="h-3 w-3" /> Pending
+                              </span>
+                            )
                           ) : (
-                            <span className="text-xs text-warning flex items-center gap-1">
-                              <XCircle className="h-3 w-3" /> Pending
-                            </span>
+                            // For split payment sessions, check isPaid
+                            player.isPaid ? (
+                              <span className="text-xs text-success flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" /> Confirmed
+                              </span>
+                            ) : (
+                              <span className="text-xs text-warning flex items-center gap-1">
+                                <XCircle className="h-3 w-3" /> Pending
+                              </span>
+                            )
                           )}
                         </div>
                       </div>
