@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { SportIcon } from "@/components/ui/sport-icon";
 import { Footer } from "@/components/layout/Footer";
+import { FloatingShapes } from "@/components/ui/floating-shapes";
 
 const valueProps = [
   {
@@ -109,6 +110,9 @@ export default function Landing() {
 
       {/* Hero Section - Split Screen Design */}
       <section className="relative pt-24 pb-20 md:pt-32 md:pb-28 px-4 overflow-hidden">
+        {/* Animated floating shapes background */}
+        <FloatingShapes />
+        
         {/* Background gradient */}
         <div className="absolute inset-0 section-gradient" />
         <div className="absolute top-20 right-0 w-1/2 h-1/2 bg-primary/5 rounded-full blur-3xl" />
