@@ -222,9 +222,16 @@ export default function CourtDetail() {
           if (paymentError) throw paymentError;
 
           if (paymentData?.url) {
-            // Stripe Checkout doesn't render in iframes; open in a new tab.
-            const opened = window.open(paymentData.url, "_blank", "noopener,noreferrer");
-            if (!opened) window.location.href = paymentData.url;
+            // Detect if running inside an iframe (preview mode)
+            const isInIframe = window.self !== window.top;
+            if (isInIframe) {
+              // In preview: open in new tab since Stripe won't render in iframe
+              const opened = window.open(paymentData.url, "_blank", "noopener,noreferrer");
+              if (!opened) window.location.href = paymentData.url;
+            } else {
+              // Standalone: redirect in same tab for better mobile UX
+              window.location.href = paymentData.url;
+            }
             return;
           }
         } catch (paymentErr) {
