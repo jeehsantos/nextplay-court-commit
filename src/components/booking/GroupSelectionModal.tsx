@@ -21,15 +21,17 @@ import { Loader2, Plus, Users, Calendar, MapPin, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { PaymentTypeSelector } from "@/components/booking/PaymentTypeSelector";
 import type { Database } from "@/integrations/supabase/types";
 
 type Group = Database["public"]["Tables"]["groups"]["Row"];
 type SportType = Database["public"]["Enums"]["sport_type"];
+type BookingPaymentType = "single" | "split";
 
 interface GroupSelectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (groupId: string, isNewGroup: boolean) => void;
+  onConfirm: (groupId: string, isNewGroup: boolean, paymentType: BookingPaymentType) => void;
   sportType: SportType;
   courtPrice: number;
   dayOfWeek: number;
@@ -61,6 +63,7 @@ export function GroupSelectionModal({
   const [creating, setCreating] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [newGroupName, setNewGroupName] = useState("");
+  const [paymentType, setPaymentType] = useState<BookingPaymentType>("single");
 
   const isNewGroup = selectedGroupId === "new";
 
@@ -75,6 +78,7 @@ export function GroupSelectionModal({
     if (open) {
       setSelectedGroupId("");
       setNewGroupName("");
+      setPaymentType("single");
     }
   }, [open]);
 
@@ -136,7 +140,7 @@ export function GroupSelectionModal({
 
         if (memberError) throw memberError;
 
-        onConfirm(data.id, true);
+        onConfirm(data.id, true, paymentType);
       } catch (error: any) {
         console.error("Error creating group:", error);
         toast.error(error?.message ?? "Failed to create group. Please try again.");
@@ -145,7 +149,7 @@ export function GroupSelectionModal({
       }
     } else {
       if (!selectedGroupId) return;
-      onConfirm(selectedGroupId, false);
+      onConfirm(selectedGroupId, false, paymentType);
     }
   };
 
@@ -262,6 +266,13 @@ export function GroupSelectionModal({
                 </p>
               </div>
             )}
+
+            {/* Payment Type Selection */}
+            <PaymentTypeSelector
+              paymentType={paymentType}
+              onPaymentTypeChange={setPaymentType}
+              courtPrice={courtPrice}
+            />
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-2">

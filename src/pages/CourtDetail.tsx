@@ -109,7 +109,7 @@ export default function CourtDetail() {
     setShowGroupModal(true);
   };
 
-  const handleGroupConfirm = async (groupId: string, isNewGroup: boolean) => {
+  const handleGroupConfirm = async (groupId: string, isNewGroup: boolean, paymentType: "single" | "split") => {
     if (!selectedSlot || !court || !user) return;
 
     setShowGroupModal(false);
@@ -134,6 +134,7 @@ export default function CourtDetail() {
           max_players: court.capacity,
           payment_deadline: paymentDeadline.toISOString(),
           state: "protected",
+          payment_type: paymentType,
         })
         .select()
         .single();

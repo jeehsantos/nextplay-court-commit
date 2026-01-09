@@ -21,30 +21,38 @@ import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { CourtPhotoUpload } from "@/components/manager/CourtPhotoUpload";
+import { PaymentSettingsCard } from "@/components/manager/PaymentSettingsCard";
+import { nzCities, getSuburbsForCity } from "@/data/nzLocations";
 
-const sportTypes = [
-  "futsal",
-  "tennis", 
-  "volleyball",
-  "basketball",
-  "turf_hockey",
-  "badminton",
-  "other"
-] as const;
+const groundTypes = ["grass", "turf", "sand", "hard", "clay", "other"] as const;
+
+const groundTypeLabels: Record<string, string> = {
+  grass: "Grass",
+  turf: "Artificial Turf",
+  sand: "Sand",
+  hard: "Hard Court",
+  clay: "Clay",
+  other: "Other",
+};
 
 const courtSchema = z.object({
   // Court details
   name: z.string().min(2, "Name must be at least 2 characters"),
-  sport_type: z.enum(sportTypes),
-  capacity: z.number().min(1).max(100),
+  ground_type: z.enum(groundTypes),
   hourly_rate: z.number().min(0),
   is_indoor: z.boolean(),
   is_active: z.boolean(),
-  photo_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+  photo_url: z.string().optional().nullable(),
   description: z.string().optional(),
   // Location details
   address: z.string().min(5, "Address must be at least 5 characters"),
-  city: z.string().min(2, "City must be at least 2 characters"),
+  city: z.string().min(2, "City is required"),
+  suburb: z.string().optional(),
+  country: z.string().default("New Zealand"),
+  // Payment settings
+  payment_timing: z.enum(["at_booking", "before_session"]),
+  payment_hours_before: z.number().min(1).max(168).default(24),
 });
 
 type CourtFormData = z.infer<typeof courtSchema>;
@@ -60,6 +68,7 @@ export default function ManagerCourtFormNew() {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [existingVenueId, setExistingVenueId] = useState<string | null>(null);
+  const [availableSuburbs, setAvailableSuburbs] = useState<string[]>([]);
 
   const {
     register,
@@ -71,13 +80,27 @@ export default function ManagerCourtFormNew() {
   } = useForm<CourtFormData>({
     resolver: zodResolver(courtSchema),
     defaultValues: {
-      capacity: 10,
       hourly_rate: 50,
       is_indoor: true,
       is_active: true,
-      sport_type: "futsal",
+      ground_type: "turf",
+      country: "New Zealand",
+      payment_timing: "at_booking",
+      payment_hours_before: 24,
     },
   });
+
+  const selectedCity = watch("city");
+  const paymentTiming = watch("payment_timing");
+  const paymentHoursBefore = watch("payment_hours_before");
+
+  useEffect(() => {
+    if (selectedCity) {
+      setAvailableSuburbs(getSuburbsForCity(selectedCity));
+    } else {
+      setAvailableSuburbs([]);
+    }
+  }, [selectedCity]);
 
   useEffect(() => {
     if (isEditing && id) {
@@ -91,7 +114,7 @@ export default function ManagerCourtFormNew() {
         .from("courts")
         .select(`
           *,
-          venue:venues(id, name, address, city, owner_id)
+          venue:venues(id, name, address, city, suburb, country, owner_id)
         `)
         .eq("id", id)
         .single();
@@ -108,8 +131,7 @@ export default function ManagerCourtFormNew() {
       
       reset({
         name: data.name,
-        sport_type: data.sport_type as any,
-        capacity: data.capacity,
+        ground_type: (data.ground_type as any) || "turf",
         hourly_rate: Number(data.hourly_rate),
         is_indoor: data.is_indoor ?? true,
         is_active: data.is_active ?? true,
@@ -117,6 +139,10 @@ export default function ManagerCourtFormNew() {
         description: "",
         address: data.venue?.address || "",
         city: data.venue?.city || "",
+        suburb: data.venue?.suburb || "",
+        country: data.venue?.country || "New Zealand",
+        payment_timing: (data.payment_timing as any) || "at_booking",
+        payment_hours_before: data.payment_hours_before || 24,
       });
     } catch (error) {
       console.error("Error fetching court:", error);
@@ -138,6 +164,8 @@ export default function ManagerCourtFormNew() {
           .update({
             address: data.address,
             city: data.city,
+            suburb: data.suburb || null,
+            country: data.country,
           })
           .eq("id", existingVenueId);
 
@@ -147,12 +175,13 @@ export default function ManagerCourtFormNew() {
           .from("courts")
           .update({
             name: data.name,
-            sport_type: data.sport_type as any,
-            capacity: data.capacity,
+            ground_type: data.ground_type as any,
             hourly_rate: data.hourly_rate,
             is_indoor: data.is_indoor,
             is_active: data.is_active,
             photo_url: data.photo_url || null,
+            payment_timing: data.payment_timing as any,
+            payment_hours_before: data.payment_hours_before,
           })
           .eq("id", id);
 
@@ -164,9 +193,11 @@ export default function ManagerCourtFormNew() {
           .from("venues")
           .insert({
             owner_id: user.id,
-            name: data.name, // Use court name as venue name
+            name: data.name,
             address: data.address,
             city: data.city,
+            suburb: data.suburb || null,
+            country: data.country,
             is_active: true,
           })
           .select()
@@ -176,16 +207,18 @@ export default function ManagerCourtFormNew() {
 
         const { error: courtError } = await supabase
           .from("courts")
-          .insert({
+          .insert([{
             venue_id: venueData.id,
             name: data.name,
-            sport_type: data.sport_type as any,
-            capacity: data.capacity,
+            sport_type: "futsal" as any, // Default sport type since we're using ground_type now
+            ground_type: data.ground_type as any,
             hourly_rate: data.hourly_rate,
             is_indoor: data.is_indoor,
             is_active: data.is_active,
             photo_url: data.photo_url || null,
-          });
+            payment_timing: data.payment_timing as any,
+            payment_hours_before: data.payment_hours_before,
+          }]);
 
         if (courtError) throw courtError;
         toast({ title: "Court created successfully" });
@@ -276,6 +309,20 @@ export default function ManagerCourtFormNew() {
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Photo Upload */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Court Photo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CourtPhotoUpload
+                currentPhotoUrl={watch("photo_url")}
+                onPhotoUploaded={(url) => setValue("photo_url", url)}
+                onPhotoRemoved={() => setValue("photo_url", null)}
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Court Details</CardTitle>
@@ -295,24 +342,24 @@ export default function ManagerCourtFormNew() {
               </div>
 
               <div>
-                <Label htmlFor="sport_type">Sport Type *</Label>
+                <Label htmlFor="ground_type">Surface Type *</Label>
                 <Select
-                  value={watch("sport_type")}
-                  onValueChange={(value) => setValue("sport_type", value as any)}
+                  value={watch("ground_type")}
+                  onValueChange={(value) => setValue("ground_type", value as any)}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select a sport" />
+                    <SelectValue placeholder="Select surface type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {sportTypes.map((sport) => (
-                      <SelectItem key={sport} value={sport} className="capitalize">
-                        {sport.replace("_", " ")}
+                    {groundTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {groundTypeLabels[type]}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.sport_type && (
-                  <p className="text-sm text-destructive mt-1">{errors.sport_type.message}</p>
+                {errors.ground_type && (
+                  <p className="text-sm text-destructive mt-1">{errors.ground_type.message}</p>
                 )}
               </div>
 
@@ -327,45 +374,17 @@ export default function ManagerCourtFormNew() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="capacity">Max Players *</Label>
-                  <Input
-                    id="capacity"
-                    type="number"
-                    {...register("capacity", { valueAsNumber: true })}
-                    className="mt-1"
-                  />
-                  {errors.capacity && (
-                    <p className="text-sm text-destructive mt-1">{errors.capacity.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="hourly_rate">Hourly Rate (NZD) *</Label>
-                  <Input
-                    id="hourly_rate"
-                    type="number"
-                    step="0.01"
-                    {...register("hourly_rate", { valueAsNumber: true })}
-                    className="mt-1"
-                  />
-                  {errors.hourly_rate && (
-                    <p className="text-sm text-destructive mt-1">{errors.hourly_rate.message}</p>
-                  )}
-                </div>
-              </div>
-
               <div>
-                <Label htmlFor="photo_url">Photo URL</Label>
+                <Label htmlFor="hourly_rate">Hourly Rate (NZD) *</Label>
                 <Input
-                  id="photo_url"
-                  {...register("photo_url")}
-                  placeholder="https://example.com/court-photo.jpg"
+                  id="hourly_rate"
+                  type="number"
+                  step="0.01"
+                  {...register("hourly_rate", { valueAsNumber: true })}
                   className="mt-1"
                 />
-                {errors.photo_url && (
-                  <p className="text-sm text-destructive mt-1">{errors.photo_url.message}</p>
+                {errors.hourly_rate && (
+                  <p className="text-sm text-destructive mt-1">{errors.hourly_rate.message}</p>
                 )}
               </div>
             </CardContent>
@@ -377,7 +396,67 @@ export default function ManagerCourtFormNew() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="address">Address *</Label>
+                <Label htmlFor="country">Country</Label>
+                <Select
+                  value={watch("country")}
+                  onValueChange={(value) => setValue("country", value)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="New Zealand">New Zealand</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="city">City *</Label>
+                <Select
+                  value={watch("city")}
+                  onValueChange={(value) => {
+                    setValue("city", value);
+                    setValue("suburb", ""); // Reset suburb when city changes
+                  }}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nzCities.map((city) => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.city && (
+                  <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="suburb">Suburb</Label>
+                <Select
+                  value={watch("suburb") || ""}
+                  onValueChange={(value) => setValue("suburb", value)}
+                  disabled={!selectedCity || availableSuburbs.length === 0}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder={selectedCity ? "Select suburb" : "Select a city first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSuburbs.map((suburb) => (
+                      <SelectItem key={suburb} value={suburb}>
+                        {suburb}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="address">Street Address *</Label>
                 <Input
                   id="address"
                   {...register("address")}
@@ -388,21 +467,16 @@ export default function ManagerCourtFormNew() {
                   <p className="text-sm text-destructive mt-1">{errors.address.message}</p>
                 )}
               </div>
-
-              <div>
-                <Label htmlFor="city">City *</Label>
-                <Input
-                  id="city"
-                  {...register("city")}
-                  placeholder="e.g., Auckland"
-                  className="mt-1"
-                />
-                {errors.city && (
-                  <p className="text-sm text-destructive mt-1">{errors.city.message}</p>
-                )}
-              </div>
             </CardContent>
           </Card>
+
+          {/* Payment Settings */}
+          <PaymentSettingsCard
+            paymentTiming={paymentTiming}
+            paymentHoursBefore={paymentHoursBefore}
+            onPaymentTimingChange={(timing) => setValue("payment_timing", timing)}
+            onPaymentHoursChange={(hours) => setValue("payment_hours_before", hours)}
+          />
 
           <Card>
             <CardHeader>
