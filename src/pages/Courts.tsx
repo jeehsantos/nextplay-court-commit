@@ -272,7 +272,7 @@ export default function Courts() {
     // For mobile courts view, we use MobileLayout with header hidden for full-screen map
     return (
       <MobileLayout showHeader={false} showBottomNav={true}>
-        <div className="fixed inset-0 top-0 bottom-0 overflow-hidden">
+        <div className="fixed inset-0 top-0 bottom-16 overflow-hidden">
           {/* Full-screen map - lowest z-index */}
           <div className="absolute inset-0 z-0">
             <CourtsMap
