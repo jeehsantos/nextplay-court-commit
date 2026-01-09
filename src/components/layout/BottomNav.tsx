@@ -3,9 +3,9 @@ import { Search, Users, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
+  { icon: Calendar, label: "Games", path: "/games" },
   { icon: Search, label: "Explore", path: "/" },
   { icon: Users, label: "Groups", path: "/groups" },
-  { icon: Calendar, label: "Games", path: "/games" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 

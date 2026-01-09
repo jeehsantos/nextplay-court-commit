@@ -479,38 +479,38 @@ export default function Home() {
       </main>
 
       {/* Bottom Navigation - Mobile only */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t safe-bottom md:hidden">
-        <div className="flex items-center justify-around h-16">
-          <button
-            onClick={() => navigate("/")}
-            className="flex flex-col items-center justify-center gap-1 w-16 h-full text-primary"
-          >
-            <Search className="h-5 w-5 stroke-[2.5]" />
-            <span className="text-[10px] font-medium">Explore</span>
-          </button>
-          <button
-            onClick={() => navigate("/groups")}
-            className="flex flex-col items-center justify-center gap-1 w-16 h-full text-muted-foreground"
-          >
-            <Users className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Groups</span>
-          </button>
-          <button
-            onClick={() => navigate("/games")}
-            className="flex flex-col items-center justify-center gap-1 w-16 h-full text-muted-foreground"
-          >
-            <Calendar className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Games</span>
-          </button>
-          <button
-            onClick={() => navigate("/profile")}
-            className="flex flex-col items-center justify-center gap-1 w-16 h-full text-muted-foreground"
-          >
-            <User className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Profile</span>
-          </button>
-        </div>
-      </nav>
+          <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t safe-bottom md:hidden">
+              <div className="flex items-center justify-around h-16">
+                  <button
+                      onClick={() => navigate("/games")}
+                      className="flex flex-col items-center justify-center gap-1 w-16 h-full text-muted-foreground"
+                  >
+                      <Calendar className="h-5 w-5" />
+                      <span className="text-[10px] font-medium">Games</span>
+                  </button>
+                  <button
+                      onClick={() => navigate("/")}
+                      className="flex flex-col items-center justify-center gap-1 w-16 h-full text-primary"
+                  >
+                      <Search className="h-5 w-5 stroke-[2.5]" />
+                      <span className="text-[10px] font-medium">Explore</span>
+                  </button>
+                  <button
+                      onClick={() => navigate("/groups")}
+                      className="flex flex-col items-center justify-center gap-1 w-16 h-full text-muted-foreground"
+                  >
+                      <Users className="h-5 w-5" />
+                      <span className="text-[10px] font-medium">Groups</span>
+                  </button>
+                  <button
+                      onClick={() => navigate("/profile")}
+                      className="flex flex-col items-center justify-center gap-1 w-16 h-full text-muted-foreground"
+                  >
+                      <User className="h-5 w-5" />
+                      <span className="text-[10px] font-medium">Profile</span>
+                  </button>
+              </div>
+          </nav>
 
       {/* Desktop Sidebar Navigation */}
       <nav className="hidden md:block fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
