@@ -16,13 +16,18 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(1, "Password is required"),
 });
 
 const signUpSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
   confirmPassword: z.string(),
   role: z.enum(["player", "court_manager"], {
     required_error: "Please select a role",
@@ -38,7 +43,10 @@ type SignUpFormData = z.infer<typeof signUpSchema>;
 export default function Auth() {
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, userRole, signIn, signUp, isLoading } = useAuth();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const { user, userRole, signIn, signUp, resetPassword, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -117,6 +125,35 @@ export default function Auth() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!resetEmail || !resetEmail.includes("@")) {
+      toast({
+        variant: "destructive",
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    const { error } = await resetPassword(resetEmail);
+    setIsSubmitting(false);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    } else {
+      setResetSent(true);
+      toast({
+        title: "Check your email",
+        description: "We've sent you a password reset link.",
+      });
+    }
+  };
+
   // Only show loading spinner if there's a user session being processed
   // Don't show spinner when user is null (logged out or not logged in)
   if (isLoading && user) {
@@ -128,83 +165,168 @@ export default function Auth() {
   }
 
   return (
-    <PublicLayout showBack>
+    <PublicLayout showBack={false} showFooter={false}>
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      {/* Back Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => navigate("/")}
+        className="absolute top-4 left-4 gap-2"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m15 18-6-6 6-6"/>
+        </svg>
+        Back to Home
+      </Button>
+
       <div className="flex items-center gap-3 mb-8">
         <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-          <span className="text-primary-foreground font-display font-bold text-xl">N</span>
+          <span className="text-primary-foreground font-display font-bold text-xl">M</span>
         </div>
         <div>
           <h1 className="font-display font-bold text-2xl">MatchUP</h1>
-          <p className="text-sm text-muted-foreground">No pay = No play</p>
+          <p className="text-sm text-muted-foreground">Discover. Book. Play.</p>
         </div>
       </div>
 
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="font-display">Welcome</CardTitle>
-          <CardDescription>
-            Sign in to manage your games or create an account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "signup")}>
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="login">
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
-                  <FormField
-                    control={loginForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="you@example.com"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+      {showForgotPassword ? (
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="font-display">Reset Password</CardTitle>
+            <CardDescription>
+              {resetSent 
+                ? "Check your email for a password reset link"
+                : "Enter your email to receive a password reset link"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!resetSent ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Email</label>
+                  <Input
+                    type="email"
+                    placeholder="you@example.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="mt-1.5"
                   />
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="••••••••"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                </div>
+                <div className="flex gap-2">
                   <Button
-                    type="submit"
-                    className="w-full btn-athletic"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setResetEmail("");
+                      setResetSent(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1 btn-athletic"
+                    onClick={handleForgotPassword}
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      "Sign In"
+                      "Send Reset Link"
                     )}
                   </Button>
-                </form>
-              </Form>
-            </TabsContent>
+                </div>
+              </div>
+            ) : (
+              <Button
+                className="w-full btn-athletic"
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setResetEmail("");
+                  setResetSent(false);
+                }}
+              >
+                Back to Login
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="font-display">Welcome</CardTitle>
+            <CardDescription>
+              Sign in to manage your games or create an account
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "signup")}>
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="login">Login</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="login">
+                <Form {...loginForm}>
+                  <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
+                    <FormField
+                      control={loginForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="email"
+                              placeholder="you@example.com"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={loginForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder="••••••••"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full btn-athletic"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Sign In"
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
 
             <TabsContent value="signup">
               <Form {...signUpForm}>
@@ -298,23 +420,26 @@ export default function Auth() {
                     )}
                   />
 
-                  <FormField
-                    control={signUpForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="••••••••"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={signUpForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder="••••••••"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Must be 8+ characters with uppercase, lowercase, number, and special character
+                          </p>
+                        </FormItem>
+                      )}
+                    />
                   <FormField
                     control={signUpForm.control}
                     name="confirmPassword"
@@ -346,9 +471,10 @@ export default function Auth() {
                 </form>
               </Form>
             </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            </Tabs>
+          </CardContent>
+        </Card>
+      )}
       </div>
     </PublicLayout>
   );

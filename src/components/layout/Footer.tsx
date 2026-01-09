@@ -18,14 +18,11 @@ const footerLinks = {
   product: [
     { label: "Browse Courts", href: "/courts" },
     { label: "For Players", href: "/auth" },
-    { label: "For Organizers", href: "/auth" },
     { label: "For Court Managers", href: "/auth" },
   ],
   company: [
     { label: "About Us", href: "/about" },
     { label: "Contact", href: "/contact" },
-    { label: "Careers", href: "#" },
-    { label: "Blog", href: "#" },
   ],
   support: [
     { label: "Help Center", href: "#" },
@@ -56,7 +53,7 @@ export function Footer() {
   return (
     <footer className="bg-card border-t border-border">
       {/* Main Footer Content */}
-      <div className="container mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
           {/* Brand & Mission */}
           <div className="lg:col-span-2">
@@ -125,25 +122,8 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Newsletter & Social */}
+          {/*  Social */}
           <div>
-            <h4 className="font-display font-semibold text-lg mb-4">Stay Updated</h4>
-            <p className="text-muted-foreground text-sm mb-4">
-              Get the latest news and updates delivered to your inbox.
-            </p>
-            <form onSubmit={handleSubscribe} className="flex gap-2 mb-6">
-              <Input
-                type="email"
-                placeholder="Your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 bg-background"
-              />
-              <Button type="submit" size="icon" className="shrink-0">
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </form>
-            
             {/* Social Links */}
             <div className="flex gap-3">
               {socialLinks.map((social) => (

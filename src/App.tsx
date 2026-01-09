@@ -44,6 +44,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/home" element={<Home />} />
+            <Route path="/courts" element={<Home />} />
             <Route path="/landing" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/about" element={<About />} />
@@ -56,7 +57,6 @@ const App = () => (
             <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/edit" element={<ProfileEdit />} />
-            <Route path="/courts" element={<Courts />} />
             <Route path="/courts/:id" element={<CourtDetail />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             {/* Manager Routes */}

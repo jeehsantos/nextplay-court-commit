@@ -489,7 +489,7 @@ export default function Home() {
                       <span className="text-[10px] font-medium">Games</span>
                   </button>
                   <button
-                      onClick={() => navigate("/")}
+                      onClick={() => navigate("/courts")}
                       className="flex flex-col items-center justify-center gap-1 w-16 h-full text-primary"
                   >
                       <Search className="h-5 w-5 stroke-[2.5]" />
@@ -516,10 +516,10 @@ export default function Home() {
       <nav className="hidden md:block fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
         <div className="flex items-center gap-1 bg-background border rounded-full px-2 py-2 shadow-lg">
           <Button
-            variant={location.pathname === "/" ? "default" : "ghost"}
+            variant={location.pathname === "/courts" ? "default" : "ghost"}
             size="sm"
             className="rounded-full gap-2"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/courts")}
           >
             <Search className="h-4 w-4" />
             Explore

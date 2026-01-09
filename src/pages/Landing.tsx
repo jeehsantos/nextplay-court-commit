@@ -2,16 +2,13 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   Calendar, 
-  CreditCard, 
   Users, 
   Shield, 
   MapPin,
   ChevronRight,
   CheckCircle2,
   Zap,
-  Play,
-  Star,
-  TrendingUp
+  Star
 } from "lucide-react";
 import { SportIcon } from "@/components/ui/sport-icon";
 import { Footer } from "@/components/layout/Footer";
@@ -21,12 +18,12 @@ const valueProps = [
   {
     icon: Calendar,
     title: "Easy Booking",
-    description: "Book courts in seconds with our intuitive platform. No more phone calls or waiting."
+    description: "Discover and book quality courts in seconds. Browse venues, check availability, and reserve your spot."
   },
   {
-    icon: CreditCard,
-    title: "Secure Payments",
-    description: "Powered by Stripe for safe, instant transactions. Pay upfront, play stress-free."
+    icon: Users,
+    title: "Join Groups",
+    description: "Connect with regular players and join recurring games. Build your sports community."
   },
   {
     icon: Shield,
@@ -37,24 +34,24 @@ const valueProps = [
 
 const features = [
   {
+    icon: MapPin,
+    title: "Court Discovery",
+    description: "Browse verified courts across New Zealand. Filter by sport, location, and availability."
+  },
+  {
     icon: Users,
-    title: "Smart Rescue System",
-    description: "Fill empty slots automatically when players cancel. Never play short again."
+    title: "Group Management",
+    description: "Create or join recurring games. Organize your team and manage bookings together."
   },
   {
-    icon: TrendingUp,
-    title: "Guaranteed Revenue",
-    description: "Court managers receive upfront payments. No more no-shows or chasing payments."
-  },
-  {
-    icon: Shield,
-    title: "Fair Access",
-    description: "Released slots go to the marketplace. Everyone gets a chance to play."
+    icon: Calendar,
+    title: "Session Scheduling",
+    description: "View upcoming games, manage your bookings, and track your playing schedule."
   },
   {
     icon: Star,
     title: "Trusted Community",
-    description: "Join thousands of verified players and venues across New Zealand."
+    description: "Join verified players and venues. Rate courts and build your sports network."
   }
 ];
 
@@ -62,14 +59,14 @@ const sports = ["futsal", "basketball", "tennis", "volleyball", "badminton", "tu
 
 const howItWorks = {
   players: [
-    { step: "1", title: "Join a Group", description: "Find and join recurring weekly games in your area" },
-    { step: "2", title: "Pay Upfront", description: "Secure your spot with payment before the deadline" },
-    { step: "3", title: "Play!", description: "Show up and enjoy your guaranteed game time" }
+    { step: "1", title: "Discover Courts", description: "Browse verified venues across New Zealand and find the perfect court" },
+    { step: "2", title: "Join or Create Groups", description: "Connect with regular players or organize your own recurring games" },
+    { step: "3", title: "Book & Play", description: "Reserve your spot and enjoy hassle-free sports sessions" }
   ],
   managers: [
-    { step: "1", title: "List Your Courts", description: "Register your venue and add court details" },
-    { step: "2", title: "Publish Availability", description: "Set available time slots for booking" },
-    { step: "3", title: "Get Paid", description: "Receive guaranteed payments from confirmed bookings" }
+    { step: "1", title: "List Your Courts", description: "Register your venue and showcase your facilities with photos" },
+    { step: "2", title: "Manage Availability", description: "Set your court schedules and pricing" },
+    { step: "3", title: "Grow Your Business", description: "Reach more players and fill your courts efficiently" }
   ]
 };
 
@@ -123,21 +120,21 @@ export default function Landing() {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 text-accent border border-accent/20 mb-8 animate-fade-in">
               <Zap className="h-4 w-4" />
-              <span className="text-sm font-semibold">No Pay = No Play</span>
+              <span className="text-sm font-semibold">Commitment Guaranteed</span>
             </div>
             
             {/* Headline */}
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-[1.1] animate-fade-in">
-              Book Courts.{" "}
-              <span className="text-gradient-primary">Guarantee Games.</span>
+              Discover Courts.{" "}
+              <span className="text-gradient-primary">Book Instantly.</span>
               <br className="hidden sm:block" />
-              <span className="text-gradient-accent">End No-Shows.</span>
+              <span className="text-gradient-accent">Play Together.</span>
             </h1>
             
             {/* Sub-headline */}
             <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto animate-fade-in">
-              The sports booking marketplace that ensures commitment. Upfront payments, 
-              automatic slot filling, and fair access to courts across New Zealand.
+              Find and book quality sports courts across New Zealand. Join groups, organize games, 
+              and connect with players in your community.
             </p>
             
             {/* CTA Buttons */}
@@ -199,24 +196,24 @@ export default function Landing() {
             <div>
               <span className="text-accent font-semibold text-sm uppercase tracking-wider">The Problem</span>
               <h2 className="font-display text-3xl md:text-4xl font-bold mt-2 mb-6">
-                Group Sports Are a Logistical Nightmare
+                Finding Courts & Players Is Hard
               </h2>
               <ul className="space-y-4 text-muted-foreground">
                 <li className="flex items-start gap-4">
                   <span className="w-6 h-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0 mt-0.5">✗</span>
-                  <span>Endless WhatsApp messages trying to confirm who's coming</span>
+                  <span>Scattered information about courts across different websites and phone calls</span>
                 </li>
                 <li className="flex items-start gap-4">
                   <span className="w-6 h-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0 mt-0.5">✗</span>
-                  <span>Last-minute cancellations leaving you scrambling for replacements</span>
+                  <span>Difficult to find regular players and organize recurring games</span>
                 </li>
                 <li className="flex items-start gap-4">
                   <span className="w-6 h-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0 mt-0.5">✗</span>
-                  <span>Organizers stuck chasing payments from flaky teammates</span>
+                  <span>No central platform to manage bookings and group schedules</span>
                 </li>
                 <li className="flex items-start gap-4">
                   <span className="w-6 h-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0 mt-0.5">✗</span>
-                  <span>Paying for empty spots because people didn't show up</span>
+                  <span>Hard to discover quality venues and read genuine player reviews</span>
                 </li>
               </ul>
             </div>
@@ -229,19 +226,19 @@ export default function Landing() {
               <ul className="space-y-4 relative">
                 <li className="flex items-start gap-4">
                   <CheckCircle2 className="h-6 w-6 text-primary shrink-0 mt-0.5" />
-                  <span>Upfront payments guarantee player commitment</span>
+                  <span>Browse all verified courts in one place with photos, ratings, and availability</span>
                 </li>
                 <li className="flex items-start gap-4">
                   <CheckCircle2 className="h-6 w-6 text-primary shrink-0 mt-0.5" />
-                  <span>Rescue mode automatically fills cancelled spots</span>
+                  <span>Create groups for recurring games and manage your team easily</span>
                 </li>
                 <li className="flex items-start gap-4">
                   <CheckCircle2 className="h-6 w-6 text-primary shrink-0 mt-0.5" />
-                  <span>Released slots go public after 48 hours for fair access</span>
+                  <span>Track all your bookings and upcoming sessions in one dashboard</span>
                 </li>
                 <li className="flex items-start gap-4">
                   <CheckCircle2 className="h-6 w-6 text-primary shrink-0 mt-0.5" />
-                  <span>Court managers receive guaranteed revenue upfront</span>
+                  <span>Connect with verified players and build your sports community</span>
                 </li>
               </ul>
             </div>
@@ -365,10 +362,10 @@ export default function Landing() {
         
         <div className="container mx-auto max-w-4xl text-center relative">
           <h2 className="font-display text-3xl md:text-5xl font-bold mb-6 text-primary-foreground">
-            Ready to Never Miss a Game?
+            Ready to Find Your Next Game?
           </h2>
           <p className="text-primary-foreground/80 mb-10 max-w-xl mx-auto text-lg">
-            Join thousands of players and court managers across New Zealand who've switched to smarter sports booking.
+            Join players and court managers across New Zealand discovering the easier way to book and play sports.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/auth">
