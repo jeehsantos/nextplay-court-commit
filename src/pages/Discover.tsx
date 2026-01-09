@@ -93,6 +93,7 @@ export default function Discover() {
           state,
           is_rescue_open,
           is_cancelled,
+          payment_type,
           groups (
             id,
             name,
@@ -112,33 +113,47 @@ export default function Discover() {
         .gte("session_date", today)
         .order("session_date", { ascending: true });
 
-      // Get player counts for each session
-      const rescueGamesData: RescueGame[] = await Promise.all(
-        (rescueSessions || []).map(async (session) => {
-          const { count } = await supabase
-            .from("session_players")
-            .select("*", { count: "exact", head: true })
-            .eq("session_id", session.id);
+      // Get player counts for each session and filter out sessions user already joined
+      const rescueGamesData: RescueGame[] = [];
+      
+      for (const session of (rescueSessions || [])) {
+        // Check if current user is already in this session
+        const { data: existingPlayer } = await supabase
+          .from("session_players")
+          .select("id")
+          .eq("session_id", session.id)
+          .eq("user_id", user.id)
+          .maybeSingle();
 
-          const group = session.groups as any;
-          const court = session.courts as any;
-          
-          return {
-            id: session.id,
-            groupName: group?.name || "Unknown Group",
-            sport: (group?.sport_type || "other") as SportType,
-            courtName: court?.name || "Court",
-            venueName: court?.venues?.name || "Venue",
-            date: new Date(session.session_date),
-            time: session.start_time.slice(0, 5),
-            price: session.court_price / session.min_players,
-            currentPlayers: count || 0,
-            minPlayers: session.min_players,
-            maxPlayers: session.max_players,
-            state: "rescue" as const,
-          };
-        })
-      );
+        // Skip sessions user already joined
+        if (existingPlayer) continue;
+
+        const { count } = await supabase
+          .from("session_players")
+          .select("*", { count: "exact", head: true })
+          .eq("session_id", session.id);
+
+        const group = session.groups as any;
+        const court = session.courts as any;
+        
+        // If organizer pays (payment_type = 'single'), price is 0 (free for players)
+        const isFreeForPlayers = session.payment_type === "single";
+        
+        rescueGamesData.push({
+          id: session.id,
+          groupName: group?.name || "Unknown Group",
+          sport: (group?.sport_type || "other") as SportType,
+          courtName: court?.name || "Court",
+          venueName: court?.venues?.name || "Venue",
+          date: new Date(session.session_date),
+          time: session.start_time.slice(0, 5),
+          price: isFreeForPlayers ? 0 : session.court_price / session.min_players,
+          currentPlayers: count || 0,
+          minPlayers: session.min_players,
+          maxPlayers: session.max_players,
+          state: "rescue" as const,
+        });
+      }
 
       setRescueGames(rescueGamesData);
 
