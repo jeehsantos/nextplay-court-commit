@@ -1,7 +1,5 @@
-import { useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useRef, useMemo } from "react";
 import L from "leaflet";
-import { Link } from "react-router-dom";
 import { getCityCoordinates, nzCenter } from "@/data/nzLocations";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -32,35 +30,11 @@ const createPriceIcon = (price: number, isHighlighted: boolean) => {
   });
 };
 
-// Component to fit bounds when courts change
-function MapBoundsHandler({ courts }: { courts: CourtWithVenue[] }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (courts.length === 0) {
-      map.setView([nzCenter.lat, nzCenter.lng], 5);
-      return;
-    }
-
-    const courtsWithCoords = courts.filter(
-      (c) => c.venues?.latitude && c.venues?.longitude
-    );
-
-    if (courtsWithCoords.length > 0) {
-      const bounds = L.latLngBounds(
-        courtsWithCoords.map((c) => [c.venues!.latitude!, c.venues!.longitude!])
-      );
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-    } else if (courts[0]?.venues?.city) {
-      const cityCoords = getCityCoordinates(courts[0].venues.city);
-      map.setView([cityCoords.lat, cityCoords.lng], 11);
-    }
-  }, [courts, map]);
-
-  return null;
-}
-
 export function CourtsMap({ courts, highlightedCourtId, onMarkerHover }: CourtsMapProps) {
+  const mapRef = useRef<L.Map | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const markersRef = useRef<Map<string, L.Marker>>(new Map());
+
   // Get courts with coordinates (real or city-based fallback)
   const courtsWithPosition = useMemo(() => {
     return courts.map((court) => {
@@ -84,44 +58,88 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover }: CourtsM
     }).filter(Boolean) as (CourtWithVenue & { position: { lat: number; lng: number } })[];
   }, [courts]);
 
-  return (
-    <MapContainer
-      center={[nzCenter.lat, nzCenter.lng]}
-      zoom={5}
-      className="w-full h-full"
-      zoomControl={false}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <MapBoundsHandler courts={courts} />
-      
-      {courtsWithPosition.map((court) => (
-        <Marker
-          key={court.id}
-          position={[court.position.lat, court.position.lng]}
-          icon={createPriceIcon(court.hourly_rate, court.id === highlightedCourtId)}
-          eventHandlers={{
-            mouseover: () => onMarkerHover?.(court.id),
-            mouseout: () => onMarkerHover?.(null),
-          }}
-        >
-          <Popup>
-            <Link to={`/courts/${court.id}`} className="block p-1">
-              <div className="font-semibold">{court.name}</div>
-              {court.venues && (
-                <div className="text-sm text-muted-foreground">
-                  {court.venues.name}
-                </div>
-              )}
-              <div className="text-sm font-medium text-primary mt-1">
-                ${court.hourly_rate}/hr
-              </div>
-            </Link>
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
-  );
+  // Initialize map
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    mapRef.current = L.map(containerRef.current, {
+      center: [nzCenter.lat, nzCenter.lng],
+      zoom: 5,
+      zoomControl: false,
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(mapRef.current);
+
+    // Add zoom control to top-right
+    L.control.zoom({ position: "topright" }).addTo(mapRef.current);
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update markers when courts change
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Clear existing markers
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current.clear();
+
+    // Add new markers
+    courtsWithPosition.forEach((court) => {
+      const marker = L.marker([court.position.lat, court.position.lng], {
+        icon: createPriceIcon(court.hourly_rate, court.id === highlightedCourtId),
+      });
+
+      marker.on("mouseover", () => onMarkerHover?.(court.id));
+      marker.on("mouseout", () => onMarkerHover?.(null));
+
+      const popupContent = `
+        <a href="/courts/${court.id}" class="block p-1">
+          <div class="font-semibold">${court.name}</div>
+          ${court.venues ? `<div class="text-sm text-gray-500">${court.venues.name}</div>` : ""}
+          <div class="text-sm font-medium mt-1">$${court.hourly_rate}/hr</div>
+        </a>
+      `;
+      marker.bindPopup(popupContent);
+
+      marker.addTo(mapRef.current!);
+      markersRef.current.set(court.id, marker);
+    });
+
+    // Fit bounds
+    if (courtsWithPosition.length > 0) {
+      const courtsWithRealCoords = courtsWithPosition.filter(
+        (c) => c.venues?.latitude && c.venues?.longitude
+      );
+
+      if (courtsWithRealCoords.length > 0) {
+        const bounds = L.latLngBounds(
+          courtsWithRealCoords.map((c) => [c.position.lat, c.position.lng])
+        );
+        mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      } else if (courtsWithPosition[0]?.venues?.city) {
+        const cityCoords = getCityCoordinates(courtsWithPosition[0].venues.city);
+        mapRef.current.setView([cityCoords.lat, cityCoords.lng], 11);
+      }
+    }
+  }, [courtsWithPosition, highlightedCourtId, onMarkerHover]);
+
+  // Update marker icons when highlighted court changes
+  useEffect(() => {
+    markersRef.current.forEach((marker, courtId) => {
+      const court = courtsWithPosition.find((c) => c.id === courtId);
+      if (court) {
+        marker.setIcon(createPriceIcon(court.hourly_rate, courtId === highlightedCourtId));
+      }
+    });
+  }, [highlightedCourtId, courtsWithPosition]);
+
+  return <div ref={containerRef} className="w-full h-full" />;
 }
