@@ -342,8 +342,9 @@ export default function GameDetail() {
       if (error) throw error;
 
       if (data?.url) {
-        // Redirect to Stripe checkout
-        window.location.href = data.url;
+        // Stripe Checkout doesn't render in iframes; open in a new tab.
+        const opened = window.open(data.url, "_blank", "noopener,noreferrer");
+        if (!opened) window.location.href = data.url;
       } else {
         throw new Error("No payment URL returned");
       }
