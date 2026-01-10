@@ -1326,6 +1326,13 @@ CREATE POLICY "Organizers can update sessions" ON public.sessions FOR UPDATE USI
 
 
 --
+-- Name: groups Organizers can view own groups; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Organizers can view own groups" ON public.groups FOR SELECT USING ((auth.uid() = organizer_id));
+
+
+--
 -- Name: court_availability Players can book available slots; Type: POLICY; Schema: public; Owner: -
 --
 
