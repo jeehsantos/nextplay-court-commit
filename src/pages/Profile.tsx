@@ -14,11 +14,15 @@ import {
   LogOut,
   ChevronRight,
   User,
+  Moon,
+  Sun,
 } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function Profile() {
   const { user, isLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -139,6 +143,33 @@ export default function Profile() {
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>
             ))}
+          </CardContent>
+        </Card>
+
+        {/* Theme Toggle */}
+        <Card>
+          <CardContent className="p-0">
+            <button
+              onClick={toggleTheme}
+              className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                {theme === 'dark' ? (
+                  <Sun className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <Moon className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-medium text-sm">
+                  {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Switch to {theme === 'dark' ? 'light' : 'dark'} theme
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
           </CardContent>
         </Card>
 
