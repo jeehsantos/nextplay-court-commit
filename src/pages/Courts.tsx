@@ -5,6 +5,7 @@ import { CourtCard } from "@/components/courts/CourtCard";
 import { CourtsMap } from "@/components/courts/CourtsMap";
 import { CourtsPagination } from "@/components/courts/CourtsPagination";
 import { MobileCourtSheet } from "@/components/courts/MobileCourtSheet";
+import { MobileCourtFilters } from "@/components/courts/MobileCourtFilters";
 import { Search, MapPin, SlidersHorizontal, Building2 } from "lucide-react";
 import {
   Select,
@@ -52,6 +53,7 @@ export default function Courts() {
   const [currentPage, setCurrentPage] = useState(1);
   const [highlightedCourtId, setHighlightedCourtId] = useState<string | null>(null);
   const [showPagination, setShowPagination] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -139,6 +141,13 @@ export default function Courts() {
     setCurrentPage(page);
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  // Calculate active filters count
+  const activeFiltersCount = [
+    selectedGroundType !== "all",
+    selectedVenueType !== "all",
+    selectedCity !== "all",
+  ].filter(Boolean).length;
 
   const Layout = user ? MobileLayout : PublicLayout;
 
@@ -345,8 +354,16 @@ export default function Courts() {
                   <span className="text-xs">✕</span>
                 </button>
               ) : (
-                <button className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                <button 
+                  onClick={() => setShowMobileFilters(true)}
+                  className="h-8 w-8 rounded-full bg-muted flex items-center justify-center relative"
+                >
                   <SlidersHorizontal className="h-4 w-4" />
+                  {activeFiltersCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-primary-foreground rounded-full text-[10px] flex items-center justify-center font-medium">
+                      {activeFiltersCount}
+                    </span>
+                  )}
                 </button>
               )}
             </div>
@@ -358,6 +375,20 @@ export default function Courts() {
             loading={loading}
             highlightedCourtId={highlightedCourtId}
             onHighlight={setHighlightedCourtId}
+          />
+
+          {/* Mobile Filters Sheet */}
+          <MobileCourtFilters
+            open={showMobileFilters}
+            onOpenChange={setShowMobileFilters}
+            selectedGroundType={selectedGroundType}
+            setSelectedGroundType={setSelectedGroundType}
+            selectedVenueType={selectedVenueType}
+            setSelectedVenueType={setSelectedVenueType}
+            selectedCity={selectedCity}
+            setSelectedCity={setSelectedCity}
+            cities={cities}
+            activeFiltersCount={activeFiltersCount}
           />
         </div>
       </MobileLayout>

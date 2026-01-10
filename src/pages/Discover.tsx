@@ -7,8 +7,14 @@ import { GroupCard } from "@/components/cards/GroupCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2, Search, AlertTriangle, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -47,6 +53,17 @@ const sports = [
   { value: "tennis", label: "Tennis", emoji: "🎾" },
   { value: "volleyball", label: "Volleyball", emoji: "🏐" },
   { value: "badminton", label: "Badminton", emoji: "🏸" },
+  { value: "turf_hockey", label: "Turf Hockey", emoji: "🏑" },
+  { value: "other", label: "Other", emoji: "🎲" },
+];
+
+const courtTypes = [
+  { value: "all", label: "All Surfaces", emoji: "🎯" },
+  { value: "grass", label: "Grass", emoji: "🌱" },
+  { value: "turf", label: "Turf", emoji: "🟩" },
+  { value: "sand", label: "Sand", emoji: "🏖️" },
+  { value: "hard", label: "Hard Court", emoji: "🟫" },
+  { value: "clay", label: "Clay", emoji: "🟠" },
 ];
 
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -59,6 +76,7 @@ export default function Discover() {
     searchParams.get("filter") === "groups" ? "groups" : "rescue"
   );
   const [selectedSport, setSelectedSport] = useState("all");
+  const [selectedCourtType, setSelectedCourtType] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [rescueGames, setRescueGames] = useState<RescueGame[]>([]);
   const [publicGroups, setPublicGroups] = useState<PublicGroup[]>([]);
@@ -264,23 +282,51 @@ export default function Discover() {
           />
         </div>
 
-        {/* Sport filters */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-4 px-4 lg:mx-0 lg:px-0 lg:flex-wrap">
-          {sports.map((sport) => (
-            <Badge
-              key={sport.value}
-              variant={selectedSport === sport.value ? "default" : "outline"}
-              className={`cursor-pointer whitespace-nowrap px-3 py-1.5 text-sm transition-all shrink-0 ${
-                selectedSport === sport.value 
-                  ? "bg-primary text-primary-foreground" 
-                  : "hover:bg-muted"
-              }`}
-              onClick={() => setSelectedSport(sport.value)}
-            >
-              <span className="mr-1.5">{sport.emoji}</span>
-              {sport.label}
-            </Badge>
-          ))}
+        {/* Filter Dropdowns */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Sport Filter */}
+          <Select value={selectedSport} onValueChange={setSelectedSport}>
+            <SelectTrigger className="w-full sm:w-[180px] h-11">
+              <SelectValue>
+                <div className="flex items-center gap-2">
+                  <span>{sports.find(s => s.value === selectedSport)?.emoji}</span>
+                  <span>{sports.find(s => s.value === selectedSport)?.label}</span>
+                </div>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-popover border border-border shadow-lg z-50">
+              {sports.map((sport) => (
+                <SelectItem key={sport.value} value={sport.value}>
+                  <div className="flex items-center gap-2">
+                    <span>{sport.emoji}</span>
+                    <span>{sport.label}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Court Type Filter */}
+          <Select value={selectedCourtType} onValueChange={setSelectedCourtType}>
+            <SelectTrigger className="w-full sm:w-[180px] h-11">
+              <SelectValue>
+                <div className="flex items-center gap-2">
+                  <span>{courtTypes.find(c => c.value === selectedCourtType)?.emoji}</span>
+                  <span>{courtTypes.find(c => c.value === selectedCourtType)?.label}</span>
+                </div>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-popover border border-border shadow-lg z-50">
+              {courtTypes.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  <div className="flex items-center gap-2">
+                    <span>{type.emoji}</span>
+                    <span>{type.label}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Tabs */}

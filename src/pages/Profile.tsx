@@ -33,6 +33,10 @@ import {
   Save,
   Activity,
   Key,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -69,8 +73,17 @@ export default function Profile() {
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [profileData, setProfileData] = useState<ProfileData>({
     full_name: "",
     phone: "",
@@ -177,30 +190,70 @@ export default function Profile() {
     navigate("/", { replace: true });
   };
 
-  const handleResetPassword = async () => {
-    if (!user?.email) return;
+  // Password validation
+  const validatePassword = (password: string): string[] => {
+    const errors: string[] = [];
+    if (password.length < 8) errors.push("At least 8 characters");
+    if (!/[A-Z]/.test(password)) errors.push("One uppercase letter");
+    if (!/[a-z]/.test(password)) errors.push("One lowercase letter");
+    if (!/[0-9]/.test(password)) errors.push("One number");
+    return errors;
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPasswordData((prev) => ({ ...prev, newPassword: value }));
+    setPasswordErrors(validatePassword(value));
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!user) return;
     
-    setResetPasswordLoading(true);
+    // Validate passwords match
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are identical.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validate password strength
+    const errors = validatePassword(passwordData.newPassword);
+    if (errors.length > 0) {
+      toast({
+        title: "Password too weak",
+        description: "Please meet all password requirements.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setPasswordLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/auth`,
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword,
       });
       
       if (error) throw error;
       
       toast({
-        title: "Password reset email sent",
-        description: "Check your inbox for the reset link.",
+        title: "Password updated",
+        description: "Your password has been changed successfully.",
       });
-    } catch (error) {
-      console.error("Error sending reset email:", error);
+      
+      // Clear form
+      setPasswordData({ newPassword: "", confirmPassword: "" });
+      setPasswordErrors([]);
+    } catch (error: any) {
+      console.error("Error updating password:", error);
       toast({
         title: "Error",
-        description: "Failed to send reset email. Please try again.",
+        description: error.message || "Failed to update password. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setResetPasswordLoading(false);
+      setPasswordLoading(false);
     }
   };
 
@@ -450,23 +503,118 @@ export default function Profile() {
                   </div>
                   <Switch defaultChecked />
                 </div>
-                <div className="pt-2 border-t border-border">
+                
+                {/* Change Password Section */}
+                <div className="pt-4 border-t border-border space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Key className="h-4 w-4 text-muted-foreground" />
+                    <p className="font-medium text-sm">Change Password</p>
+                  </div>
+                  
+                  {/* New Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="new_password" className="text-sm">New Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="new_password"
+                        type={showNewPassword ? "text" : "password"}
+                        placeholder="Enter new password"
+                        value={passwordData.newPassword}
+                        onChange={(e) => handlePasswordChange(e.target.value)}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    
+                    {/* Password Requirements */}
+                    {passwordData.newPassword && (
+                      <div className="space-y-1 mt-2">
+                        {[
+                          { text: "At least 8 characters", check: passwordData.newPassword.length >= 8 },
+                          { text: "One uppercase letter", check: /[A-Z]/.test(passwordData.newPassword) },
+                          { text: "One lowercase letter", check: /[a-z]/.test(passwordData.newPassword) },
+                          { text: "One number", check: /[0-9]/.test(passwordData.newPassword) },
+                        ].map((req) => (
+                          <div
+                            key={req.text}
+                            className={`flex items-center gap-2 text-xs ${
+                              req.check ? "text-success" : "text-muted-foreground"
+                            }`}
+                          >
+                            {req.check ? (
+                              <CheckCircle2 className="h-3 w-3" />
+                            ) : (
+                              <XCircle className="h-3 w-3" />
+                            )}
+                            {req.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Confirm Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm_password" className="text-sm">Confirm New Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirm_password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm new password"
+                        value={passwordData.confirmPassword}
+                        onChange={(e) =>
+                          setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                        }
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <XCircle className="h-3 w-3" />
+                        Passwords don't match
+                      </p>
+                    )}
+                    {passwordData.confirmPassword && passwordData.newPassword === passwordData.confirmPassword && passwordData.newPassword.length > 0 && (
+                      <p className="text-xs text-success flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Passwords match
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Update Password Button */}
                   <Button
                     variant="outline"
-                    className="w-full justify-start"
-                    onClick={handleResetPassword}
-                    disabled={resetPasswordLoading}
+                    className="w-full"
+                    onClick={handleUpdatePassword}
+                    disabled={
+                      passwordLoading ||
+                      !passwordData.newPassword ||
+                      !passwordData.confirmPassword ||
+                      passwordData.newPassword !== passwordData.confirmPassword ||
+                      validatePassword(passwordData.newPassword).length > 0
+                    }
                   >
-                    {resetPasswordLoading ? (
+                    {passwordLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     ) : (
                       <Key className="h-4 w-4 mr-2" />
                     )}
-                    Reset Password
+                    Update Password
                   </Button>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    We'll send a password reset link to your email
-                  </p>
                 </div>
               </CollapsibleContent>
             </Collapsible>

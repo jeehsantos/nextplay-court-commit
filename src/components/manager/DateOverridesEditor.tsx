@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, CalendarX, CalendarClock } from "lucide-react";
+import { Loader2, Plus, Trash2, CalendarX, CalendarClock, Clock, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, isBefore, parseISO } from "date-fns";
@@ -211,19 +211,52 @@ export function DateOverridesEditor({ venueId, onOverridesUpdated }: DateOverrid
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-3 rounded-lg border">
-                <Switch
-                  checked={newOverride.is_closed}
-                  onCheckedChange={(checked) => setNewOverride(prev => ({ ...prev, is_closed: checked }))}
-                />
-                <div>
-                  <Label>Closed</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {newOverride.is_closed 
-                      ? "Venue will be fully closed" 
-                      : "Venue open with custom hours"}
-                  </p>
-                </div>
+              {/* Exception Type Selection */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Exception Type</Label>
+                <RadioGroup
+                  value={newOverride.is_closed ? "closed" : "custom"}
+                  onValueChange={(val) => setNewOverride(prev => ({ 
+                    ...prev, 
+                    is_closed: val === "closed" 
+                  }))}
+                  className="space-y-3"
+                >
+                  <div 
+                    className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer ${
+                      newOverride.is_closed ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"
+                    }`}
+                    onClick={() => setNewOverride(prev => ({ ...prev, is_closed: true }))}
+                  >
+                    <RadioGroupItem value="closed" id="closed" className="mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <XCircle className="h-4 w-4 text-destructive" />
+                        <Label htmlFor="closed" className="font-medium cursor-pointer">Closed</Label>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Venue completely unavailable for bookings on this date
+                      </p>
+                    </div>
+                  </div>
+                  <div 
+                    className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer ${
+                      !newOverride.is_closed ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"
+                    }`}
+                    onClick={() => setNewOverride(prev => ({ ...prev, is_closed: false }))}
+                  >
+                    <RadioGroupItem value="custom" id="custom" className="mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                        <Label htmlFor="custom" className="font-medium cursor-pointer">Custom Hours</Label>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Open with different hours than usual schedule
+                      </p>
+                    </div>
+                  </div>
+                </RadioGroup>
               </div>
 
               {!newOverride.is_closed && (

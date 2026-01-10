@@ -50,7 +50,9 @@ import {
   LifeBuoy,
   UserMinus,
   Trash2,
-  ListOrdered
+  ListOrdered,
+  ExternalLink,
+  Phone
 } from "lucide-react";
 import { format, isPast } from "date-fns";
 
@@ -76,6 +78,7 @@ interface GameData {
   players: PlayerWithProfile[];
   waitingList: PlayerWithProfile[];
   courtManagerId?: string;
+  courtManagerProfile?: { full_name: string | null; phone: string | null } | null;
 }
 
 export default function GameDetail() {
@@ -176,6 +179,17 @@ export default function GameDetail() {
       // Get court manager ID from venue
       const courtManagerId = (sessionData.courts as any)?.venues?.owner_id;
 
+      // Fetch court manager profile
+      let courtManagerProfile = null;
+      if (courtManagerId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, phone")
+          .eq("user_id", courtManagerId)
+          .maybeSingle();
+        courtManagerProfile = profile;
+      }
+
       setGameData({
         session: sessionData,
         group: groupData,
@@ -183,6 +197,7 @@ export default function GameDetail() {
         players: confirmedPlayers,
         waitingList: waitingList,
         courtManagerId,
+        courtManagerProfile,
       });
     } catch (error) {
       console.error("Error fetching game data:", error);
@@ -482,7 +497,13 @@ export default function GameDetail() {
     );
   }
 
-  const { session, group, court, players, waitingList, courtManagerId } = gameData;
+  const { session, group, court, players, waitingList, courtManagerId, courtManagerProfile } = gameData;
+  
+  // Helper function to get Google Maps URL
+  const getGoogleMapsUrl = (address: string): string => {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  };
+  
   // Combine session date and start time for accurate past check
   const sessionDateTime = new Date(`${session.session_date}T${session.start_time}`);
   const isGamePast = isPast(sessionDateTime);
@@ -644,13 +665,46 @@ export default function GameDetail() {
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                     <MapPin className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm text-muted-foreground">Venue</p>
                     <p className="font-semibold">{court?.venues?.name || "TBA"}</p>
                     <p className="text-sm text-muted-foreground">{court?.name || ""}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{court?.venues?.address || ""}</p>
+                    {court?.venues?.address && (
+                      <a 
+                        href={getGoogleMapsUrl(court.venues.address)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline flex items-center gap-1 mt-1"
+                      >
+                        {court.venues.address}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
                   </div>
                 </div>
+
+                {/* Court Manager Contact */}
+                {courtManagerProfile && courtManagerProfile.phone && (
+                  <div className="pt-3 border-t border-border">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Phone className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Court Manager</p>
+                        <p className="text-sm font-medium truncate">
+                          {courtManagerProfile.full_name || "Manager"}
+                        </p>
+                        <a 
+                          href={`tel:${courtManagerProfile.phone}`} 
+                          className="text-sm text-primary hover:underline"
+                        >
+                          {courtManagerProfile.phone}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -16,7 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,7 @@ const courtSchema = z.object({
   is_indoor: z.boolean(),
   is_active: z.boolean(),
   photo_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+  rules: z.string().optional(),
 });
 
 type CourtFormData = z.infer<typeof courtSchema>;
@@ -60,6 +62,7 @@ export default function ManagerCourtForm() {
       hourly_rate: 50,
       is_indoor: false,
       is_active: true,
+      rules: "",
     },
   });
 
@@ -87,6 +90,7 @@ export default function ManagerCourtForm() {
         is_indoor: data.is_indoor ?? false,
         is_active: data.is_active ?? true,
         photo_url: data.photo_url || "",
+        rules: (data as any).rules || "",
       });
     } catch (error) {
       console.error("Error fetching court:", error);
@@ -112,7 +116,8 @@ export default function ManagerCourtForm() {
             is_indoor: data.is_indoor,
             is_active: data.is_active,
             photo_url: data.photo_url || null,
-          })
+            rules: data.rules || null,
+          } as any)
           .eq("id", courtId);
 
         if (error) throw error;
@@ -129,7 +134,8 @@ export default function ManagerCourtForm() {
             is_indoor: data.is_indoor,
             is_active: data.is_active,
             photo_url: data.photo_url || null,
-          });
+            rules: data.rules || null,
+          } as any);
 
         if (error) throw error;
         toast({ title: "Court created successfully" });
@@ -257,6 +263,30 @@ export default function ManagerCourtForm() {
                 {errors.photo_url && (
                   <p className="text-sm text-destructive mt-1">{errors.photo_url.message}</p>
                 )}
+              </div>
+
+              {/* Court Rules Section */}
+              <div className="pt-4 border-t border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="rules">Court Rules & Guidelines</Label>
+                </div>
+                <Textarea
+                  id="rules"
+                  {...register("rules")}
+                  placeholder="Enter any rules, restrictions, or guidelines for players booking this court...
+
+Examples:
+• No metal studs allowed
+• Players must wear appropriate footwear
+• Maximum booking duration: 2 hours
+• Cancellation must be 24 hours in advance"
+                  rows={5}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  These rules will be shown to players before they confirm their booking
+                </p>
               </div>
             </CardContent>
           </Card>
