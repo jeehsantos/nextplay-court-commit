@@ -74,25 +74,8 @@ export default function CourtDetail() {
   const [availabilityData, setAvailabilityData] = useState<AvailabilityResponse | null>(null);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (id) {
-      fetchCourt();
-    }
-  }, [id]);
-
-  // Fetch availability when date or court changes
-  useEffect(() => {
-    if (court?.venues && selectedDate) {
-      fetchAvailability(court.venues.id, court.id, selectedDate);
-    }
-  }, [court, selectedDate]);
-
-  // Reset selected slots when date changes
-  useEffect(() => {
-    setSelectedSlots([]);
-  }, [selectedDate]);
-
-  const fetchCourt = async () => {
+  // Function declarations first (before useEffects that use them)
+  const fetchCourt = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("courts")
@@ -111,12 +94,11 @@ export default function CourtDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
 
   const fetchAvailability = useCallback(async (venueId: string, courtId: string, date: Date) => {
     setAvailabilityLoading(true);
     setAvailabilityError(null);
-    setSelectedSlots([]);
 
     try {
       const { data, error } = await supabase.functions.invoke("get-availability", {
@@ -137,6 +119,104 @@ export default function CourtDetail() {
       setAvailabilityLoading(false);
     }
   }, []);
+
+  // Restore booking state from localStorage after auth redirect
+  useEffect(() => {
+    const savedBookingState = localStorage.getItem('pendingBookingState');
+    if (savedBookingState && id) {
+      try {
+        const state = JSON.parse(savedBookingState);
+        // Only restore if it's for the same court
+        if (state.courtId === id) {
+          if (state.selectedDate) {
+            setSelectedDate(new Date(state.selectedDate));
+          }
+          if (state.selectedSlots && state.selectedSlots.length > 0) {
+            // We'll set these after availability loads
+            localStorage.setItem('pendingSlots', JSON.stringify(state.selectedSlots));
+          }
+        }
+        localStorage.removeItem('pendingBookingState');
+      } catch (e) {
+        console.error('Error restoring booking state:', e);
+        localStorage.removeItem('pendingBookingState');
+      }
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchCourt();
+    }
+  }, [id, fetchCourt]);
+
+  // Fetch availability when date or court changes
+  useEffect(() => {
+    if (court?.venues && selectedDate) {
+      fetchAvailability(court.venues.id, court.id, selectedDate);
+    }
+  }, [court, selectedDate, fetchAvailability]);
+
+  // Restore selected slots after availability loads
+  useEffect(() => {
+    if (availabilityData && !availabilityLoading) {
+      const pendingSlots = localStorage.getItem('pendingSlots');
+      if (pendingSlots) {
+        try {
+          const slots = JSON.parse(pendingSlots);
+          // Filter to only include still-available slots
+          const validSlots = slots.filter((slot: string) => 
+            availabilityData.slots.some(s => s.start_time.slice(0, 5) === slot.slice(0, 5))
+          );
+          if (validSlots.length > 0) {
+            setSelectedSlots(validSlots);
+          }
+          localStorage.removeItem('pendingSlots');
+        } catch (e) {
+          console.error('Error restoring slots:', e);
+          localStorage.removeItem('pendingSlots');
+        }
+      }
+    }
+  }, [availabilityData, availabilityLoading]);
+
+  // Reset selected slots when date changes (but not on initial restore)
+  useEffect(() => {
+    // Only reset if we don't have pending slots to restore
+    const pendingSlots = localStorage.getItem('pendingSlots');
+    if (!pendingSlots) {
+      setSelectedSlots([]);
+    }
+  }, [selectedDate]);
+
+  // Real-time subscription for availability updates
+  useEffect(() => {
+    if (!court?.id) return;
+
+    const channel = supabase
+      .channel(`court-availability-${court.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'court_availability',
+          filter: `court_id=eq.${court.id}`,
+        },
+        (payload) => {
+          console.log('Availability changed:', payload);
+          // Refetch availability when changes occur
+          if (court.venues && selectedDate) {
+            fetchAvailability(court.venues.id, court.id, selectedDate);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [court?.id, court?.venues, selectedDate, fetchAvailability]);
 
   // Convert time string to minutes for comparison
   const timeToMinutes = (time: string): number => {
@@ -232,6 +312,12 @@ export default function CourtDetail() {
     if (!user) {
       // Store current path for redirect after auth
       localStorage.setItem('redirectAfterAuth', window.location.pathname);
+      // Store booking state to restore after auth
+      localStorage.setItem('pendingBookingState', JSON.stringify({
+        courtId: id,
+        selectedDate: selectedDate?.toISOString(),
+        selectedSlots: selectedSlots,
+      }));
       toast({
         title: "Please sign in",
         description: "You need to be signed in to book a court.",

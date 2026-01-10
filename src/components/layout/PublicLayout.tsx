@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Menu } from "lucide-react";
@@ -8,7 +8,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useState } from "react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -64,6 +64,7 @@ export function PublicLayout({ children, showBack = false, showFooter = true }: 
           </nav>
           
           <div className="flex items-center gap-3">
+            <ThemeToggle className="hidden sm:flex" />
             <Link to="/auth" className="hidden sm:block">
               <Button variant="ghost">Sign In</Button>
             </Link>
@@ -91,6 +92,7 @@ export function PublicLayout({ children, showBack = false, showFooter = true }: 
                     </Link>
                   ))}
                   <hr className="border-border" />
+                  <ThemeToggle showLabel className="w-full justify-start" variant="outline" />
                   <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
                     <Button variant="outline" className="w-full">Sign In</Button>
                   </Link>
