@@ -46,6 +46,7 @@ export function useUserRole() {
   const isCourtManager = hasRole("court_manager");
   const isOrganizer = hasRole("organizer");
   const isPlayer = hasRole("player");
+  const isAdmin = hasRole("admin");
 
   const addRole = async (role: AppRole) => {
     if (!user) return { error: new Error("Not authenticated") };
@@ -71,6 +72,7 @@ export function useUserRole() {
     isCourtManager,
     isOrganizer,
     isPlayer,
+    isAdmin,
     addRole,
     refetch: fetchRoles,
   };

@@ -30,6 +30,9 @@ import ManagerCourtsNew from "./pages/manager/ManagerCourtsNew";
 import ManagerCourtFormNew from "./pages/manager/ManagerCourtFormNew";
 import ManagerAvailability from "./pages/manager/ManagerAvailability";
 import ManagerSettings from "./pages/manager/ManagerSettings";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminSportCategories from "./pages/admin/AdminSportCategories";
+import AdminSurfaceTypes from "./pages/admin/AdminSurfaceTypes";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +73,10 @@ const App = () => (
             <Route path="/manager/courts/:id/edit" element={<ManagerCourtFormNew />} />
             <Route path="/manager/availability" element={<ManagerAvailability />} />
             <Route path="/manager/settings" element={<ManagerSettings />} />
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/sports" element={<AdminSportCategories />} />
+            <Route path="/admin/surfaces" element={<AdminSurfaceTypes />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

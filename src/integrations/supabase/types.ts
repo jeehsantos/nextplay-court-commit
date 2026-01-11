@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      booking_equipment: {
+        Row: {
+          booking_id: string
+          created_at: string
+          equipment_id: string
+          id: string
+          price_at_booking: number
+          quantity: number
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          equipment_id: string
+          id?: string
+          price_at_booking: number
+          quantity?: number
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          equipment_id?: string
+          id?: string
+          price_at_booking?: number
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_equipment_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "court_availability"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_equipment_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_conversations: {
         Row: {
           booking_id: string | null
@@ -255,6 +297,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "courts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_inventory: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price_per_unit: number
+          quantity_available: number
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price_per_unit?: number
+          quantity_available?: number
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price_per_unit?: number
+          quantity_available?: number
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_inventory_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
@@ -649,6 +735,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sport_categories: {
+        Row: {
+          created_at: string
+          display_name: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      surface_types: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
