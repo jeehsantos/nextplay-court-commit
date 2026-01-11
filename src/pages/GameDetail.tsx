@@ -52,7 +52,8 @@ import {
   Trash2,
   ListOrdered,
   ExternalLink,
-  Phone
+  Phone,
+  FileText
 } from "lucide-react";
 import { format, isPast } from "date-fns";
 
@@ -709,7 +710,22 @@ export default function GameDetail() {
             </Card>
           </div>
 
-          {/* Price & Payment Status */}
+          {/* Court Rules */}
+          {court?.rules && (
+            <Card className="border-muted">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  Court Rules & Guidelines
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground whitespace-pre-wrap">
+                  {court.rules}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardContent className="p-4 lg:p-6">
                 {session.payment_type === "single" ? (

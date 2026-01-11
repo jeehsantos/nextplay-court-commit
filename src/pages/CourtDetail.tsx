@@ -20,7 +20,8 @@ import {
   ChevronRight,
   X,
   AlertCircle,
-  Expand
+  Expand,
+  FileText
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -752,6 +753,19 @@ export default function CourtDetail() {
                   {court.venues.amenities.map((amenity, i) => (
                     <Badge key={i} variant="secondary">{amenity}</Badge>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Court Rules */}
+            {(court as any).rules && (
+              <div className="px-4 lg:px-0">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Court Rules & Guidelines
+                </h3>
+                <div className="bg-muted/50 rounded-xl p-4 text-sm text-muted-foreground whitespace-pre-wrap border border-border">
+                  {(court as any).rules}
                 </div>
               </div>
             )}
