@@ -10,6 +10,7 @@ export interface Equipment {
   price_per_unit: number;
   quantity_available: number;
   is_active: boolean | null;
+  photo_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -20,10 +21,12 @@ export interface CreateEquipmentInput {
   description?: string;
   price_per_unit: number;
   quantity_available: number;
+  photo_url?: string;
 }
 
 export interface UpdateEquipmentInput {
   id: string;
+  photo_url?: string;
   name?: string;
   description?: string;
   price_per_unit?: number;
