@@ -21,7 +21,8 @@ import {
   X,
   AlertCircle,
   Expand,
-  FileText
+  FileText,
+  Package
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -30,14 +31,23 @@ import { format, getDay } from "date-fns";
 import type { Database } from "@/integrations/supabase/types";
 import { GroupSelectionModal } from "@/components/booking/GroupSelectionModal";
 import { ProfileCompletionAlert } from "@/components/booking/ProfileCompletionAlert";
+import { EquipmentSelector, type SelectedEquipment } from "@/components/booking/EquipmentSelector";
 import { checkProfileComplete } from "@/lib/profile-utils";
 import type { SessionType } from "@/components/session/SessionTypeDropdown";
+import { useVenueEquipment } from "@/hooks/useVenueEquipment";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Court = Database["public"]["Tables"]["courts"]["Row"];
 type Venue = Database["public"]["Tables"]["venues"]["Row"];
@@ -47,9 +57,16 @@ interface CourtWithVenue extends Omit<Court, 'photo_urls'> {
   photo_urls?: string[] | null;
 }
 
+interface AvailableCourt {
+  id: string;
+  name: string;
+  hourly_rate: number;
+}
+
 interface AvailableSlot {
   start_time: string;
   available_durations: number[];
+  available_courts?: AvailableCourt[];
 }
 
 interface AvailabilityResponse {
@@ -62,6 +79,7 @@ interface AvailabilityResponse {
   slot_interval_minutes?: number;
   max_booking_minutes?: number;
   slots: AvailableSlot[];
+  venue_courts?: AvailableCourt[];
 }
 
 export default function CourtDetail() {
@@ -74,6 +92,7 @@ export default function CourtDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
   const [booking, setBooking] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showProfileAlert, setShowProfileAlert] = useState(false);
@@ -81,10 +100,16 @@ export default function CourtDetail() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showGallery, setShowGallery] = useState(false);
   
+  // Equipment state
+  const [selectedEquipment, setSelectedEquipment] = useState<SelectedEquipment[]>([]);
+  
   // Availability state
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityData, setAvailabilityData] = useState<AvailabilityResponse | null>(null);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  
+  // Fetch venue equipment
+  const { data: venueEquipment = [] } = useVenueEquipment(court?.venue_id || null);
   
   // Refs to prevent race conditions during state restoration
   const isRestoringRef = useRef(false);
@@ -104,6 +129,7 @@ export default function CourtDetail() {
 
       if (error) throw error;
       setCourt(data as CourtWithVenue);
+      setSelectedCourtId(data.id);
     } catch (error) {
       console.error("Error fetching court:", error);
       navigate("/courts");
@@ -156,6 +182,9 @@ export default function CourtDetail() {
             // Store normalized slots for restoration after availability loads
             const normalizedSlots = state.selectedSlots.map((s: string) => s.slice(0, 5));
             localStorage.setItem('pendingSlots', JSON.stringify(normalizedSlots));
+          }
+          if (state.selectedEquipment) {
+            setSelectedEquipment(state.selectedEquipment);
           }
         }
         localStorage.removeItem('pendingBookingState');
@@ -223,6 +252,7 @@ export default function CourtDetail() {
     
     // Clear slots when date changes (user-initiated date change)
     setSelectedSlots([]);
+    setSelectedEquipment([]);
   }, [selectedDate]);
 
   // Real-time subscription for availability updates
@@ -274,9 +304,10 @@ export default function CourtDetail() {
     return true;
   };
 
-  // Check if a slot is available (exists in the available slots list)
-  const isSlotAvailable = (slotTime: string): boolean => {
-    return availabilityData?.slots.some(s => s.start_time.slice(0, 5) === slotTime.slice(0, 5)) || false;
+  // Get available courts for a specific time slot
+  const getAvailableCourtsForSlot = (slotTime: string): AvailableCourt[] => {
+    const slot = availabilityData?.slots.find(s => s.start_time.slice(0, 5) === slotTime.slice(0, 5));
+    return slot?.available_courts || [];
   };
 
   // Toggle slot selection
@@ -344,6 +375,17 @@ export default function CourtDetail() {
     return sorted[0];
   };
 
+  // Get selected court details
+  const getSelectedCourt = (): AvailableCourt | null => {
+    if (!selectedCourtId) return null;
+    return availabilityData?.venue_courts?.find(c => c.id === selectedCourtId) || null;
+  };
+
+  // Calculate equipment total
+  const getEquipmentTotal = (): number => {
+    return selectedEquipment.reduce((sum, item) => sum + item.quantity * item.pricePerUnit, 0);
+  };
+
   const handleBookSlot = async () => {
     if (!user) {
       // Store current path for redirect after auth
@@ -353,6 +395,7 @@ export default function CourtDetail() {
         courtId: id,
         selectedDate: selectedDate?.toISOString(),
         selectedSlots: selectedSlots,
+        selectedEquipment: selectedEquipment,
       }));
       toast({
         title: "Please sign in",
@@ -382,13 +425,14 @@ export default function CourtDetail() {
 
     const totalDuration = getTotalDuration();
     const startTime = getStartTime();
+    const bookingCourtId = selectedCourtId || court.id;
 
     // Validate booking with backend before proceeding
     try {
       const { data: validationResult, error: validationError } = await supabase.functions.invoke("validate-booking", {
         body: {
           venueId: court.venue_id,
-          courtId: court.id,
+          courtId: bookingCourtId,
           date: format(selectedDate, "yyyy-MM-dd"),
           startTime,
           durationMinutes: totalDuration,
@@ -430,6 +474,9 @@ export default function CourtDetail() {
     const totalDuration = getTotalDuration();
     const startTime = getStartTime();
     const endTime = getEndTime();
+    const bookingCourtId = selectedCourtId || court.id;
+    const selectedCourtData = getSelectedCourt();
+    const courtRate = selectedCourtData?.hourly_rate || court.hourly_rate;
 
     try {
       const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -437,16 +484,18 @@ export default function CourtDetail() {
       const paymentDeadline = new Date(slotDate);
       paymentDeadline.setHours(paymentDeadline.getHours() - 24);
 
-      // Calculate price based on duration
+      // Calculate price based on duration + equipment
       const hours = totalDuration / 60;
-      const totalPrice = court.hourly_rate * hours;
+      const courtPrice = courtRate * hours;
+      const equipmentTotal = getEquipmentTotal();
+      const totalPrice = courtPrice + equipmentTotal;
 
       // Create a session for this booking
       const { data: session, error: sessionError } = await supabase
         .from("sessions")
         .insert({
           group_id: groupId,
-          court_id: court.id,
+          court_id: bookingCourtId,
           session_date: dateStr,
           start_time: startTime,
           duration_minutes: totalDuration,
@@ -481,7 +530,7 @@ export default function CourtDetail() {
       const { data: bookingRecord, error: bookingError } = await supabase
         .from("court_availability")
         .insert({
-          court_id: court.id,
+          court_id: bookingCourtId,
           available_date: dateStr,
           start_time: startTime,
           end_time: endTime,
@@ -495,6 +544,24 @@ export default function CourtDetail() {
         .single();
 
       if (bookingError) throw bookingError;
+
+      // Save equipment selections if any
+      if (selectedEquipment.length > 0) {
+        const equipmentInserts = selectedEquipment.map(item => ({
+          booking_id: bookingRecord.id,
+          equipment_id: item.equipmentId,
+          quantity: item.quantity,
+          price_at_booking: item.pricePerUnit,
+        }));
+
+        const { error: equipmentError } = await supabase
+          .from("booking_equipment")
+          .insert(equipmentInserts);
+
+        if (equipmentError) {
+          console.error("Error saving equipment:", equipmentError);
+        }
+      }
 
       // Create chat conversation for this session
       if (court.venues) {
@@ -570,6 +637,7 @@ export default function CourtDetail() {
 
       // Update UI
       setSelectedSlots([]);
+      setSelectedEquipment([]);
       if (court.venues) {
         fetchAvailability(court.venues.id, court.id, selectedDate);
       }
@@ -616,8 +684,9 @@ export default function CourtDetail() {
 
   // Calculate price for duration
   const calculatePrice = (durationMinutes: number): number => {
-    if (!court) return 0;
-    return court.hourly_rate * (durationMinutes / 60);
+    const selectedCourtData = getSelectedCourt();
+    const rate = selectedCourtData?.hourly_rate || court?.hourly_rate || 0;
+    return rate * (durationMinutes / 60);
   };
 
   // Use public layout for unauthenticated users
@@ -647,7 +716,11 @@ export default function CourtDetail() {
   }
 
   const totalDuration = getTotalDuration();
-  const totalPrice = calculatePrice(totalDuration);
+  const courtPrice = calculatePrice(totalDuration);
+  const equipmentTotal = getEquipmentTotal();
+  const totalPrice = courtPrice + equipmentTotal;
+  const venueCourts = availabilityData?.venue_courts || [];
+  const hasMultipleCourts = venueCourts.length > 1;
 
   return (
     <Layout>
@@ -674,6 +747,11 @@ export default function CourtDetail() {
                 <Badge variant="outline" className="shrink-0">
                   {court.is_indoor ? "Indoor" : "Outdoor"}
                 </Badge>
+                {hasMultipleCourts && (
+                  <Badge variant="secondary" className="shrink-0">
+                    {venueCourts.length} courts available
+                  </Badge>
+                )}
               </div>
               <h1 className="font-display text-2xl lg:text-3xl font-bold mb-2">{court.name}</h1>
               {court.venues && (
@@ -864,6 +942,25 @@ export default function CourtDetail() {
                       </div>
                     )}
                     
+                    {/* Court selector if multiple courts */}
+                    {hasMultipleCourts && (
+                      <div className="bg-card rounded-lg border border-border p-4">
+                        <label className="text-sm font-medium mb-2 block">Select Court</label>
+                        <Select value={selectedCourtId || ""} onValueChange={setSelectedCourtId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a court" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {venueCourts.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name} - ${c.hourly_rate}/hr
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
                     {/* Instruction */}
                     <p className="text-sm text-muted-foreground">
                       Tap to select consecutive time slots. Tap again to deselect.
@@ -874,6 +971,9 @@ export default function CourtDetail() {
                       {availabilityData.slots.map((slot) => {
                         const slotTime = slot.start_time.slice(0, 5);
                         const isSelected = selectedSlots.includes(slotTime);
+                        const availableCourts = slot.available_courts || [];
+                        const isAvailableForSelectedCourt = !selectedCourtId || 
+                          availableCourts.some(c => c.id === selectedCourtId);
                         
                         return (
                           <Button
@@ -883,10 +983,18 @@ export default function CourtDetail() {
                               isSelected 
                                 ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
                                 : "hover:border-primary/50"
-                            }`}
-                            onClick={() => toggleSlot(slot.start_time)}
+                            } ${!isAvailableForSelectedCourt ? "opacity-50 cursor-not-allowed" : ""}`}
+                            onClick={() => isAvailableForSelectedCourt && toggleSlot(slot.start_time)}
+                            disabled={!isAvailableForSelectedCourt}
                           >
-                            <span className="text-sm font-medium">{slotTime}</span>
+                            <div className="text-center">
+                              <span className="text-sm font-medium">{slotTime}</span>
+                              {hasMultipleCourts && !selectedCourtId && (
+                                <span className="block text-[10px] text-muted-foreground">
+                                  {availableCourts.length} court{availableCourts.length !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </div>
                           </Button>
                         );
                       })}
@@ -894,7 +1002,7 @@ export default function CourtDetail() {
 
                     {/* Selected slots summary */}
                     {selectedSlots.length > 0 && (
-                      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2">
+                      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="font-medium">Selected Time</span>
                           <button 
@@ -911,13 +1019,44 @@ export default function CourtDetail() {
                             ({formatDuration(totalDuration)})
                           </span>
                         </div>
-                        <div className="text-xl font-bold text-primary">
-                          ${totalPrice.toFixed(2)}
+                        
+                        {/* Price breakdown */}
+                        <div className="space-y-1 pt-2 border-t border-primary/10">
+                          <div className="flex justify-between text-sm">
+                            <span>Court ({formatDuration(totalDuration)})</span>
+                            <span>${courtPrice.toFixed(2)}</span>
+                          </div>
+                          {selectedEquipment.length > 0 && (
+                            <>
+                              {selectedEquipment.map(item => (
+                                <div key={item.equipmentId} className="flex justify-between text-sm text-muted-foreground">
+                                  <span>{item.name} × {item.quantity}</span>
+                                  <span>${(item.quantity * item.pricePerUnit).toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                          <div className="flex justify-between text-lg font-bold text-primary pt-1">
+                            <span>Total</span>
+                            <span>${totalPrice.toFixed(2)}</span>
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Equipment Selection - Show after slots are selected */}
+            {selectedSlots.length > 0 && venueEquipment.length > 0 && (
+              <div className="px-4 lg:px-0">
+                <EquipmentSelector
+                  equipment={venueEquipment}
+                  selectedEquipment={selectedEquipment}
+                  onSelectionChange={setSelectedEquipment}
+                  disabled={booking}
+                />
               </div>
             )}
           </div>
@@ -1062,6 +1201,7 @@ export default function CourtDetail() {
                 <div className="font-semibold">${totalPrice.toFixed(2)}</div>
                 <div className="text-sm text-muted-foreground">
                   {format(selectedDate, "MMM d")} • {getStartTime()} - {getEndTime()} • {formatDuration(totalDuration)}
+                  {selectedEquipment.length > 0 && ` + ${selectedEquipment.length} item${selectedEquipment.length !== 1 ? 's' : ''}`}
                 </div>
               </div>
               {user ? (
@@ -1083,6 +1223,12 @@ export default function CourtDetail() {
                   className="gap-2"
                   onClick={() => {
                     localStorage.setItem('redirectAfterAuth', window.location.pathname);
+                    localStorage.setItem('pendingBookingState', JSON.stringify({
+                      courtId: id,
+                      selectedDate: selectedDate?.toISOString(),
+                      selectedSlots: selectedSlots,
+                      selectedEquipment: selectedEquipment,
+                    }));
                     navigate("/auth");
                   }}
                 >

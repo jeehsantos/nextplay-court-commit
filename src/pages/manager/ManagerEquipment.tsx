@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,9 +31,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Loader2, Package, Edit, Trash2 } from "lucide-react";
+import { Plus, Loader2, Package, Edit, Trash2, ImagePlus, X, Camera, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
 import {
   useVenueEquipment,
   useCreateEquipment,
@@ -54,6 +55,8 @@ export default function ManagerEquipment() {
   const [loadingVenues, setLoadingVenues] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -61,6 +64,7 @@ export default function ManagerEquipment() {
     description: "",
     price_per_unit: 0,
     quantity_available: 1,
+    photo_url: "",
   });
 
   const { data: equipment = [], isLoading: loadingEquipment } = useVenueEquipment(selectedVenueId);
@@ -100,6 +104,7 @@ export default function ManagerEquipment() {
       description: "",
       price_per_unit: 0,
       quantity_available: 1,
+      photo_url: "",
     });
     setEditingEquipment(null);
   };
@@ -111,8 +116,53 @@ export default function ManagerEquipment() {
       description: item.description || "",
       price_per_unit: item.price_per_unit,
       quantity_available: item.quantity_available,
+      photo_url: item.photo_url || "",
     });
     setDialogOpen(true);
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be less than 5MB");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `equipment/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("court-photos")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("court-photos")
+        .getPublicUrl(filePath);
+
+      setFormData({ ...formData, photo_url: publicUrl });
+      toast.success("Photo uploaded successfully");
+    } catch (error: any) {
+      console.error("Error uploading photo:", error);
+      toast.error(error.message || "Failed to upload photo");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -192,13 +242,76 @@ export default function ManagerEquipment() {
                 Add Equipment
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>
                   {editingEquipment ? "Edit Equipment" : "Add New Equipment"}
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Photo Upload */}
+                <div>
+                  <Label>Equipment Photo</Label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  {formData.photo_url ? (
+                    <div className="relative group mt-2">
+                      <div className="aspect-video rounded-lg overflow-hidden border border-border bg-muted">
+                        <img
+                          src={formData.photo_url}
+                          alt="Equipment preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                        >
+                          <Camera className="h-4 w-4 mr-1" />
+                          Change
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setFormData({ ...formData, photo_url: "" })}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="w-full aspect-video mt-2 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 bg-muted/30 hover:bg-muted/50 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                          <span className="text-sm text-muted-foreground">Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Upload Photo</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
                 <div>
                   <Label htmlFor="name">Equipment Name *</Label>
                   <Input
@@ -305,7 +418,23 @@ export default function ManagerEquipment() {
             ) : (
               <div className="divide-y">
                 {equipment.map((item) => (
-                  <div key={item.id} className="py-4 flex items-center justify-between gap-4">
+                  <div key={item.id} className="py-4 flex items-center gap-4">
+                    {/* Photo */}
+                    <div className="w-16 h-16 rounded-lg bg-muted flex-shrink-0 overflow-hidden">
+                      {item.photo_url ? (
+                        <img
+                          src={item.photo_url}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Details */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{item.name}</span>
@@ -324,6 +453,8 @@ export default function ManagerEquipment() {
                         <span>{item.quantity_available} available</span>
                       </div>
                     </div>
+
+                    {/* Actions */}
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"

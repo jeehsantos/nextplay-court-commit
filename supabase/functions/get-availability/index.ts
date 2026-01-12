@@ -34,15 +34,29 @@ interface Booking {
   end_time: string;
 }
 
+interface Court {
+  id: string;
+  name: string;
+  hourly_rate: number;
+  is_active: boolean;
+}
+
 interface Venue {
   id: string;
   slot_interval_minutes: number;
   max_booking_minutes: number;
 }
 
+interface AvailableCourt {
+  id: string;
+  name: string;
+  hourly_rate: number;
+}
+
 interface AvailableSlot {
   start_time: string;
   available_durations: number[]; // in minutes
+  available_courts: AvailableCourt[]; // courts available at this slot
 }
 
 function timeToMinutes(time: string): number {
@@ -108,23 +122,25 @@ function getAvailableWindow(
   };
 }
 
-function removeBookedBlocks(
-  blocks: string[],
+function getAvailableBlocksForCourt(
+  allBlocks: string[],
   bookings: Booking[],
+  courtId: string,
   date: string,
   intervalMinutes: number
 ): string[] {
-  const dateBookings = bookings.filter((b) => b.available_date === date);
+  const courtBookings = bookings.filter(
+    (b) => b.court_id === courtId && b.available_date === date
+  );
 
-  return blocks.filter((blockTime) => {
+  return allBlocks.filter((blockTime) => {
     const blockStart = timeToMinutes(blockTime);
     const blockEnd = blockStart + intervalMinutes;
 
     // Check if this block overlaps with any booking
-    return !dateBookings.some((booking) => {
+    return !courtBookings.some((booking) => {
       const bookingStart = timeToMinutes(booking.start_time);
       const bookingEnd = timeToMinutes(booking.end_time);
-      // Overlap: block starts before booking ends AND block ends after booking starts
       return blockStart < bookingEnd && blockEnd > bookingStart;
     });
   });
@@ -141,18 +157,14 @@ function calculateAvailableDurations(
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(windowEnd);
 
-  // Check each possible duration
   for (
     let duration = intervalMinutes;
     duration <= maxBookingMinutes;
     duration += intervalMinutes
   ) {
     const requiredEndMinutes = startMinutes + duration;
-
-    // Can't exceed window end
     if (requiredEndMinutes > endMinutes) break;
 
-    // Check if all required blocks are available
     let allBlocksAvailable = true;
     for (let m = startMinutes; m < requiredEndMinutes; m += intervalMinutes) {
       const blockTime = minutesToTime(m);
@@ -165,7 +177,6 @@ function calculateAvailableDurations(
     if (allBlocksAvailable) {
       durations.push(duration);
     } else {
-      // If a shorter duration isn't available, longer ones won't be either
       break;
     }
   }
@@ -206,6 +217,35 @@ serve(async (req) => {
       );
     }
 
+    // Fetch ALL active courts for this venue
+    const { data: venueCourts, error: courtsError } = await supabase
+      .from("courts")
+      .select("id, name, hourly_rate, is_active")
+      .eq("venue_id", venueId)
+      .eq("is_active", true)
+      .order("name", { ascending: true });
+
+    if (courtsError) throw courtsError;
+
+    const courts: Court[] = venueCourts || [];
+    
+    // If a specific court is requested, filter to just that one for backward compatibility
+    const courtsToProcess = courtId 
+      ? courts.filter(c => c.id === courtId)
+      : courts;
+
+    if (courtsToProcess.length === 0) {
+      return new Response(
+        JSON.stringify({
+          available: false,
+          reason: "no_courts",
+          slots: [],
+          venue_courts: courts.map(c => ({ id: c.id, name: c.name, hourly_rate: c.hourly_rate })),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Fetch weekly rules for venue
     const { data: weeklyRules, error: rulesError } = await supabase
       .from("venue_weekly_rules")
@@ -237,6 +277,7 @@ serve(async (req) => {
           available: false,
           reason: "closed",
           slots: [],
+          venue_courts: courts.map(c => ({ id: c.id, name: c.name, hourly_rate: c.hourly_rate })),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -249,53 +290,84 @@ serve(async (req) => {
       venue.slot_interval_minutes
     );
 
-    // Fetch existing bookings for this date
-    let bookingsQuery = supabase
+    // Fetch existing bookings for this date for ALL courts at venue
+    const { data: bookings, error: bookingsError } = await supabase
       .from("court_availability")
       .select("id, court_id, available_date, start_time, end_time")
       .eq("available_date", date)
-      .eq("is_booked", true);
+      .eq("is_booked", true)
+      .in("court_id", courtsToProcess.map(c => c.id));
 
-    if (courtId) {
-      bookingsQuery = bookingsQuery.eq("court_id", courtId);
-    } else {
-      // Get all courts for this venue
-      const { data: courts } = await supabase
-        .from("courts")
-        .select("id")
-        .eq("venue_id", venueId)
-        .eq("is_active", true);
+    if (bookingsError) throw bookingsError;
 
-      if (courts && courts.length > 0) {
-        bookingsQuery = bookingsQuery.in(
-          "court_id",
-          courts.map((c) => c.id)
-        );
+    // Calculate available blocks per court
+    const courtAvailability: Map<string, string[]> = new Map();
+    for (const court of courtsToProcess) {
+      const availableBlocks = getAvailableBlocksForCourt(
+        allBlocks,
+        bookings || [],
+        court.id,
+        date,
+        venue.slot_interval_minutes
+      );
+      courtAvailability.set(court.id, availableBlocks);
+    }
+
+    // Build slots with multi-court availability
+    const slotMap: Map<string, AvailableSlot> = new Map();
+
+    for (const blockTime of allBlocks) {
+      const availableCourts: AvailableCourt[] = [];
+
+      for (const court of courtsToProcess) {
+        const courtBlocks = courtAvailability.get(court.id) || [];
+        if (courtBlocks.includes(blockTime)) {
+          const durations = calculateAvailableDurations(
+            blockTime,
+            courtBlocks,
+            window.endTime,
+            venue.slot_interval_minutes,
+            venue.max_booking_minutes
+          );
+
+          if (durations.length > 0) {
+            availableCourts.push({
+              id: court.id,
+              name: court.name,
+              hourly_rate: court.hourly_rate,
+            });
+          }
+        }
+      }
+
+      if (availableCourts.length > 0) {
+        // For the slot's available_durations, use the max durations from any court
+        // (since different courts might have different availability)
+        const maxDurations: number[] = [];
+        for (const court of availableCourts) {
+          const courtBlocks = courtAvailability.get(court.id) || [];
+          const durations = calculateAvailableDurations(
+            blockTime,
+            courtBlocks,
+            window.endTime,
+            venue.slot_interval_minutes,
+            venue.max_booking_minutes
+          );
+          durations.forEach(d => {
+            if (!maxDurations.includes(d)) maxDurations.push(d);
+          });
+        }
+        maxDurations.sort((a, b) => a - b);
+
+        slotMap.set(blockTime, {
+          start_time: blockTime,
+          available_durations: maxDurations,
+          available_courts: availableCourts,
+        });
       }
     }
 
-    const { data: bookings, error: bookingsError } = await bookingsQuery;
-    if (bookingsError) throw bookingsError;
-
-    // Remove booked blocks
-    const availableBlocks = removeBookedBlocks(
-      allBlocks,
-      bookings || [],
-      date,
-      venue.slot_interval_minutes
-    );
-
-    // Build available slots with durations
-    const slots: AvailableSlot[] = availableBlocks.map((blockTime) => ({
-      start_time: blockTime,
-      available_durations: calculateAvailableDurations(
-        blockTime,
-        availableBlocks,
-        window.endTime,
-        venue.slot_interval_minutes,
-        venue.max_booking_minutes
-      ),
-    })).filter((slot) => slot.available_durations.length > 0);
+    const slots = Array.from(slotMap.values());
 
     return new Response(
       JSON.stringify({
@@ -307,6 +379,7 @@ serve(async (req) => {
         slot_interval_minutes: venue.slot_interval_minutes,
         max_booking_minutes: venue.max_booking_minutes,
         slots,
+        venue_courts: courts.map(c => ({ id: c.id, name: c.name, hourly_rate: c.hourly_rate })),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
