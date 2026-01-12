@@ -23,7 +23,7 @@ const sessionTypes: { value: SessionType; label: string; emoji: string; descript
 ];
 
 // Sport-based quick suggestions
-const sportSuggestions = [ label: SessionType; emoji: string }[] = [
+const sportSuggestions = [
   { emoji: "⚽", label: "Futsal" },
   { emoji: "🏐", label: "Volleyball" },
   { emoji: "🏀", label: "Basketball" },
@@ -31,12 +31,12 @@ const sportSuggestions = [ label: SessionType; emoji: string }[] = [
 ];
 
 export function SessionTypeDropdown({ value, onChange }: SessionTypeDropdownProps) {
-  const selectedType = sessionTypes.find((t) => t.label === value)
+  const selectedType = sessionTypes.find(t => t.value === value);
 
   return (
     <div className="space-y-3">
       <Label className="text-sm font-medium">Session Type</Label>
-           
+      
       {/* Quick Sport Pills */}
       <div className="flex flex-wrap gap-2 mb-3">
         {sportSuggestions.map((sport) => (
@@ -69,7 +69,7 @@ export function SessionTypeDropdown({ value, onChange }: SessionTypeDropdownProp
                 <span className="text-lg">{type.emoji}</span>
                 <div>
                   <span className="font-medium">{type.label}</span>
-                   <span className="text-xs text-muted-foreground ml-2">— {type.description}</span>
+                  <span className="text-xs text-muted-foreground ml-2">— {type.description}</span>
                 </div>
               </div>
             </SelectItem>
