@@ -1056,18 +1056,6 @@ export default function CourtDetail() {
                 )}
               </div>
             )}
-
-            {/* Equipment Selection - Show after slots are selected */}
-            {selectedSlots.length > 0 && venueEquipment.length > 0 && (
-              <div className="px-4 lg:px-0">
-                <EquipmentSelector
-                  equipment={venueEquipment}
-                  selectedEquipment={selectedEquipment}
-                  onSelectionChange={setSelectedEquipment}
-                  disabled={booking}
-                />
-              </div>
-            )}
           </div>
 
           {/* Right Column - Photo Gallery (Desktop only) */}
