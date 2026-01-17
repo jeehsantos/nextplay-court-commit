@@ -298,10 +298,14 @@ export default function ManagerCourtFormNew() {
     });
   };
 
+  // State to track new sub-court photo URLs separately (for preview before save)
+  const [newSubCourtPhotos, setNewSubCourtPhotos] = useState<string[]>([]);
+  
   // Start adding a new sub-court - clear form for new entry
   const handleAddSubCourt = () => {
     setIsAddingNewSubCourt(true);
     setSelectedTabCourtId(null);
+    setNewSubCourtPhotos([]); // Clear photos for new sub-court
     
     // Clear form with defaults for new sub-court
     reset({
@@ -378,6 +382,7 @@ export default function ManagerCourtFormNew() {
         const { error: venueError } = await supabase
           .from("venues")
           .update({
+            name: venueName,
             address: data.address,
             city: data.city,
             suburb: data.suburb || null,
@@ -552,8 +557,8 @@ export default function ManagerCourtFormNew() {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-4">
-            {/* Is Multi-Court Toggle - Only show for parent courts or when no parent exists */}
-            {(!currentCourt?.parent_court_id) && (
+            {/* Is Multi-Court Toggle - Only show for parent courts and when parent tab is selected */}
+            {(!currentCourt?.parent_court_id) && (!isAddingNewSubCourt && (selectedTabCourtId === effectiveParentId || !selectedTabCourtId)) && (
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="is_multi_court">Is Multi-Court Parent</Label>
@@ -757,8 +762,16 @@ export default function ManagerCourtFormNew() {
                 </CardHeader>
                 <CardContent>
                   <CourtPhotosUpload
-                    currentPhotoUrls={watch("photo_urls") || []}
-                    onPhotosChanged={(urls) => setValue("photo_urls", urls)}
+                    key={isAddingNewSubCourt ? 'new-sub-court' : selectedTabCourtId || id}
+                    currentPhotoUrls={isAddingNewSubCourt ? newSubCourtPhotos : (watch("photo_urls") || [])}
+                    onPhotosChanged={(urls) => {
+                      if (isAddingNewSubCourt) {
+                        setNewSubCourtPhotos(urls);
+                        setValue("photo_urls", urls);
+                      } else {
+                        setValue("photo_urls", urls);
+                      }
+                    }}
                     maxPhotos={4}
                   />
                 </CardContent>
@@ -1018,14 +1031,19 @@ export default function ManagerCourtFormNew() {
           {/* Right Column - Desktop Multi-Court Configuration */}
           <div className="hidden lg:block space-y-6">
             {/* Court Details Header - Always visible when editing */}
-            {isEditing && venueName && (
+            {isEditing && (
               <Card className="bg-[#111a27]/60 border-[#00f2ea]/10">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm text-gray-400">Venue</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <h2 className="text-xl font-bold text-white">{venueName}</h2>
-                  <p className="text-gray-500 text-sm mt-1">
+                <CardContent className="space-y-3">
+                  <Input
+                    value={venueName}
+                    onChange={(e) => setVenueName(e.target.value)}
+                    placeholder="Venue name"
+                    className="text-xl font-bold text-white bg-[#0a0f18] border-[#00f2ea]/20 focus:border-[#00f2ea]"
+                  />
+                  <p className="text-gray-500 text-sm">
                     {isAddingNewSubCourt ? "Adding new sub-court" : 
                      currentCourt?.parent_court_id ? "Sub-Court" : 
                      isMultiCourt ? "Multi-Court Parent" : "Single Court"}

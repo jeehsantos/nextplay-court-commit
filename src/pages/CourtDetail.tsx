@@ -663,8 +663,17 @@ export default function CourtDetail() {
     }
   };
 
-  // Get court photos (support both photo_urls array and legacy photo_url)
+  // Get court photos based on selected court (support both photo_urls array and legacy photo_url)
   const getCourtPhotos = (): string[] => {
+    // First check if we have a selected court from the dropdown
+    const selectedCourt = getSelectedCourt();
+    if (selectedCourt) {
+      if (selectedCourt.photo_urls && Array.isArray(selectedCourt.photo_urls) && selectedCourt.photo_urls.length > 0) {
+        return selectedCourt.photo_urls;
+      }
+    }
+    
+    // Fallback to main court
     if (!court) return [];
     const photos = (court as any).photo_urls;
     if (photos && Array.isArray(photos) && photos.length > 0) {
@@ -675,6 +684,11 @@ export default function CourtDetail() {
   };
 
   const photos = court ? getCourtPhotos() : [];
+  
+  // Reset image index when photos change (due to court selection)
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [selectedCourtId]);
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % photos.length);
@@ -763,7 +777,7 @@ export default function CourtDetail() {
                   </Badge>
                 )}
               </div>
-              <h1 className="font-display text-2xl lg:text-3xl font-bold mb-2">{court.name}</h1>
+              <h1 className="font-display text-2xl lg:text-3xl font-bold mb-2">{court.venues?.name || court.name}</h1>
               {court.venues && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <MapPin className="h-4 w-4 shrink-0" />
