@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { CourtCard } from "./CourtCard";
 import type { Database } from "@/integrations/supabase/types";
@@ -17,92 +17,51 @@ interface MobileCourtSheetProps {
   onHighlight: (id: string | null) => void;
 }
 
-/* ============================
-   Snap helpers (outside)
-   ============================ */
-
-const HEADER_OFFSET = 140;
-
-const computeSnapPoints = (): number[] => {
-  if (typeof window === "undefined") {
-    return [0.12, 0.45, 0.85];
-  }
-
-  const vh = window.innerHeight;
-  const isSmall = vh < 700;
-
-  const rawMax = (vh - HEADER_OFFSET) / vh;
-  const maxSnap = Math.min(Math.max(rawMax, 0.6), 0.85);
-
-  return isSmall
-    ? [0.25, 0.55, maxSnap]
-    : [0.12, 0.45, maxSnap];
-};
-
-/* ============================
-   Component
-   ============================ */
-
 export function MobileCourtSheet({
   courts,
   loading,
   highlightedCourtId,
   onHighlight,
 }: MobileCourtSheetProps) {
-  const [snapPoints, setSnapPoints] = [0.15, 0.5, 1];
-  const [snap, setSnap] = useState(0.15);
+  const [snap, setSnap] = useState<number | string | null>(0.12);
+
   return (
-    <DrawerPrimitive.Root
-      open={true}
+    <DrawerPrimitive.Root 
+      open={true} 
       modal={false}
       dismissible={false}
-      snapPoints={snapPoints}
+      snapPoints={[0.12, 0.5, 1]}
       activeSnapPoint={snap}
       setActiveSnapPoint={setSnap}
     >
       <DrawerPrimitive.Portal>
-        <DrawerPrimitive.Overlay
-          className="fixed inset-0 bg-transparent pointer-events-none"
-          style={{ zIndex: 9998 }}
-        />
-
-        <DrawerPrimitive.Content
-          className="
-            fixed left-0 right-0 bottom-0
-            flex flex-col
-            rounded-t-[20px]
-            bg-background
-            border-t border-border
-            shadow-2xl
-            focus:outline-none
-            pb-[64px]
-          "
-          style={{ zIndex: 40,
-             height: "85dvh",
-             maxHeight: "85dvh",
-           }}
+        <DrawerPrimitive.Overlay className="fixed inset-0 bg-transparent pointer-events-none" style={{ zIndex: 9998 }} />
+        <DrawerPrimitive.Content 
+          className="fixed left-0 right-0 flex flex-col rounded-t-[20px] bg-background border-t border-border shadow-2xl focus:outline-none"
+          style={{ 
+            zIndex: 40,
+            bottom: '64px',
+            height: 'calc(100dvh - 64px)',
+            maxHeight: 'calc(100dvh - 64px)',
+          }}
         >
-          {/* Drag handle */}
-          <div
+          {/* Drag handle area - larger touch target */}
+          <div 
             className="flex flex-col items-center pt-4 pb-3 cursor-grab active:cursor-grabbing"
-            style={{ touchAction: "none" }}
+            style={{ touchAction: 'none' }}
           >
             <div className="h-1.5 w-10 rounded-full bg-muted-foreground/50 mb-3" />
             <p className="text-base font-semibold text-foreground">
-              {courts.length >= 100
-                ? `Over ${Math.floor(courts.length / 100) * 100}`
-                : courts.length}{" "}
-              court{courts.length !== 1 ? "s" : ""}
+              {courts.length >= 100 ? `Over ${Math.floor(courts.length / 100) * 100}` : courts.length} court{courts.length !== 1 ? "s" : ""}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Drag up to explore
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Drag up to explore</p>
           </div>
 
-          {/* Scrollable list */}
+          {/* Scrollable cards list */}
           <div className="flex-1 overflow-y-auto overscroll-contain">
             <div className="p-4 space-y-4 pb-20">
               {loading ? (
+                // Loading skeleton
                 Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="animate-pulse">
                     <div className="aspect-[4/3] bg-muted rounded-xl mb-3" />

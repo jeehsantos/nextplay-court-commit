@@ -18,11 +18,11 @@ interface SessionTypeDropdownProps {
 
 // Fallback session types when backend data is not available
 const fallbackSessionTypes: { value: SessionType; label: string; emoji: string; description: string }[] = [
-  { value: "casual", label: "Football", emoji: "🎮", description: "Relaxed game" },
-  { value: "competitive", label: "Volleyball", emoji: "🏆", description: "Serious play" },
-  { value: "training", label: "Basketball", emoji: "📚", description: "Skill focus" },
-  { value: "private", label: "Tennis", emoji: "🔒", description: "Invited only" },
-  { value: "tournament", label: "Futsal", emoji: "🎯", description: "Competition" },
+  { value: "casual", label: "Casual Pickup", emoji: "🎮", description: "Relaxed game" },
+  { value: "competitive", label: "Competitive", emoji: "🏆", description: "Serious play" },
+  { value: "training", label: "Training", emoji: "📚", description: "Skill focus" },
+  { value: "private", label: "Private", emoji: "🔒", description: "Invited only" },
+  { value: "tournament", label: "Tournament", emoji: "🎯", description: "Competition" },
 ];
 
 // Map session type values to emojis
@@ -78,7 +78,7 @@ export function SessionTypeDropdown({ value, onChange }: SessionTypeDropdownProp
 
 export function getSessionTypeLabel(sessionType: SessionType | null | undefined): string {
   const type = fallbackSessionTypes.find(t => t.value === sessionType);
-  return type ? `${type.emoji} ${type.label}` : "🎮 Futsal";
+  return type ? `${type.emoji} ${type.label}` : "🎮 Casual Pickup";
 }
 
 export function getSessionTypeInfo(sessionType: SessionType | null | undefined) {
