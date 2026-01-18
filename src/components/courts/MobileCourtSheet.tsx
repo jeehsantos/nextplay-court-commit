@@ -23,27 +23,30 @@ export function MobileCourtSheet({
   highlightedCourtId,
   onHighlight,
 }: MobileCourtSheetProps) {
-  const [snap, setSnap] = useState<number | string | null>(0.12);
-
+  const isSmall =
+  typeof window !== "undefined" && window.innerHeight < 700;
+  const snapPoints = isSmall ? [0.25, 0.6, 1] : [0.12, 0.5, 1];
+  const getInitialSnap = () =>
+  typeof window !== "undefined" && window.innerHeight < 700
+    ? 0.25
+    : 0.12;
+  const [snap, setSnap] = useState<number>(getInitialSnap);
   return (
     <DrawerPrimitive.Root 
       open={true} 
       modal={false}
       dismissible={false}
-      snapPoints={[0.12, 0.5, 1]}
+      snapPoints={snapPoints}
       activeSnapPoint={snap}
       setActiveSnapPoint={setSnap}
     >
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay className="fixed inset-0 bg-transparent pointer-events-none" style={{ zIndex: 9998 }} />
         <DrawerPrimitive.Content 
-          className="fixed left-0 right-0 flex flex-col rounded-t-[20px] bg-background border-t border-border shadow-2xl focus:outline-none"
+          className="fixed left-0 right-0 bottom-0 flex flex-col rounded-t-[20px] bg-background border-t border-border shadow-2xl focus:outline-none pb-[64px]"
           style={{ 
             zIndex: 40,
-            bottom: '64px',
-            height: 'calc(100dvh - 64px)',
-            maxHeight: 'calc(100dvh - 64px)',
-          }}
+            minHeight: "25dvh",}}
         >
           {/* Drag handle area - larger touch target */}
           <div 
