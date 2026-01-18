@@ -9,11 +9,11 @@ interface SessionTypeSelectorProps {
 }
 
 const sessionTypes: { value: SessionType; label: string; icon: string; description: string }[] = [
-  { value: "casual", label: "Casual Pickup", icon: "🎮", description: "Relaxed game, all skill levels" },
-  { value: "competitive", label: "Competitive", icon: "🏆", description: "Serious play, similar skill levels" },
-  { value: "training", label: "Training/Practice", icon: "📚", description: "Skill development focus" },
-  { value: "private", label: "Private Session", icon: "🔒", description: "Invited members only" },
-  { value: "tournament", label: "Tournament", icon: "🎯", description: "Official competition" },
+  { value: "casual", label: "Football", icon: "🎮", description: "Relaxed game, all skill levels" },
+  { value: "competitive", label: "Volleyball", icon: "🏆", description: "Serious play, similar skill levels" },
+  { value: "training", label: "Basketball", icon: "📚", description: "Skill development focus" },
+  { value: "private", label: "Tennis", icon: "🔒", description: "Invited members only" },
+  { value: "tournament", label: "Futsal", icon: "🎯", description: "Official competition" },
 ];
 
 export function SessionTypeSelector({ value, onChange }: SessionTypeSelectorProps) {
@@ -49,7 +49,7 @@ export function SessionTypeSelector({ value, onChange }: SessionTypeSelectorProp
 
 export function getSessionTypeLabel(sessionType: SessionType | null | undefined): string {
   const type = sessionTypes.find(t => t.value === sessionType);
-  return type ? `${type.icon} ${type.label}` : "🎮 Casual Pickup";
+  return type ? `${type.icon} ${type.label}` : "🎮 Futsal";
 }
 
 export function getSessionTypeInfo(sessionType: SessionType | null | undefined) {
