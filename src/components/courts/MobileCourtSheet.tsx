@@ -49,15 +49,8 @@ export function MobileCourtSheet({
   highlightedCourtId,
   onHighlight,
 }: MobileCourtSheetProps) {
-  const [snapPoints, setSnapPoints] = useState<number[]>(computeSnapPoints);
-  const [snap, setSnap] = useState<number>(snapPoints[0]);
-
-  useEffect(() => {
-    const points = computeSnapPoints();
-    setSnapPoints(points);
-    setSnap(points[0]);
-  }, []);
-
+  const [snapPoints, setSnapPoints] = [0.15, 0.5, 1];
+  const [snap, setSnap] = useState(0.15);
   return (
     <DrawerPrimitive.Root
       open={true}
@@ -84,7 +77,10 @@ export function MobileCourtSheet({
             focus:outline-none
             pb-[64px]
           "
-          style={{ zIndex: 40 }}
+          style={{ zIndex: 40,
+             height: "85dvh",
+             maxHeight: "85dvh",
+           }}
         >
           {/* Drag handle */}
           <div
