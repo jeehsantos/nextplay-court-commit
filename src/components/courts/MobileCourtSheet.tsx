@@ -37,14 +37,14 @@ export function MobileCourtSheet({
   setActiveSnapPoint={setSnap}
 >
   <DrawerPrimitive.Portal>
-    <DrawerPrimitive.Overlay className="fixed inset-0 bg-transparent pointer-events-none" style={{ zIndex: 9998  }} />
+    <DrawerPrimitive.Overlay className="fixed inset-0 bg-transparent pointer-events-none" style={{ zIndex: 1  }} />
     <DrawerPrimitive.Content 
       className="fixed left-0 right-0 flex flex-col rounded-t-[20px] bg-background border-t border-border shadow-2xl focus:outline-none"
       style={{ 
-        zIndex: 9999 , // Stays high to remain above map markers 
+        zIndex: 1 , // Stays high to remain above map markers 
         bottom: '0px', // Changed from '64px' to start from the screen bottom 
-        height: 'calc(100dvh - 80px)', // Updated to account for bottom: 0 
-        maxHeight: 'calc(100dvh - 80px)', // Updated to account for bottom: 0 
+        height: 'calc(100dvh - 40px)', // Updated to account for bottom: 0 
+        maxHeight: 'calc(100dvh - 40px)', // Updated to account for bottom: 0 
       }}
     >
       {/* 2. Add bottom padding to the handle area so the text sits above the footer  */}
