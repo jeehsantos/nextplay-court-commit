@@ -56,6 +56,7 @@ interface BookingWizardProps {
     isNewGroup: boolean;
     paymentType: BookingPaymentType;
     equipment: SelectedEquipment[];
+    sportCategoryId: string;
   }) => void;
   sportType: SportType;
   courtPrice: number;
@@ -107,6 +108,7 @@ export function BookingWizard({
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [newGroupName, setNewGroupName] = useState("");
+  const [selectedSportCategoryId, setSelectedSportCategoryId] = useState<string>("");
   // Step 3: Payment
   const [paymentType, setPaymentType] = useState<BookingPaymentType>("single");
   const [submitting, setSubmitting] = useState(false);
@@ -123,10 +125,18 @@ export function BookingWizard({
       setRulesAccepted(false);
       setSelectedGroupId("");
       setNewGroupName("");
+      setSelectedSportCategoryId("");
       setPaymentType("single");
       fetchUserGroups();
     }
   }, [open]);
+  
+  // Auto-select first sport category when loaded
+  useEffect(() => {
+    if (sportCategories.length > 0 && !selectedSportCategoryId) {
+      setSelectedSportCategoryId(sportCategories[0].id);
+    }
+  }, [sportCategories, selectedSportCategoryId]);
 
   const fetchUserGroups = async () => {
     if (!user) return;
@@ -220,6 +230,7 @@ export function BookingWizard({
           isNewGroup: true,
           paymentType,
           equipment: selectedEquipment,
+          sportCategoryId: selectedSportCategoryId,
         });
       } else {
         onConfirm({
@@ -227,6 +238,7 @@ export function BookingWizard({
           isNewGroup: false,
           paymentType,
           equipment: selectedEquipment,
+          sportCategoryId: selectedSportCategoryId,
         });
       }
     } catch (error: any) {
@@ -444,15 +456,38 @@ export function BookingWizard({
                 )}
               </div>
 
-              {/* Sport Type Info - Display only, based on court's sport */}
-              <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                <div className="flex items-center gap-3">
-                  <SportIcon sport={sportType} className="h-8 w-8" />
-                  <div>
-                    <p className="font-medium">{getSportLabel(sportType)}</p>
-                    <p className="text-xs text-muted-foreground">Session sport type</p>
+              {/* Sport Category Selection */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <SportIcon sport={sportType} className="h-4 w-4" />
+                  Sport Category
+                </Label>
+                
+                {loadingSports ? (
+                  <div className="flex items-center gap-2 text-muted-foreground py-4">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading categories...
                   </div>
-                </div>
+                ) : (
+                  <Select
+                    value={selectedSportCategoryId}
+                    onValueChange={setSelectedSportCategoryId}
+                  >
+                    <SelectTrigger className="w-full h-12">
+                      <SelectValue placeholder="Choose a sport category..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border border-border shadow-lg">
+                      {sportCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id} className="py-3">
+                          <div className="flex items-center gap-2">
+                            {category.icon && <span>{category.icon}</span>}
+                            <span>{category.display_name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {/* Equipment Rental */}

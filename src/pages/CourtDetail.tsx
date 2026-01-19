@@ -471,8 +471,9 @@ export default function CourtDetail() {
     isNewGroup: boolean;
     paymentType: "single" | "split";
     equipment: SelectedEquipment[];
+    sportCategoryId: string;
   }) => {
-    const { groupId, isNewGroup, paymentType, equipment } = data;
+    const { groupId, isNewGroup, paymentType, equipment, sportCategoryId } = data;
     // Update selected equipment from wizard
     setSelectedEquipment(equipment);
     if (selectedSlots.length === 0 || !court || !user || !selectedDate) return;

@@ -37,11 +37,11 @@ export function MobileCourtSheet({
       setActiveSnapPoint={setSnap}
     >
       <DrawerPrimitive.Portal>
-        <DrawerPrimitive.Overlay className="fixed inset-0 bg-transparent pointer-events-none" style={{ zIndex: 9998 }} />
+        <DrawerPrimitive.Overlay className="fixed inset-0 bg-transparent pointer-events-none" style={{ zIndex: 1000 }} />
         <DrawerPrimitive.Content 
           className="fixed left-0 right-0 flex flex-col rounded-t-[20px] bg-background border-t border-border shadow-2xl focus:outline-none"
           style={{ 
-            zIndex: 40,
+            zIndex: 1001,
             bottom: '64px',
             // Max height stops below the search header (leaves ~80px for search + margin)
             height: 'calc(100dvh - 64px - 80px)',
