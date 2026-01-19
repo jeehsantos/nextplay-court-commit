@@ -37,11 +37,11 @@ export function MobileCourtSheet({
   setActiveSnapPoint={setSnap}
 >
   <DrawerPrimitive.Portal>
-    <DrawerPrimitive.Overlay className="fixed inset-0 bg-transparent pointer-events-none" style={{ zIndex: 1000 }} />
+    <DrawerPrimitive.Overlay className="fixed inset-0 bg-transparent pointer-events-none" style={{ zIndex: 9998  }} />
     <DrawerPrimitive.Content 
       className="fixed left-0 right-0 flex flex-col rounded-t-[20px] bg-background border-t border-border shadow-2xl focus:outline-none"
       style={{ 
-        zIndex: 1001, // Stays high to remain above map markers 
+        zIndex: 9999 , // Stays high to remain above map markers 
         bottom: '0px', // Changed from '64px' to start from the screen bottom 
         height: 'calc(100dvh - 80px)', // Updated to account for bottom: 0 
         maxHeight: 'calc(100dvh - 80px)', // Updated to account for bottom: 0 
