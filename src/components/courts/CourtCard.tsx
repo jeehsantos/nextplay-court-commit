@@ -73,12 +73,6 @@ export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
             </div>
           )}
 
-          {/* Sport Badge */}
-          <Badge className="absolute top-3 left-3 capitalize bg-card/90 text-card-foreground backdrop-blur-sm">
-            <SportIcon sport={court.sport_type} className="h-3 w-3 mr-1" />
-            {court.sport_type}
-          </Badge>
-
           {/* Indoor Badge */}
           {court.is_indoor && (
             <Badge variant="secondary" className="absolute top-3 left-24 bg-card/90 backdrop-blur-sm">
