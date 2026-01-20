@@ -1,0 +1,27 @@
+
+/* MobileCourtSheet.css
+   Improve gesture handling for the bottom sheet on mobile:
+   - enable native momentum scrolling (-webkit-overflow-scrolling)
+   - prevent scroll chaining into parent (overscroll-behavior)
+   - ensure vertical pan is allowed but horizontal gestures remain available
+*/
+
+.sheet-scrollable {
+  -webkit-overflow-scrolling: touch; /* momentum scrolling on iOS */
+  overscroll-behavior: contain;      /* prevent scroll chaining into the sheet parent */
+  touch-action: pan-y;               /* allow vertical panning; avoid accidental horizontal interception */
+}
+
+/* Give the handle a little larger touch target and make it visually clear */
+.sheet-drag-handle {
+  padding-top: 8px;
+  padding-bottom: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* On small screens remove heavy blur/shadow effects for performance (optional but recommended) */
+@media (max-width: 640px) {
+  .sheet-drag-handle {
+    /* keep visual simple for mobile */
+  }
+}
