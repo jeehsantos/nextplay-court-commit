@@ -277,7 +277,7 @@ export function BookingWizard({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-16px)] sm:w-[calc(100vw-32px)] max-w-md sm:max-w-lg h-[calc(100dvh-32px)] sm:h-auto sm:max-h-[85dvh] flex flex-col p-0 gap-0">
+      <DialogContent className="w-[calc(100vw-16px)] sm:w-[calc(100vw-32px)] max-w-md sm:max-w-lg h-[calc(100dvh-38px)] sm:h-auto sm:max-h-[78dvh] flex flex-col p-0 gap-0">
         {/* Header with progress */}
         <div className="sticky top-0 z-10 bg-background border-b border-border p-3 sm:p-4">
           <DialogHeader className="mb-3 sm:mb-4">
