@@ -2,9 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Building2,
   Calendar,
@@ -12,37 +10,21 @@ import {
   TrendingUp,
   Plus,
   ArrowRight,
-  XCircle,
   MessageCircle,
+  CreditCard,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { format } from "date-fns";
 
-type RecentBooking = {
-  id: string;
-  available_date: string;
-  start_time: string;
-  end_time: string;
-  payment_status?: string;
-  courts?: { name: string } | null;
-  organizer_name?: string;
-  booked_by_user_id?: string;
-  booked_by_session_id?: string;
-  is_cancelled?: boolean;
-};
-
 export default function ManagerDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
-    courts: 0,
+    venues: 0,
     upcomingBookings: 0,
     revenue: 0,
   });
-  const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
-  const [cancelledBookings, setCancelledBookings] = useState<RecentBooking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("active");
 
   useEffect(() => {
     if (user) {
@@ -63,99 +45,52 @@ export default function ManagerDashboard() {
 
       const venueIds = (venues || []).map((v) => v.id);
 
-      // Fetch courts under those venues
+      // Fetch parent courts (venues) only
       const { data: courtsData, error: courtsError } = await supabase
+        .from("courts")
+        .select("id")
+        .in("venue_id", venueIds)
+        .eq("is_active", true)
+        .is("parent_court_id", null);
+
+      if (courtsError) throw courtsError;
+
+      // Get all courts including sub-courts for booking counting
+      const { data: allCourts } = await supabase
         .from("courts")
         .select("id")
         .in("venue_id", venueIds)
         .eq("is_active", true);
 
-      if (courtsError) throw courtsError;
-
-      const courtIds = (courtsData || []).map((c) => c.id);
-      const courtsCount = courtIds.length;
+      const courtIds = (allCourts || []).map((c) => c.id);
+      const venuesCount = courtsData?.length || 0;
 
       let upcomingBookings = 0;
-      let recent: RecentBooking[] = [];
-      let cancelled: RecentBooking[] = [];
       let monthlyRevenue = 0;
 
       if (courtIds.length > 0) {
         const today = format(new Date(), "yyyy-MM-dd");
-        const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), "yyyy-MM-dd");
-
-        // Fetch all bookings with session info to check cancellation status
-        const { data: allBookings, error: allError } = await supabase
-          .from("court_availability")
-          .select(`
-            id, 
-            available_date, 
-            start_time, 
-            end_time, 
-            payment_status, 
-            booked_by_user_id,
-            booked_by_session_id,
-            courts(name)
-          `)
-          .in("court_id", courtIds)
-          .eq("is_booked", true)
-          .order("available_date", { ascending: true })
-          .order("start_time", { ascending: true });
-
-        if (allError) throw allError;
-
-        // Get session cancellation status and organizer names
-        const bookingsWithDetails = await Promise.all(
-          (allBookings || []).map(async (booking) => {
-            let isCancelled = false;
-            let organizerName = "Unknown";
-
-            // Check if session is cancelled
-            if (booking.booked_by_session_id) {
-              const { data: session } = await supabase
-                .from("sessions")
-                .select("is_cancelled")
-                .eq("id", booking.booked_by_session_id)
-                .maybeSingle();
-              
-              isCancelled = session?.is_cancelled || false;
-            }
-
-            // Get organizer name
-            if (booking.booked_by_user_id) {
-              const { data: profile } = await supabase
-                .from("profiles")
-                .select("full_name")
-                .eq("user_id", booking.booked_by_user_id)
-                .maybeSingle();
-              
-              organizerName = profile?.full_name || "Unknown";
-            }
-
-            return {
-              ...booking,
-              is_cancelled: isCancelled,
-              organizer_name: organizerName,
-            } as RecentBooking;
-          })
-        );
-
-        // Separate active and cancelled bookings
-        const activeBookings = bookingsWithDetails.filter(b => !b.is_cancelled);
-        cancelled = bookingsWithDetails.filter(b => b.is_cancelled);
 
         // Count upcoming active bookings
-        upcomingBookings = activeBookings.filter(
-          b => b.available_date >= today
-        ).length;
+        const { count: bookingCount } = await supabase
+          .from("court_availability")
+          .select("id", { count: "exact", head: true })
+          .in("court_id", courtIds)
+          .eq("is_booked", true)
+          .gte("available_date", today);
 
-        // Get recent active bookings (limit 5)
-        recent = activeBookings.slice(0, 5);
+        upcomingBookings = bookingCount || 0;
 
         // Calculate monthly revenue from completed payments
-        // Get all sessions for manager's courts
+        const { data: allBookings } = await supabase
+          .from("court_availability")
+          .select("booked_by_session_id, payment_status")
+          .in("court_id", courtIds)
+          .eq("is_booked", true)
+          .eq("payment_status", "completed");
+
         const sessionIds = allBookings
-          ?.filter(b => b.booked_by_session_id && b.payment_status === "completed")
+          ?.filter(b => b.booked_by_session_id)
           .map(b => b.booked_by_session_id) || [];
 
         if (sessionIds.length > 0) {
@@ -167,7 +102,6 @@ export default function ManagerDashboard() {
             .gte("paid_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
 
           if (payments) {
-            // Calculate revenue (amount minus platform fee)
             monthlyRevenue = payments.reduce((sum, p) => {
               const netAmount = Number(p.amount) - Number(p.platform_fee || 0);
               return sum + netAmount;
@@ -176,10 +110,8 @@ export default function ManagerDashboard() {
         }
       }
 
-      setRecentBookings(recent);
-      setCancelledBookings(cancelled);
       setStats({
-        courts: courtsCount,
+        venues: venuesCount,
         upcomingBookings,
         revenue: monthlyRevenue,
       });
@@ -191,7 +123,7 @@ export default function ManagerDashboard() {
   };
 
   const statCards = [
-    { label: "My Courts", value: stats.courts, icon: Building2, color: "text-blue-500" },
+    { label: "My Venues", value: stats.venues, icon: Building2, color: "text-blue-500" },
     {
       label: "Upcoming Bookings",
       value: stats.upcomingBookings,
@@ -201,37 +133,6 @@ export default function ManagerDashboard() {
     { label: "This Month", value: `$${stats.revenue.toFixed(2)}`, icon: DollarSign, color: "text-primary" },
   ];
 
-  const BookingItem = ({ booking, showCancelled = false }: { booking: RecentBooking; showCancelled?: boolean }) => (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-medium truncate">{booking.courts?.name || "Court"}</span>
-          {showCancelled && (
-            <Badge variant="destructive" className="text-xs">Cancelled</Badge>
-          )}
-        </div>
-        <div className="text-sm text-muted-foreground">
-          {format(new Date(booking.available_date), "MMM d")} • {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)}
-        </div>
-        <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-          <span>Booked by:</span>
-          <span className="font-medium text-foreground">{booking.organizer_name}</span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 shrink-0">
-        {!showCancelled && (
-          <>
-            <Badge>{booking.payment_status === "completed" ? "Paid" : "Booked"}</Badge>
-            {booking.payment_status !== "completed" && (
-              <Badge variant="secondary">Pending</Badge>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <ManagerLayout>
       <div className="p-4 md:p-6 space-y-6">
@@ -239,12 +140,12 @@ export default function ManagerDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-2xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Manage your courts and bookings</p>
+            <p className="text-muted-foreground">Manage your venues and bookings</p>
           </div>
           <Link to="/manager/courts/new">
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Court
+              Add Venue
             </Button>
           </Link>
         </div>
@@ -265,24 +166,24 @@ export default function ManagerDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Your Courts</CardTitle>
+              <CardTitle className="text-lg">Your Venues</CardTitle>
             </CardHeader>
             <CardContent>
-              {stats.courts === 0 ? (
+              {stats.venues === 0 ? (
                 <div className="text-center py-8">
                   <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No courts yet</p>
+                  <p className="text-muted-foreground mb-4">No venues yet</p>
                   <Link to="/manager/courts/new">
-                    <Button>Add Your First Court</Button>
+                    <Button>Add Your First Venue</Button>
                   </Link>
                 </div>
               ) : (
                 <Link to="/manager/courts">
                   <Button variant="outline" className="w-full justify-between">
-                    Manage Courts
+                    Manage Venues
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
@@ -295,12 +196,12 @@ export default function ManagerDashboard() {
               <CardTitle className="text-lg">Availability</CardTitle>
             </CardHeader>
             <CardContent>
-              {stats.courts === 0 ? (
+              {stats.venues === 0 ? (
                 <div className="text-center py-8">
                   <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">Add courts first</p>
+                  <p className="text-muted-foreground mb-4">Add venues first</p>
                   <Link to="/manager/courts/new">
-                    <Button variant="outline">Add Court</Button>
+                    <Button variant="outline">Add Venue</Button>
                   </Link>
                 </div>
               ) : (
@@ -313,63 +214,31 @@ export default function ManagerDashboard() {
               )}
             </CardContent>
           </Card>
-        </div>
 
-        {/* Bookings with Tabs */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              Bookings
-              {cancelledBookings.length > 0 && (
-                <Badge variant="outline" className="text-xs">
-                  {cancelledBookings.length} cancelled
-                </Badge>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Bookings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {stats.upcomingBookings === 0 ? (
+                <div className="text-center py-8">
+                  <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No bookings yet</p>
+                  <Link to="/manager/bookings">
+                    <Button variant="outline">View Bookings</Button>
+                  </Link>
+                </div>
+              ) : (
+                <Link to="/manager/bookings">
+                  <Button variant="outline" className="w-full justify-between">
+                    View All Bookings
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
               )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="active" className="gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Active ({recentBookings.length})
-                </TabsTrigger>
-                <TabsTrigger value="cancelled" className="gap-2">
-                  <XCircle className="h-4 w-4" />
-                  Cancelled ({cancelledBookings.length})
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="active">
-                {recentBookings.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No active bookings. Publish availability to start receiving bookings.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {recentBookings.map((b) => (
-                      <BookingItem key={b.id} booking={b} />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="cancelled">
-                {cancelledBookings.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No cancelled bookings.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {cancelledBookings.map((b) => (
-                      <BookingItem key={b.id} booking={b} showCancelled />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Messages Info */}
         <Card>
@@ -381,7 +250,7 @@ export default function ManagerDashboard() {
               <div className="flex-1">
                 <p className="font-medium">Chat with Organizers</p>
                 <p className="text-sm text-muted-foreground">
-                  Use the chat widget in the bottom right to communicate with organizers who have booked your courts.
+                  Use the chat widget in the bottom right to communicate with organizers who have booked your venues.
                 </p>
               </div>
             </div>

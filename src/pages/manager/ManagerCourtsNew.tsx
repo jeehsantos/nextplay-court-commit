@@ -61,7 +61,7 @@ export default function ManagerCourtsNew() {
 
       const venueIds = venues.map(v => v.id);
 
-      // Then get courts for those venues
+      // Then get only parent courts (main venues) for those venues
       const { data, error } = await supabase
         .from("courts")
         .select(`
@@ -69,6 +69,7 @@ export default function ManagerCourtsNew() {
           venue:venues(name, city, address)
         `)
         .in("venue_id", venueIds)
+        .is("parent_court_id", null) // Only show parent courts (main venues)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -86,13 +87,13 @@ export default function ManagerCourtsNew() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl font-bold">My Courts</h1>
-            <p className="text-muted-foreground">Manage your sports courts</p>
+            <h1 className="font-display text-2xl font-bold">My Venues</h1>
+            <p className="text-muted-foreground">Manage your sports venues and courts</p>
           </div>
           <Link to="/manager/courts/new">
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Court
+              Add Venue
             </Button>
           </Link>
         </div>
@@ -106,12 +107,12 @@ export default function ManagerCourtsNew() {
           <Card>
             <CardContent className="py-12 text-center">
               <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">No courts yet</h3>
+              <h3 className="font-semibold text-lg mb-2">No venues yet</h3>
               <p className="text-muted-foreground mb-4">
-                Add your first court to start receiving bookings.
+                Add your first venue to start receiving bookings.
               </p>
               <Link to="/manager/courts/new">
-                <Button>Add Your First Court</Button>
+                <Button>Add Your First Venue</Button>
               </Link>
             </CardContent>
           </Card>
@@ -173,7 +174,7 @@ export default function ManagerCourtsNew() {
                   <Link to={`/manager/courts/${court.id}/edit`}>
                     <Button variant="outline" size="sm" className="w-full gap-1">
                       <Edit className="h-3 w-3" />
-                      Edit Court
+                      Edit Venue
                     </Button>
                   </Link>
                 </CardContent>
