@@ -1,0 +1,458 @@
+import { useState, useEffect, useMemo } from "react";
+import { ManagerLayout } from "@/components/layout/ManagerLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  Calendar, 
+  MapPin, 
+  Clock, 
+  Users, 
+  DollarSign,
+  Loader2,
+  Filter,
+  CheckCircle,
+  XCircle,
+  AlertCircle
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import { format } from "date-fns";
+
+interface Booking {
+  id: string;
+  available_date: string;
+  start_time: string;
+  end_time: string;
+  is_booked: boolean;
+  payment_status: string;
+  booked_by_user_id: string | null;
+  booked_by_session_id: string | null;
+  court_id: string;
+  court?: {
+    id: string;
+    name: string;
+    hourly_rate: number;
+    venue_id: string;
+    venue?: {
+      id: string;
+      name: string;
+      city: string;
+    };
+  };
+  session?: {
+    id: string;
+    is_cancelled: boolean;
+    group?: {
+      name: string;
+      organizer_id: string;
+    };
+  } | null;
+  profile?: {
+    full_name: string;
+  } | null;
+}
+
+interface Venue {
+  id: string;
+  name: string;
+}
+
+interface Court {
+  id: string;
+  name: string;
+  venue_id: string;
+}
+
+type BookingStatus = "active" | "cancelled" | "completed";
+
+export default function ManagerBookings() {
+  const { user } = useAuth();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [courts, setCourts] = useState<Court[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedVenue, setSelectedVenue] = useState<string>("all");
+  const [selectedCourt, setSelectedCourt] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<BookingStatus>("active");
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const fetchData = async () => {
+    try {
+      // Get venues owned by user
+      const { data: venuesData } = await supabase
+        .from("venues")
+        .select("id, name")
+        .eq("owner_id", user?.id);
+
+      if (!venuesData || venuesData.length === 0) {
+        setVenues([]);
+        setCourts([]);
+        setBookings([]);
+        setLoading(false);
+        return;
+      }
+
+      setVenues(venuesData);
+      const venueIds = venuesData.map(v => v.id);
+
+      // Get courts for those venues
+      const { data: courtsData } = await supabase
+        .from("courts")
+        .select("id, name, venue_id")
+        .in("venue_id", venueIds);
+
+      setCourts(courtsData || []);
+      const courtIds = (courtsData || []).map(c => c.id);
+
+      if (courtIds.length === 0) {
+        setBookings([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get all bookings for those courts
+      const { data: bookingsData, error } = await supabase
+        .from("court_availability")
+        .select(`
+          id,
+          available_date,
+          start_time,
+          end_time,
+          is_booked,
+          payment_status,
+          booked_by_user_id,
+          booked_by_session_id,
+          court_id,
+          court:courts(
+            id,
+            name,
+            hourly_rate,
+            venue_id,
+            venue:venues(id, name, city)
+          )
+        `)
+        .in("court_id", courtIds)
+        .eq("is_booked", true)
+        .order("available_date", { ascending: false })
+        .order("start_time", { ascending: true });
+
+      if (error) throw error;
+
+      // Get session details for bookings with sessions
+      const sessionIds = (bookingsData || [])
+        .filter(b => b.booked_by_session_id)
+        .map(b => b.booked_by_session_id);
+
+      let sessionsMap: Record<string, any> = {};
+      if (sessionIds.length > 0) {
+        const { data: sessionsData } = await supabase
+          .from("sessions")
+          .select(`
+            id,
+            is_cancelled,
+            group:groups(name, organizer_id)
+          `)
+          .in("id", sessionIds);
+
+        sessionsData?.forEach(s => {
+          sessionsMap[s.id] = s;
+        });
+      }
+
+      // Get profiles for direct bookings
+      const userIds = (bookingsData || [])
+        .filter(b => b.booked_by_user_id && !b.booked_by_session_id)
+        .map(b => b.booked_by_user_id);
+
+      let profilesMap: Record<string, any> = {};
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", userIds);
+
+        profilesData?.forEach(p => {
+          profilesMap[p.user_id] = p;
+        });
+      }
+
+      // Combine data
+      const enrichedBookings = (bookingsData || []).map(b => ({
+        ...b,
+        session: b.booked_by_session_id ? sessionsMap[b.booked_by_session_id] : null,
+        profile: b.booked_by_user_id ? profilesMap[b.booked_by_user_id] : null,
+      }));
+
+      setBookings(enrichedBookings);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter courts based on selected venue
+  const filteredCourts = useMemo(() => {
+    if (selectedVenue === "all") return courts;
+    return courts.filter(c => c.venue_id === selectedVenue);
+  }, [courts, selectedVenue]);
+
+  // Reset court selection when venue changes
+  useEffect(() => {
+    setSelectedCourt("all");
+  }, [selectedVenue]);
+
+  // Filter bookings based on status, venue, and court
+  const filteredBookings = useMemo(() => {
+    return bookings.filter(booking => {
+      // Status filter
+      const isSessionCancelled = booking.session?.is_cancelled;
+      const isPaid = booking.payment_status === "paid";
+      const isPast = new Date(`${booking.available_date}T${booking.end_time}`) < new Date();
+
+      let matchesStatus = false;
+      switch (activeTab) {
+        case "active":
+          matchesStatus = !isSessionCancelled && !isPast;
+          break;
+        case "cancelled":
+          matchesStatus = !!isSessionCancelled;
+          break;
+        case "completed":
+          matchesStatus = !isSessionCancelled && isPast && isPaid;
+          break;
+      }
+
+      // Venue filter
+      const courtData = booking.court;
+      const matchesVenue = selectedVenue === "all" || courtData?.venue_id === selectedVenue;
+
+      // Court filter
+      const matchesCourt = selectedCourt === "all" || booking.court_id === selectedCourt;
+
+      return matchesStatus && matchesVenue && matchesCourt;
+    });
+  }, [bookings, activeTab, selectedVenue, selectedCourt]);
+
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(":");
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  const getStatusBadge = (booking: Booking) => {
+    if (booking.session?.is_cancelled) {
+      return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Cancelled</Badge>;
+    }
+    if (booking.payment_status === "paid") {
+      return <Badge variant="default" className="gap-1 bg-green-600"><CheckCircle className="h-3 w-3" /> Paid</Badge>;
+    }
+    return <Badge variant="secondary" className="gap-1"><AlertCircle className="h-3 w-3" /> Pending</Badge>;
+  };
+
+  const getBookerName = (booking: Booking) => {
+    if (booking.session?.group?.name) {
+      return booking.session.group.name;
+    }
+    if (booking.profile?.full_name) {
+      return booking.profile.full_name;
+    }
+    return "Unknown";
+  };
+
+  const BookingCard = ({ booking }: { booking: Booking }) => {
+    const courtData = booking.court;
+    const venueData = courtData?.venue;
+
+    return (
+      <Card className="overflow-hidden">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-semibold truncate">{getBookerName(booking)}</h3>
+                {getStatusBadge(booking)}
+              </div>
+              
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {format(new Date(booking.available_date), "EEE, MMM d, yyyy")}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {venueData?.name || "Unknown Venue"} - {courtData?.name || "Unknown Court"}
+                </div>
+                {courtData?.hourly_rate && (
+                  <div className="flex items-center gap-1 text-primary font-medium">
+                    <DollarSign className="h-3.5 w-3.5" />
+                    {courtData.hourly_rate}/hr
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <ManagerLayout>
+      <div className="p-4 md:p-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="font-display text-2xl font-bold">Bookings</h1>
+            <p className="text-muted-foreground">View and manage all your venue bookings</p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Filter className="h-4 w-4" />
+                <span className="text-sm font-medium">Filters:</span>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                <Select value={selectedVenue} onValueChange={setSelectedVenue}>
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="All Venues" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Venues</SelectItem>
+                    {venues.map(venue => (
+                      <SelectItem key={venue.id} value={venue.id}>
+                        {venue.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedCourt} onValueChange={setSelectedCourt}>
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="All Courts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Courts</SelectItem>
+                    {filteredCourts.map(court => (
+                      <SelectItem key={court.id} value={court.id}>
+                        {court.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as BookingStatus)}>
+          <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex">
+            <TabsTrigger value="active" className="gap-2">
+              <AlertCircle className="h-4 w-4 hidden sm:inline" />
+              Active
+            </TabsTrigger>
+            <TabsTrigger value="cancelled" className="gap-2">
+              <XCircle className="h-4 w-4 hidden sm:inline" />
+              Cancelled
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="gap-2">
+              <CheckCircle className="h-4 w-4 hidden sm:inline" />
+              Completed
+            </TabsTrigger>
+          </TabsList>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              <TabsContent value="active" className="mt-4 space-y-3">
+                {filteredBookings.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="font-semibold text-lg mb-2">No active bookings</h3>
+                      <p className="text-muted-foreground">
+                        Active bookings will appear here when customers book your venues.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredBookings.map(booking => (
+                    <BookingCard key={booking.id} booking={booking} />
+                  ))
+                )}
+              </TabsContent>
+
+              <TabsContent value="cancelled" className="mt-4 space-y-3">
+                {filteredBookings.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <XCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="font-semibold text-lg mb-2">No cancelled bookings</h3>
+                      <p className="text-muted-foreground">
+                        Cancelled bookings will appear here.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredBookings.map(booking => (
+                    <BookingCard key={booking.id} booking={booking} />
+                  ))
+                )}
+              </TabsContent>
+
+              <TabsContent value="completed" className="mt-4 space-y-3">
+                {filteredBookings.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="font-semibold text-lg mb-2">No completed bookings</h3>
+                      <p className="text-muted-foreground">
+                        Completed and paid bookings will appear here.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredBookings.map(booking => (
+                    <BookingCard key={booking.id} booking={booking} />
+                  ))
+                )}
+              </TabsContent>
+            </>
+          )}
+        </Tabs>
+      </div>
+    </ManagerLayout>
+  );
+}

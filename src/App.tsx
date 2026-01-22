@@ -31,6 +31,7 @@ import ManagerCourtFormNew from "./pages/manager/ManagerCourtFormNew";
 import ManagerAvailability from "./pages/manager/ManagerAvailability";
 import ManagerSettings from "./pages/manager/ManagerSettings";
 import ManagerEquipment from "./pages/manager/ManagerEquipment";
+import ManagerBookings from "./pages/manager/ManagerBookings";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminSportCategories from "./pages/admin/AdminSportCategories";
 import AdminSurfaceTypes from "./pages/admin/AdminSurfaceTypes";
@@ -74,6 +75,7 @@ const App = () => (
             <Route path="/manager/courts/:id/edit" element={<ManagerCourtFormNew />} />
             <Route path="/manager/availability" element={<ManagerAvailability />} />
             <Route path="/manager/equipment" element={<ManagerEquipment />} />
+            <Route path="/manager/bookings" element={<ManagerBookings />} />
             <Route path="/manager/settings" element={<ManagerSettings />} />
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />

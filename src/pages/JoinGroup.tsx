@@ -26,8 +26,9 @@ export default function JoinGroup() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      // Redirect to auth with return URL
-      navigate(`/auth?redirect=/join/${code}`);
+      // Store redirect path in localStorage so it persists through registration
+      localStorage.setItem('redirectAfterAuth', `/join/${code}`);
+      navigate('/auth');
       return;
     }
     

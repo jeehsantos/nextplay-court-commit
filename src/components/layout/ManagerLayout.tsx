@@ -25,7 +25,7 @@ interface ManagerLayoutProps {
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/manager" },
-  { icon: Building2, label: "Courts", path: "/manager/courts" },
+  { icon: Building2, label: "Venues", path: "/manager/courts" },
   { icon: Calendar, label: "Availability", path: "/manager/availability" },
   { icon: Package, label: "Equipment", path: "/manager/equipment" },
   { icon: CreditCard, label: "Bookings", path: "/manager/bookings" },
@@ -34,8 +34,8 @@ const navItems = [
 
 const mobileNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/manager" },
-  { icon: Building2, label: "Courts", path: "/manager/courts" },
-  { icon: Package, label: "Gear", path: "/manager/equipment" },
+  { icon: Building2, label: "Venues", path: "/manager/courts" },
+  { icon: CreditCard, label: "Bookings", path: "/manager/bookings" },
   { icon: Settings, label: "Settings", path: "/manager/settings" },
 ];
 
