@@ -118,8 +118,8 @@ export function MobileCourtSheet({
               className="p-4 space-y-4"
               style={{
                 paddingBottom: showPaginationControls 
-                  ? `calc(${PAGINATION_CONTROLS_HEIGHT + 80}px + env(safe-area-inset-bottom, 0px))` 
-                  : 'calc(96px + env(safe-area-inset-bottom, 0px))'
+                  ? `calc(${PAGINATION_CONTROLS_HEIGHT + BOTTOM_NAV_HEIGHT + 32}px + env(safe-area-inset-bottom, 0px))` 
+                  : `calc(${BOTTOM_NAV_HEIGHT + 48}px + env(safe-area-inset-bottom, 0px))`
               }}
             >
               {loading ? (
