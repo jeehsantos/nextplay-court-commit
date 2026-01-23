@@ -177,12 +177,6 @@ export default function Games() {
               Track your upcoming and past games
             </p>
           </div>
-          <Link to="/discover">
-            <Button className="btn-athletic w-full sm:w-auto gap-2">
-              <Search className="h-4 w-4" />
-              Find Games
-            </Button>
-          </Link>
         </div>
 
         {/* Tabs */}
