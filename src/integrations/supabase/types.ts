@@ -317,6 +317,54 @@ export type Database = {
           },
         ]
       }
+      credit_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          reason: string
+          related_payment_id: string | null
+          related_session_id: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          reason: string
+          related_payment_id?: string | null
+          related_session_id?: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          reason?: string
+          related_payment_id?: string | null
+          related_session_id?: string | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transactions_related_payment_id_fkey"
+            columns: ["related_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transactions_related_session_id_fkey"
+            columns: ["related_session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipment_inventory: {
         Row: {
           created_at: string
@@ -553,6 +601,7 @@ export type Database = {
           created_at: string
           id: string
           paid_at: string | null
+          paid_with_credits: number | null
           platform_fee: number | null
           session_id: string
           status: Database["public"]["Enums"]["payment_status"]
@@ -565,6 +614,7 @@ export type Database = {
           created_at?: string
           id?: string
           paid_at?: string | null
+          paid_with_credits?: number | null
           platform_fee?: number | null
           session_id: string
           status?: Database["public"]["Enums"]["payment_status"]
@@ -577,6 +627,7 @@ export type Database = {
           created_at?: string
           id?: string
           paid_at?: string | null
+          paid_with_credits?: number | null
           platform_fee?: number | null
           session_id?: string
           status?: Database["public"]["Enums"]["payment_status"]
@@ -815,6 +866,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_credits: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -998,6 +1073,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_user_credits: {
+        Args: {
+          p_amount: number
+          p_payment_id?: string
+          p_reason: string
+          p_session_id?: string
+          p_user_id: string
+        }
+        Returns: number
+      }
       can_view_group: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
@@ -1006,6 +1091,7 @@ export type Database = {
         Args: { session_id: string }
         Returns: boolean
       }
+      get_user_credits: { Args: { p_user_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1015,6 +1101,15 @@ export type Database = {
       }
       is_group_member: {
         Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      use_user_credits: {
+        Args: {
+          p_amount: number
+          p_reason: string
+          p_session_id?: string
+          p_user_id: string
+        }
         Returns: boolean
       }
     }
