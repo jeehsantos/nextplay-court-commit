@@ -3,7 +3,7 @@ import { Search, Users, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { icon: Calendar, label: "Games", path: "/games" },
+  { icon: Calendar, label: "My Games", path: "/games" },
   { icon: Search, label: "Explore Courts", path: "/courts" },
   { icon: Search, label: "Find Games", path: "/discover" },
   { icon: Users, label: "Groups", path: "/groups" },
