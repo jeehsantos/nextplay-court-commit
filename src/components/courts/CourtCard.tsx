@@ -130,7 +130,7 @@ export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
         </div>
 
         {/* Content */}
-        <div className="pt-3 pb-60">
+        <div className="pt-3 pb-1">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-foreground truncate">{court.venues?.name || court.name}</h3>
@@ -140,11 +140,6 @@ export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
                 </p>
               )}
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-            <Users className="h-3.5 w-3.5" />
-            <span>Up to {court.capacity}</span>
           </div>
 
           <p className="mt-1">
