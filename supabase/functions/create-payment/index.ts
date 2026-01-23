@@ -21,13 +21,19 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
   );
 
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
+
   try {
     // Get request body
     const { 
       sessionId, 
       paymentType, // 'at_booking' or 'before_session'
       returnUrl,
-      origin: requestOrigin
+      origin: requestOrigin,
+      useCredits = false, // Whether to apply available credits
     } = await req.json();
 
     if (!sessionId) {
@@ -80,7 +86,80 @@ serve(async (req) => {
       description = `Court booking: ${session.groups?.name || "Session"} - Player Share`;
     }
 
-    // Initialize Stripe
+    const amountDollars = amountCents / 100;
+
+    // Check user's credit balance if useCredits is requested
+    let creditsToApply = 0;
+    let remainingAmountCents = amountCents;
+
+    if (useCredits) {
+      const { data: creditBalance, error: creditError } = await supabaseAdmin.rpc(
+        "get_user_credits",
+        { p_user_id: user.id }
+      );
+
+      if (!creditError && creditBalance > 0) {
+        const creditBalanceCents = Math.round(Number(creditBalance) * 100);
+        creditsToApply = Math.min(creditBalanceCents, amountCents);
+        remainingAmountCents = amountCents - creditsToApply;
+      }
+    }
+
+    // If credits cover the full amount, process without Stripe
+    if (remainingAmountCents === 0 && creditsToApply > 0) {
+      // Deduct credits
+      const creditsToDeduct = creditsToApply / 100;
+      const { data: deductSuccess, error: deductError } = await supabaseAdmin.rpc(
+        "use_user_credits",
+        {
+          p_user_id: user.id,
+          p_amount: creditsToDeduct,
+          p_reason: "session_payment",
+          p_session_id: sessionId,
+        }
+      );
+
+      if (deductError || !deductSuccess) {
+        throw new Error("Failed to apply credits");
+      }
+
+      // Create payment record
+      const { error: paymentInsertError } = await supabaseAdmin
+        .from("payments")
+        .insert({
+          session_id: sessionId,
+          user_id: user.id,
+          amount: amountDollars,
+          paid_with_credits: creditsToDeduct,
+          platform_fee: PLATFORM_FEE_CENTS / 100,
+          status: "completed",
+          paid_at: new Date().toISOString(),
+        });
+
+      if (paymentInsertError) {
+        console.error("Error creating payment record:", paymentInsertError);
+      }
+
+      // Update session player to confirmed
+      await supabaseAdmin
+        .from("session_players")
+        .update({ is_confirmed: true, confirmed_at: new Date().toISOString() })
+        .eq("session_id", sessionId)
+        .eq("user_id", user.id);
+
+      console.log(`Payment completed with credits only: $${creditsToDeduct.toFixed(2)}`);
+
+      return new Response(JSON.stringify({ 
+        success: true,
+        paidWithCredits: creditsToDeduct,
+        message: `Payment completed using $${creditsToDeduct.toFixed(2)} in credits.`,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // Initialize Stripe for remaining amount
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2024-12-18.acacia",
     });
@@ -94,8 +173,13 @@ serve(async (req) => {
 
     // Create checkout session with application fee
     const origin = requestOrigin || req.headers.get("origin") || "https://trlsnfxhsoqapnhjauph.lovableproject.com";
-    const successUrl = `${origin}/payment-success?session_id=${sessionId}&type=${paymentType}`;
+    const successUrl = `${origin}/payment-success?session_id=${sessionId}&type=${paymentType}&credits_applied=${creditsToApply / 100}`;
     const cancelUrl = returnUrl ? `${origin}${returnUrl}` : `${origin}/games/${sessionId}`;
+
+    // Adjust description if partial credits applied
+    const finalDescription = creditsToApply > 0 
+      ? `${description} (After $${(creditsToApply / 100).toFixed(2)} credits)`
+      : description;
 
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -105,10 +189,10 @@ serve(async (req) => {
           price_data: {
             currency: "nzd",
             product_data: {
-              name: description,
+              name: finalDescription,
               description: `Session Date: ${session.session_date} at ${session.start_time}`,
             },
-            unit_amount: amountCents,
+            unit_amount: remainingAmountCents,
           },
           quantity: 1,
         },
@@ -121,20 +205,25 @@ serve(async (req) => {
         user_id: user.id,
         payment_type: paymentType || session.payment_type,
         platform_fee: PLATFORM_FEE_CENTS.toString(),
+        credits_applied: (creditsToApply / 100).toString(),
+        total_amount: amountDollars.toString(),
       },
       payment_intent_data: {
         metadata: {
           session_id: sessionId,
           user_id: user.id,
+          credits_applied: (creditsToApply / 100).toString(),
         },
       },
     });
 
-    console.log("Checkout session created:", checkoutSession.id);
+    console.log("Checkout session created:", checkoutSession.id, "Credits to apply:", creditsToApply / 100);
 
     return new Response(JSON.stringify({ 
       url: checkoutSession.url,
       checkoutSessionId: checkoutSession.id,
+      creditsToApply: creditsToApply / 100,
+      remainingAmount: remainingAmountCents / 100,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { SportIcon } from "@/components/ui/sport-icon";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Calendar as CalendarIcon } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import type { Database } from "@/integrations/supabase/types";
@@ -23,6 +25,14 @@ type Venue = Database["public"]["Tables"]["venues"]["Row"];
 
 interface CourtWithVenue extends Court {
   venues: Venue;
+}
+
+// Group courts by venue for hierarchical display
+interface GroupedCourts {
+  [venueId: string]: {
+    venue: Venue;
+    courts: CourtWithVenue[];
+  };
 }
 
 export default function ManagerAvailability() {
@@ -69,6 +79,26 @@ export default function ManagerAvailability() {
   const selectedCourtData = courts.find(c => c.id === selectedCourt);
   const venueId = selectedCourtData?.venue_id;
 
+  // Group courts by venue for hierarchical dropdown
+  const groupedCourts = useMemo<GroupedCourts>(() => {
+    return courts.reduce((acc, court) => {
+      const venueId = court.venue_id;
+      if (!acc[venueId]) {
+        acc[venueId] = {
+          venue: court.venues,
+          courts: [],
+        };
+      }
+      // Sort: parent courts first, then sub-courts
+      if (court.parent_court_id) {
+        acc[venueId].courts.push(court);
+      } else {
+        acc[venueId].courts.unshift(court);
+      }
+      return acc;
+    }, {} as GroupedCourts);
+  }, [courts]);
+
   const handleRefresh = () => setRefreshTrigger(prev => prev + 1);
 
   if (loading) {
@@ -101,22 +131,46 @@ export default function ManagerAvailability() {
           <>
             <Card>
               <CardContent className="pt-6">
-                <Select value={selectedCourt} onValueChange={setSelectedCourt}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a court" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courts.map((court) => (
-                      <SelectItem key={court.id} value={court.id}>
-                        <div className="flex items-center gap-2">
-                          <SportIcon sport={court.sport_type} className="h-4 w-4" />
-                          <span>{court.name}</span>
-                          <span className="text-muted-foreground">- {court.venues.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Select Venue & Court
+                  </label>
+                  <Select value={selectedCourt} onValueChange={setSelectedCourt}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a venue and court" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {Object.entries(groupedCourts).map(([venueId, { venue, courts: venueCourts }]) => (
+                        <SelectGroup key={venueId}>
+                          <SelectLabel className="flex items-center gap-2 font-semibold text-foreground py-2 px-2 bg-muted/50">
+                            <Building2 className="h-4 w-4 text-primary" />
+                            <span>{venue.name}</span>
+                            <span className="text-xs text-muted-foreground font-normal ml-auto">
+                              {venueCourts.length} court{venueCourts.length !== 1 ? 's' : ''}
+                            </span>
+                          </SelectLabel>
+                          {venueCourts.map((court) => (
+                            <SelectItem 
+                              key={court.id} 
+                              value={court.id}
+                              className="pl-6"
+                            >
+                              <div className="flex items-center gap-2">
+                                <SportIcon sport={court.sport_type} className="h-4 w-4" />
+                                <span>{court.name}</span>
+                                {court.parent_court_id && (
+                                  <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                    sub-court
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardContent>
             </Card>
 

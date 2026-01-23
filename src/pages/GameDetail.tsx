@@ -17,6 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { checkProfileComplete } from "@/lib/profile-utils";
 import { getSessionTypeInfo } from "@/components/session/SessionTypeDropdown";
 import { ProfileCompletionAlert } from "@/components/booking/ProfileCompletionAlert";
+import { UseCreditsModal } from "@/components/payment/UseCreditsModal";
+import { useUserCredits } from "@/hooks/useUserCredits";
 import {
   Dialog,
   DialogContent,
@@ -92,6 +94,10 @@ export default function GameDetail() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showProfileAlert, setShowProfileAlert] = useState(false);
   const [profileMissingFields, setProfileMissingFields] = useState<string[]>([]);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
+  
+  // Fetch user credits
+  const { credits, isLoading: loadingCredits, refetch: refetchCredits } = useUserCredits();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -275,20 +281,43 @@ export default function GameDetail() {
   const handleLeaveSession = async () => {
     if (!gameData || !id || !user) return;
 
+    // Check if user has a completed payment
+    const currentPlayer = gameData.players.find(p => p.user_id === user.id);
+    const hasPaid = currentPlayer?.isPaid;
+
     setActionLoading(true);
     try {
-      const { error } = await supabase
-        .from("session_players")
-        .delete()
-        .eq("session_id", id)
-        .eq("user_id", user.id);
+      if (hasPaid) {
+        // Use edge function to handle cancellation with credits conversion
+        const { data, error } = await supabase.functions.invoke("cancel-player-participation", {
+          body: { sessionId: id },
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Left session",
-        description: "You have left this game session.",
-      });
+        toast({
+          title: "Left session",
+          description: data?.message || "You have left this game session.",
+        });
+
+        // Refetch credits after cancellation
+        refetchCredits();
+      } else {
+        // Simple delete if no payment
+        const { error } = await supabase
+          .from("session_players")
+          .delete()
+          .eq("session_id", id)
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Left session",
+          description: "You have left this game session.",
+        });
+      }
+      
       navigate(-1);
     } catch (error) {
       console.error("Error leaving session:", error);
@@ -370,21 +399,83 @@ export default function GameDetail() {
   const handleMakePayment = async () => {
     if (!gameData || !id || !user) return;
 
+    // Check if user has credits and show modal
+    if (credits > 0 && !loadingCredits) {
+      setShowCreditsModal(true);
+      return;
+    }
+
+    // No credits available, proceed directly with card payment
+    await processCardPayment(false);
+  };
+
+  const handleUseCredits = async () => {
+    if (!gameData || !id || !user) return;
+    
     setActionLoading(true);
     try {
-      // Call edge function to create Stripe checkout session
+      const pricePerPlayer = gameData.session.court_price / gameData.session.min_players;
+      
+      // If credits cover the full amount, process with credits
+      if (credits >= pricePerPlayer) {
         const { data, error } = await supabase.functions.invoke("create-payment", {
           body: {
             sessionId: id,
             paymentType: "before_session",
             returnUrl: `/games/${id}`,
             origin: window.location.origin,
+            useCredits: true,
           },
         });
+
+        if (error) throw error;
+
+        if (data?.success) {
+          // Payment completed with credits only
+          toast({
+            title: "Payment Complete",
+            description: data.message || "Payment completed using your credits.",
+          });
+          setShowCreditsModal(false);
+          refetchCredits();
+          fetchGameData();
+          return;
+        }
+      }
+
+      // Partial credits or need Stripe checkout
+      await processCardPayment(true);
+    } catch (error) {
+      console.error("Error using credits:", error);
+      toast({
+        title: "Payment Error",
+        description: "Failed to process payment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const processCardPayment = async (useCredits: boolean) => {
+    if (!gameData || !id || !user) return;
+
+    setActionLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-payment", {
+        body: {
+          sessionId: id,
+          paymentType: "before_session",
+          returnUrl: `/games/${id}`,
+          origin: window.location.origin,
+          useCredits,
+        },
+      });
 
       if (error) throw error;
 
       if (data?.url) {
+        setShowCreditsModal(false);
         // Detect if running inside an iframe (preview mode)
         const isInIframe = window.self !== window.top;
         if (isInIframe) {
@@ -395,6 +486,15 @@ export default function GameDetail() {
           // Standalone: redirect in same tab for better mobile UX
           window.location.href = data.url;
         }
+      } else if (data?.success) {
+        // Payment completed with credits only
+        toast({
+          title: "Payment Complete",
+          description: data.message || "Payment completed successfully.",
+        });
+        setShowCreditsModal(false);
+        refetchCredits();
+        fetchGameData();
       } else {
         throw new Error("No payment URL returned");
       }
@@ -1087,6 +1187,17 @@ const getGoogleMapsUrl = (address: string): string => {
             />
           </DialogContent>
         </Dialog>
+
+        {/* Credits Payment Modal */}
+        <UseCreditsModal
+          open={showCreditsModal}
+          onOpenChange={setShowCreditsModal}
+          credits={credits}
+          paymentAmount={pricePerPlayer}
+          onUseCredits={handleUseCredits}
+          onPayWithCard={() => processCardPayment(false)}
+          isLoading={actionLoading}
+        />
       </div>
     </MobileLayout>
   );

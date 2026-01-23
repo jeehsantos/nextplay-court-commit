@@ -44,6 +44,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { nzCities } from "@/data/nzLocations";
 import { useToast } from "@/hooks/use-toast";
 import { useSportCategories } from "@/hooks/useSportCategories";
+import { useUserCredits } from "@/hooks/useUserCredits";
+import { CreditsDisplay } from "@/components/profile/CreditsDisplay";
 
 interface ProfileData {
   full_name: string;
@@ -67,6 +69,9 @@ export default function Profile() {
   
   // Fetch sports from database - NO FALLBACKS
   const { data: sportCategories = [], isLoading: loadingSports } = useSportCategories();
+  
+  // Fetch user credits
+  const { credits, isLoading: loadingCredits } = useUserCredits();
   
   // Password change state
   const [passwordData, setPasswordData] = useState({
@@ -325,6 +330,9 @@ export default function Profile() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Credits Display */}
+        <CreditsDisplay credits={credits} isLoading={loadingCredits} />
 
         {/* Collapsible Sections */}
         <Card>
