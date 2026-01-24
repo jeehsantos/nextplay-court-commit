@@ -1,51 +1,50 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import type { Database } from "@/integrations/supabase/types";
 
 type Group = Database["public"]["Tables"]["groups"]["Row"];
 
+interface UserGroupsResult {
+  groups: Group[];
+  isOrganizer: boolean;
+}
+
 export function useUserGroups() {
   const { user } = useAuth();
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isOrganizer, setIsOrganizer] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchUserGroups();
-    } else {
-      setGroups([]);
-      setIsOrganizer(false);
-      setLoading(false);
-    }
-  }, [user]);
+  const { data, isLoading: loading, refetch } = useQuery<UserGroupsResult>({
+    queryKey: ["user-groups", user?.id],
+    queryFn: async () => {
+      if (!user) {
+        return { groups: [], isOrganizer: false };
+      }
 
-  const fetchUserGroups = async () => {
-    if (!user) return;
-
-    setLoading(true);
-    try {
       const { data, error } = await supabase
         .from("groups")
         .select("*")
         .eq("organizer_id", user.id)
         .eq("is_active", true);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching user groups:", error);
+        return { groups: [], isOrganizer: false };
+      }
 
-      setGroups(data || []);
-      setIsOrganizer((data || []).length > 0);
-    } catch (error) {
-      console.error("Error fetching user groups:", error);
-    } finally {
-      setLoading(false);
-    }
+      return {
+        groups: data || [],
+        isOrganizer: (data || []).length > 0,
+      };
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  return {
+    groups: data?.groups || [],
+    loading,
+    isOrganizer: data?.isOrganizer || false,
+    refetch,
   };
-
-  const refetch = () => {
-    fetchUserGroups();
-  };
-
-  return { groups, loading, isOrganizer, refetch };
 }

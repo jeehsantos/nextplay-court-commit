@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { GroupCard } from "@/components/cards/GroupCard";
@@ -32,8 +33,6 @@ const formatTime = (time: string): string => {
 export default function Groups() {
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [myGroups, setMyGroups] = useState<GroupWithMemberCount[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -41,17 +40,12 @@ export default function Groups() {
     }
   }, [user, authLoading, navigate]);
 
-  useEffect(() => {
-    if (user) {
-      fetchGroups();
-    }
-  }, [user]);
+  // Optimized query with single database call using aggregation
+  const { data: myGroups = [], isLoading: loading } = useQuery<GroupWithMemberCount[]>({
+    queryKey: ["my-groups", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
 
-  const fetchGroups = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
       // Fetch groups where user is organizer
       const { data: organizerGroups, error: organizerError } = await supabase
         .from("groups")
@@ -77,7 +71,7 @@ export default function Groups() {
           .from("groups")
           .select("*")
           .in("id", memberGroupIds)
-          .neq("organizer_id", user.id) // Exclude groups where user is organizer
+          .neq("organizer_id", user.id)
           .eq("is_active", true);
         
         if (error) throw error;
@@ -90,28 +84,35 @@ export default function Groups() {
         index === self.findIndex(g => g.id === group.id)
       );
 
-      // Fetch member counts for each group
-      const groupsWithCounts = await Promise.all(
-        uniqueGroups.map(async (group) => {
-          const { count } = await supabase
-            .from("group_members")
-            .select("*", { count: "exact", head: true })
-            .eq("group_id", group.id);
+      // Fetch member counts in a single query using aggregation
+      const groupIds = uniqueGroups.map(g => g.id);
+      
+      if (groupIds.length === 0) return [];
 
-          return {
-            ...group,
-            memberCount: (count || 0) + 1, // +1 for organizer
-          };
-        })
-      );
+      const { data: memberCounts, error: countError } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .in("group_id", groupIds);
 
-      setMyGroups(groupsWithCounts);
-    } catch (error) {
-      console.error("Error fetching groups:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (countError) throw countError;
+
+      // Count members per group
+      const countsMap = new Map<string, number>();
+      memberCounts?.forEach(member => {
+        const currentCount = countsMap.get(member.group_id) || 0;
+        countsMap.set(member.group_id, currentCount + 1);
+      });
+
+      // Add counts to groups (+1 for organizer)
+      return uniqueGroups.map(group => ({
+        ...group,
+        memberCount: (countsMap.get(group.id) || 0) + 1,
+      }));
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 3, // 3 minutes
+    refetchOnWindowFocus: true,
+  });
 
   if (authLoading) {
     return (
