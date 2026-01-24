@@ -12,9 +12,16 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Use anon key for auth verification
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+  );
+
+  // Use service role key to bypass RLS for venue query
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
   try {
@@ -33,16 +40,20 @@ serve(async (req) => {
     }
     const user = userData.user;
 
-    // Get venue with stripe account id
-    const { data: venue, error: venueError } = await supabaseClient
+    // Use admin client to bypass RLS and get venue with stripe account id
+    const { data: venue, error: venueError } = await supabaseAdmin
       .from("venues")
-      .select("stripe_account_id, name")
+      .select("stripe_account_id, name, owner_id")
       .eq("id", venueId)
-      .eq("owner_id", user.id)
       .single();
 
     if (venueError || !venue) {
-      throw new Error("Venue not found or you don't have permission");
+      throw new Error("Venue not found");
+    }
+
+    // Verify user owns this venue
+    if (venue.owner_id !== user.id) {
+      throw new Error("You don't have permission to view this venue's payment settings");
     }
 
     if (!venue.stripe_account_id) {
@@ -62,6 +73,8 @@ serve(async (req) => {
     });
 
     const account = await stripe.accounts.retrieve(venue.stripe_account_id);
+
+    console.log(`Stripe account ${account.id} status: details_submitted=${account.details_submitted}, payouts_enabled=${account.payouts_enabled}, charges_enabled=${account.charges_enabled}`);
 
     return new Response(JSON.stringify({
       connected: true,
