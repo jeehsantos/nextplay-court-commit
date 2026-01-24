@@ -3,7 +3,6 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { CourtCard } from "./CourtCard";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { Database } from "@/integrations/supabase/types";
 
 type Court = Database["public"]["Tables"]["courts"]["Row"];
@@ -22,7 +21,7 @@ interface MobileCourtSheetProps {
 
 const ITEMS_PER_PAGE = 14;
 const BOTTOM_NAV_HEIGHT = 64; // h-16 = 64px footer nav height
-const PAGINATION_CONTROLS_HEIGHT = 80; // Approximate height of pagination controls
+const PAGINATION_CONTROLS_HEIGHT = 88; // Height of pagination controls with padding
 
 export function MobileCourtSheet({
   courts,
@@ -32,7 +31,6 @@ export function MobileCourtSheet({
 }: MobileCourtSheetProps) {
   const [snap, setSnap] = useState<number | string | null>(0.15);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showPagination, setShowPagination] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const totalPages = useMemo(() => Math.ceil(courts.length / ITEMS_PER_PAGE), [courts.length]);
@@ -41,18 +39,6 @@ export function MobileCourtSheet({
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return courts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [courts, currentPage]);
-
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    const scrollTop = target.scrollTop;
-    const scrollHeight = target.scrollHeight;
-    const clientHeight = target.clientHeight;
-    
-    // Always show pagination when there are multiple pages
-    // Hide only when drawer is at minimum snap point
-    const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
-    setShowPagination(scrollPercentage > 0.5 || scrollTop > 50);
-  }, []);
 
   const handlePrevPage = useCallback(() => {
     if (currentPage > 1) {
@@ -107,7 +93,6 @@ export function MobileCourtSheet({
           {/* Scrollable cards list with improved gesture handling */}
           <div 
             ref={scrollContainerRef}
-            onScroll={handleScroll}
             className="flex-1 overflow-y-auto min-h-0"
             style={{
               WebkitOverflowScrolling: 'touch',
@@ -119,8 +104,8 @@ export function MobileCourtSheet({
               className="p-4 space-y-4"
               style={{
                 paddingBottom: showPaginationControls 
-                  ? `calc(${PAGINATION_CONTROLS_HEIGHT + BOTTOM_NAV_HEIGHT + 32}px + env(safe-area-inset-bottom, 0px))` 
-                  : `calc(${BOTTOM_NAV_HEIGHT + 48}px + env(safe-area-inset-bottom, 0px))`
+                  ? `${PAGINATION_CONTROLS_HEIGHT + BOTTOM_NAV_HEIGHT + 16}px` 
+                  : `${BOTTOM_NAV_HEIGHT + 16}px`
               }}
             >
               {loading ? (
@@ -150,15 +135,13 @@ export function MobileCourtSheet({
             </div>
           </div>
 
-          {/* Pagination controls - positioned above footer nav */}
+          {/* Pagination controls - Fixed at bottom above footer nav */}
           {showPaginationControls && (
             <div 
-              className={cn(
-                "absolute left-0 right-0 flex items-center justify-center gap-6 py-4 px-6 bg-gradient-to-t from-background via-background to-transparent transition-opacity duration-300",
-                showPagination ? "opacity-100" : "opacity-0 pointer-events-none"
-              )}
+              className="absolute left-0 right-0 flex items-center justify-center gap-6 py-4 px-6 bg-background border-t border-border"
               style={{ 
-                bottom: `calc(${BOTTOM_NAV_HEIGHT}px + env(safe-area-inset-bottom, 0px) + 8px)`,
+                bottom: `${BOTTOM_NAV_HEIGHT}px`,
+                zIndex: 10,
               }}
             >
               <Button
@@ -171,7 +154,7 @@ export function MobileCourtSheet({
                 <ChevronLeft className="h-5 w-5" />
               </Button>
               
-              <span className="text-sm font-medium text-muted-foreground min-w-[60px] text-center">
+              <span className="text-sm font-medium text-foreground min-w-[60px] text-center">
                 {currentPage} / {totalPages}
               </span>
               

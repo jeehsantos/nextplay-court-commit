@@ -345,8 +345,8 @@ export default function Courts() {
           </div>
 
           {/* Floating search header - above map */}
-          <div className="absolute top-4 left-4 right-4 z-[500]">
-            <div className="flex items-center gap-2 bg-background rounded-full px-4 py-3 shadow-lg border border-border">
+          <div className="absolute top-4 left-4 right-4 z-[500] pointer-events-none">
+            <div className="flex items-center gap-2 bg-background rounded-full px-4 py-3 shadow-lg border border-border pointer-events-auto">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <input
                 type="text"
@@ -354,18 +354,22 @@ export default function Courts() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-1 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground min-w-0"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
               />
               {searchQuery ? (
                 <button 
                   onClick={() => setSearchQuery("")}
-                  className="h-6 w-6 rounded-full bg-muted flex items-center justify-center"
+                  className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0"
                 >
                   <span className="text-xs">✕</span>
                 </button>
               ) : (
                 <button 
                   onClick={() => setShowMobileFilters(true)}
-                  className="h-8 w-8 rounded-full bg-muted flex items-center justify-center relative"
+                  className="h-8 w-8 rounded-full bg-muted flex items-center justify-center relative shrink-0"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   {activeFiltersCount > 0 && (

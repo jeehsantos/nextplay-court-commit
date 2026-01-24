@@ -34,6 +34,7 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover }: CourtsM
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const hasInitializedBoundsRef = useRef(false);
 
   // Get courts with coordinates (real or city-based fallback)
   const courtsWithPosition = useMemo(() => {
@@ -66,6 +67,10 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover }: CourtsM
       center: [nzCenter.lat, nzCenter.lng],
       zoom: 5,
       zoomControl: false,
+      scrollWheelZoom: true,
+      touchZoom: true,
+      doubleClickZoom: true,
+      boxZoom: true,
     });
 
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
@@ -80,6 +85,7 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover }: CourtsM
         mapRef.current.remove();
         mapRef.current = null;
       }
+      hasInitializedBoundsRef.current = false;
     };
   }, []);
 
@@ -113,8 +119,8 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover }: CourtsM
       markersRef.current.set(court.id, marker);
     });
 
-    // Fit bounds
-    if (courtsWithPosition.length > 0) {
+    // Only fit bounds on initial load, not on every filter change
+    if (!hasInitializedBoundsRef.current && courtsWithPosition.length > 0) {
       const courtsWithRealCoords = courtsWithPosition.filter(
         (c) => c.venues?.latitude && c.venues?.longitude
       );
@@ -128,6 +134,7 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover }: CourtsM
         const cityCoords = getCityCoordinates(courtsWithPosition[0].venues.city);
         mapRef.current.setView([cityCoords.lat, cityCoords.lng], 11);
       }
+      hasInitializedBoundsRef.current = true;
     }
   }, [courtsWithPosition, highlightedCourtId, onMarkerHover]);
 
