@@ -103,31 +103,41 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover }: CourtsM
         icon: createPriceIcon(court.hourly_rate, court.id === highlightedCourtId),
       });
 
-      // Use click to open popup - prevents jumping on hover
-      marker.on("click", () => {
-        marker.openPopup();
-      });
-
-      // Build popup with image
+      // Build popup with image - escape quotes properly
       const venueImage = court.venues?.photo_url || '/placeholder.svg';
+      const courtName = court.name.replace(/'/g, "\\'");
+      const venueName = court.venues?.name?.replace(/'/g, "\\'") || '';
+      const cityName = court.venues?.city?.replace(/'/g, "\\'") || '';
+      
       const popupContent = `
-        <a href="/courts/${court.id}" class="block hover:opacity-90 transition-opacity" style="min-width: 200px;">
-          <img 
-            src="${venueImage}" 
-            alt="${court.name}"
-            class="w-full h-32 object-cover rounded-lg mb-2"
-            onerror="this.src='/placeholder.svg'"
-          />
-          <div class="font-semibold text-base">${court.name}</div>
-          ${court.venues ? `<div class="text-sm text-gray-600 mt-1">${court.venues.name}</div>` : ""}
-          ${court.venues?.city ? `<div class="text-xs text-gray-500">${court.venues.city}</div>` : ""}
-          <div class="text-sm font-bold text-primary mt-2">$${court.hourly_rate} NZD/hour</div>
-        </a>
+        <div style="min-width: 200px;">
+          <a href="/courts/${court.id}" style="display: block; text-decoration: none; color: inherit;">
+            <img 
+              src="${venueImage}" 
+              alt="${courtName}"
+              style="width: 100%; height: 128px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;"
+              onerror="this.src='/placeholder.svg'"
+            />
+            <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">${courtName}</div>
+            ${venueName ? `<div style="font-size: 14px; color: #666; margin-bottom: 2px;">${venueName}</div>` : ''}
+            ${cityName ? `<div style="font-size: 12px; color: #999;">${cityName}</div>` : ''}
+            <div style="font-size: 14px; font-weight: 700; color: hsl(174 72% 40%); margin-top: 8px;">$${court.hourly_rate} NZD/hour</div>
+          </a>
+        </div>
       `;
       
       marker.bindPopup(popupContent, {
         maxWidth: 250,
-        className: 'court-popup'
+        minWidth: 200,
+        className: 'court-popup',
+        closeButton: true,
+        autoClose: false,
+        closeOnClick: false
+      });
+
+      // Open popup on click
+      marker.on("click", () => {
+        marker.openPopup();
       });
 
       marker.addTo(mapRef.current!);

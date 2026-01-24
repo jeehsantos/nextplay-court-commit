@@ -21,7 +21,8 @@ interface MobileCourtSheetProps {
 
 const ITEMS_PER_PAGE = 14;
 const BOTTOM_NAV_HEIGHT = 64; // h-16 = 64px footer nav height
-const PAGINATION_CONTROLS_HEIGHT = 88; // Height of pagination controls with padding
+const PAGINATION_CONTROLS_HEIGHT = 72; // Actual height of pagination bar (py-4 = 32px + content ~40px)
+const EXTRA_SPACING = 24; // Extra spacing for visual comfort
 
 export function MobileCourtSheet({
   courts,
@@ -57,6 +58,11 @@ export function MobileCourtSheet({
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage < totalPages;
   const showPaginationControls = totalPages > 1;
+  
+  // Calculate proper bottom padding
+  const contentBottomPadding = showPaginationControls 
+    ? PAGINATION_CONTROLS_HEIGHT + EXTRA_SPACING
+    : BOTTOM_NAV_HEIGHT + EXTRA_SPACING;
 
   return (
     <DrawerPrimitive.Root 
@@ -98,16 +104,10 @@ export function MobileCourtSheet({
               WebkitOverflowScrolling: 'touch',
               overscrollBehaviorY: 'contain',
               touchAction: 'pan-y',
+              paddingBottom: `${contentBottomPadding}px`,
             }}
           >
-            <div 
-              className="p-4 space-y-4"
-              style={{
-                paddingBottom: showPaginationControls 
-                  ? `${PAGINATION_CONTROLS_HEIGHT + BOTTOM_NAV_HEIGHT + 16}px` 
-                  : `${BOTTOM_NAV_HEIGHT + 16}px`
-              }}
-            >
+            <div className="p-4 space-y-4">
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="animate-pulse">
@@ -135,19 +135,18 @@ export function MobileCourtSheet({
             </div>
           </div>
 
-          {/* Pagination controls - Fixed at bottom above footer nav */}
+          {/* Pagination controls - Fixed at bottom, inside drawer */}
           {showPaginationControls && (
             <div 
-              className="absolute left-0 right-0 flex items-center justify-center gap-6 py-4 px-6 bg-background border-t border-border"
+              className="shrink-0 flex items-center justify-center gap-6 py-3 px-6 bg-background border-t border-border"
               style={{ 
-                bottom: `${BOTTOM_NAV_HEIGHT}px`,
                 zIndex: 10,
               }}
             >
               <Button
                 variant="outline"
                 size="icon"
-                className="h-12 w-12 rounded-full shadow-lg border-2 disabled:opacity-40"
+                className="h-10 w-10 rounded-full shadow-lg border-2 disabled:opacity-40"
                 onClick={handlePrevPage}
                 disabled={!hasPrevPage}
               >
@@ -161,7 +160,7 @@ export function MobileCourtSheet({
               <Button
                 variant="outline"
                 size="icon"
-                className="h-12 w-12 rounded-full shadow-lg border-2 disabled:opacity-40"
+                className="h-10 w-10 rounded-full shadow-lg border-2 disabled:opacity-40"
                 onClick={handleNextPage}
                 disabled={!hasNextPage}
               >
