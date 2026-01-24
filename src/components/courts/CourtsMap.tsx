@@ -103,17 +103,32 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover }: CourtsM
         icon: createPriceIcon(court.hourly_rate, court.id === highlightedCourtId),
       });
 
-      marker.on("mouseover", () => onMarkerHover?.(court.id));
-      marker.on("mouseout", () => onMarkerHover?.(null));
+      // Use click to open popup - prevents jumping on hover
+      marker.on("click", () => {
+        marker.openPopup();
+      });
 
+      // Build popup with image
+      const venueImage = court.venues?.photo_url || '/placeholder.svg';
       const popupContent = `
-        <a href="/courts/${court.id}" class="block p-1">
-          <div class="font-semibold">${court.name}</div>
-          ${court.venues ? `<div class="text-sm text-gray-500">${court.venues.name}</div>` : ""}
-          <div class="text-sm font-medium mt-1">$${court.hourly_rate} NZD/hr</div>
+        <a href="/courts/${court.id}" class="block hover:opacity-90 transition-opacity" style="min-width: 200px;">
+          <img 
+            src="${venueImage}" 
+            alt="${court.name}"
+            class="w-full h-32 object-cover rounded-lg mb-2"
+            onerror="this.src='/placeholder.svg'"
+          />
+          <div class="font-semibold text-base">${court.name}</div>
+          ${court.venues ? `<div class="text-sm text-gray-600 mt-1">${court.venues.name}</div>` : ""}
+          ${court.venues?.city ? `<div class="text-xs text-gray-500">${court.venues.city}</div>` : ""}
+          <div class="text-sm font-bold text-primary mt-2">$${court.hourly_rate} NZD/hour</div>
         </a>
       `;
-      marker.bindPopup(popupContent);
+      
+      marker.bindPopup(popupContent, {
+        maxWidth: 250,
+        className: 'court-popup'
+      });
 
       marker.addTo(mapRef.current!);
       markersRef.current.set(court.id, marker);
@@ -136,9 +151,9 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover }: CourtsM
       }
       hasInitializedBoundsRef.current = true;
     }
-  }, [courtsWithPosition, highlightedCourtId, onMarkerHover]);
+  }, [courtsWithPosition, highlightedCourtId]);
 
-  // Update marker icons when highlighted court changes
+  // Update marker icons when highlighted court changes (without recreating markers)
   useEffect(() => {
     markersRef.current.forEach((marker, courtId) => {
       const court = courtsWithPosition.find((c) => c.id === courtId);
