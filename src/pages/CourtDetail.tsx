@@ -1273,6 +1273,7 @@ export default function CourtDetail() {
             equipment={venueEquipment}
             selectedEquipment={selectedEquipment}
             onEquipmentChange={setSelectedEquipment}
+            paymentTiming={court.payment_timing}
           />
         )}
 

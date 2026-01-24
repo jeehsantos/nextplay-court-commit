@@ -72,6 +72,7 @@ interface BookingWizardProps {
   equipment: Equipment[];
   selectedEquipment: SelectedEquipment[];
   onEquipmentChange: (equipment: SelectedEquipment[]) => void;
+  paymentTiming: "at_booking" | "before_session" | null;
 }
 
 const STEPS = [
@@ -98,6 +99,7 @@ export function BookingWizard({
   equipment,
   selectedEquipment,
   onEquipmentChange,
+  paymentTiming,
 }: BookingWizardProps) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
@@ -359,6 +361,19 @@ export function BookingWizard({
           {/* Step 1: Terms & Rules */}
           {currentStep === 1 && (
             <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Payment Timing Alert */}
+              {paymentTiming === "at_booking" && (
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-medium text-amber-900 dark:text-amber-100">Payment Required at Booking</p>
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      This court requires full payment at the time of booking. You'll need to pay the complete amount to confirm your reservation.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <h4 className="font-semibold flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary" />
@@ -550,6 +565,7 @@ export function BookingWizard({
                 paymentType={paymentType}
                 onPaymentTypeChange={setPaymentType}
                 courtPrice={totalPrice}
+                paymentTiming={paymentTiming}
               />
 
               {/* Group info */}
