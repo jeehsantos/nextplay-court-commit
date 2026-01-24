@@ -398,10 +398,29 @@ export default function ManagerSettings() {
                 {/* Status Display */}
                 {connectStatus?.connected ? (
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                      <span className="font-medium">Stripe Account Connected</span>
-                    </div>
+                    {/* Fully Connected Success State */}
+                    {connectStatus.details_submitted && connectStatus.charges_enabled && connectStatus.payouts_enabled ? (
+                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-800 flex items-center justify-center">
+                            <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-green-800 dark:text-green-200">
+                              Ready to Receive Payments
+                            </p>
+                            <p className="text-sm text-green-700 dark:text-green-300">
+                              Your Stripe account is fully configured. Payments from bookings will be transferred to your bank account.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <span className="font-medium">Stripe Account Connected</span>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="flex items-center gap-2">
@@ -445,13 +464,15 @@ export default function ManagerSettings() {
                           Continue Setup
                         </Button>
                       )}
-                      {connectStatus.details_submitted && (
-                        <Button onClick={handleOpenDashboard} disabled={actionLoading}>
-                          {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open Stripe Dashboard
-                        </Button>
-                      )}
+                      <Button 
+                        variant={connectStatus.details_submitted ? "default" : "outline"} 
+                        onClick={handleOpenDashboard} 
+                        disabled={actionLoading}
+                      >
+                        {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open Stripe Dashboard
+                      </Button>
                     </div>
                   </div>
                 ) : (

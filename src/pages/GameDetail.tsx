@@ -822,6 +822,33 @@ const getGoogleMapsUrl = (address: string): string => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Stripe Connect Warning for Court Manager */}
+            {isCourtManager && court?.venues && !court.venues.stripe_account_id && (
+              <Card className="border-destructive/50 bg-destructive/5">
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-destructive">Payment Setup Required</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Your venue hasn't connected a Stripe account yet. You won't receive payouts for bookings until you complete the setup.
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-3 border-destructive/30 hover:bg-destructive/10"
+                        onClick={() => navigate("/manager/settings")}
+                      >
+                        Connect Stripe Account
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Court Rules */}
