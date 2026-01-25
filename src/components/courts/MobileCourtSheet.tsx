@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { CourtCard } from "./CourtCard";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,6 @@ interface MobileCourtSheetProps {
 const ITEMS_PER_PAGE = 14;
 const BOTTOM_NAV_HEIGHT = 64; // h-16 = 64px footer nav height
 const PAGINATION_CONTROLS_HEIGHT = 72; // Actual height of pagination bar (py-4 = 32px + content ~40px)
-const EXTRA_SPACING = 24; // Extra spacing for visual comfort
 
 export function MobileCourtSheet({
   courts,
@@ -61,12 +60,9 @@ export function MobileCourtSheet({
   
   // Calculate proper bottom padding
   const contentBottomPadding = showPaginationControls 
-    ? PAGINATION_CONTROLS_HEIGHT + EXTRA_SPACING
-    : BOTTOM_NAV_HEIGHT + EXTRA_SPACING;
+    ? PAGINATION_CONTROLS_HEIGHT
+    : BOTTOM_NAV_HEIGHT;
 
-    useEffect(()=> {
-      console.log("lalaland", showPaginationControls)
-    }, [showPaginationControls])
   return (
     <DrawerPrimitive.Root 
       open={true} 
