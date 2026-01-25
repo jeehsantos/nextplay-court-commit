@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { CourtCard } from "./CourtCard";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export function MobileCourtSheet({
 }: MobileCourtSheetProps) {
   const [snap, setSnap] = useState<number | string | null>(0.15);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showPagination, setShowPagination] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const totalPages = useMemo(() => Math.ceil(courts.length / ITEMS_PER_PAGE), [courts.length]);
@@ -40,28 +41,44 @@ export function MobileCourtSheet({
     return courts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [courts, currentPage]);
 
+  // Handle scroll to show/hide pagination
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer || totalPages <= 1) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+      const scrolledToBottom = scrollHeight - scrollTop - clientHeight < 200; // Show when within 200px of bottom
+      setShowPagination(scrolledToBottom);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    // Check initial state
+    handleScroll();
+
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [totalPages]);
+
   const handlePrevPage = useCallback(() => {
     if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1);
+      setCurrentPage((prev) => prev - 1);
       scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [currentPage]);
 
   const handleNextPage = useCallback(() => {
     if (currentPage < totalPages) {
-      setCurrentPage(prev => prev + 1);
+      setCurrentPage((prev) => prev + 1);
       scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [currentPage, totalPages]);
 
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage < totalPages;
-  const showPaginationControls = totalPages > 1;
+  const shouldShowPaginationControls = totalPages > 1 && showPagination;
   
   // Calculate proper bottom padding
-  const contentBottomPadding = showPaginationControls 
-    ? PAGINATION_CONTROLS_HEIGHT
-    : BOTTOM_NAV_HEIGHT;
+  const contentBottomPadding = BOTTOM_NAV_HEIGHT;
 
   return (
     <DrawerPrimitive.Root 
@@ -134,11 +151,11 @@ export function MobileCourtSheet({
             </div>
           </div>
 
-          {/* Pagination controls - Fixed at bottom, inside drawer */}
-          {showPaginationControls && (
+          {/* Pagination controls - Fixed at bottom, appears on scroll */}
+          {shouldShowPaginationControls && (
             <div 
-              id = "nextPageCourt"
-              className="shrink-0 flex items-center justify-center gap-6 py-3 px-6 bg-background border-t border-border mb-[350px] md:mb-0"
+              id="nextPageCourt"
+              className="fixed bottom-0 left-0 right-0 flex items-center justify-center gap-6 py-4 px-6 bg-background border-t border-border"
               style={{ 
                 zIndex: 10,
               }}
