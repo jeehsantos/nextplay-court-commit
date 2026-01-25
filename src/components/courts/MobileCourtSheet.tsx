@@ -21,7 +21,7 @@ interface MobileCourtSheetProps {
 
 const ITEMS_PER_PAGE = 14;
 const BOTTOM_NAV_HEIGHT = 64; // h-16 = 64px footer nav height
-const PAGINATION_HEIGHT = 92; // py-4 (32px) + button height (40px)
+const PAGINATION_HEIGHT = 192; // py-4 (32px) + button height (40px)
 
 export function MobileCourtSheet({
   courts,
