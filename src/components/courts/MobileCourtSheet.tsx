@@ -151,13 +151,14 @@ export function MobileCourtSheet({
             </div>
           </div>
 
-          {/* Pagination controls - Fixed at bottom, appears on scroll */}
+          {/* Pagination controls - Fixed at bottom above nav, appears on scroll */}
           {shouldShowPaginationControls && (
             <div 
               id="nextPageCourt"
-              className="fixed bottom-0 left-0 right-0 flex items-center justify-center gap-6 py-4 px-6 bg-background border-t border-border"
+              className="fixed left-0 right-0 flex items-center justify-center gap-6 py-4 px-6 bg-background border-t border-border shadow-lg"
               style={{ 
                 zIndex: 10,
+                bottom: '330px',
               }}
             >
               <Button
