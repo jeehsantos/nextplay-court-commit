@@ -21,7 +21,6 @@ interface MobileCourtSheetProps {
 
 const ITEMS_PER_PAGE = 14;
 const BOTTOM_NAV_HEIGHT = 64; // h-16 = 64px footer nav height
-const PAGINATION_CONTROLS_HEIGHT = 72; // Actual height of pagination bar (py-4 = 32px + content ~40px)
 
 export function MobileCourtSheet({
   courts,
@@ -31,7 +30,6 @@ export function MobileCourtSheet({
 }: MobileCourtSheetProps) {
   const [snap, setSnap] = useState<number | string | null>(0.15);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showPagination, setShowPagination] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const totalPages = useMemo(() => Math.ceil(courts.length / ITEMS_PER_PAGE), [courts.length]);
@@ -40,24 +38,6 @@ export function MobileCourtSheet({
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return courts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [courts, currentPage]);
-
-  // Handle scroll to show/hide pagination
-  useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-    if (!scrollContainer || totalPages <= 1) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-      const scrolledToBottom = scrollHeight - scrollTop - clientHeight < 200; // Show when within 200px of bottom
-      setShowPagination(scrolledToBottom);
-    };
-
-    scrollContainer.addEventListener('scroll', handleScroll);
-    // Check initial state
-    handleScroll();
-
-    return () => scrollContainer.removeEventListener('scroll', handleScroll);
-  }, [totalPages]);
 
   const handlePrevPage = useCallback(() => {
     if (currentPage > 1) {
@@ -75,7 +55,6 @@ export function MobileCourtSheet({
 
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage < totalPages;
-  const shouldShowPaginationControls = totalPages > 1 && showPagination;
   
   // Calculate proper bottom padding
   const contentBottomPadding = BOTTOM_NAV_HEIGHT;
@@ -137,55 +116,53 @@ export function MobileCourtSheet({
                   <p className="text-muted-foreground">No courts found</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {paginatedCourts.map((court) => (
-                    <CourtCard
-                      key={court.id}
-                      court={court}
-                      onHover={onHighlight}
-                      isHighlighted={court.id === highlightedCourtId}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 gap-4">
+                    {paginatedCourts.map((court) => (
+                      <CourtCard
+                        key={court.id}
+                        court={court}
+                        onHover={onHighlight}
+                        isHighlighted={court.id === highlightedCourtId}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Pagination controls - Inside scrollable content, after cards */}
+                  {totalPages > 1 && (
+                    <div 
+                      id="nextPageCourt"
+                      className="flex items-center justify-center gap-6 py-4 px-6 mt-4"
+                    >
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10 rounded-full shadow-lg border-2 disabled:opacity-40"
+                        onClick={handlePrevPage}
+                        disabled={!hasPrevPage}
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </Button>
+                      
+                      <span className="text-sm font-medium text-foreground min-w-[60px] text-center">
+                        {currentPage} / {totalPages}
+                      </span>
+                      
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10 rounded-full shadow-lg border-2 disabled:opacity-40"
+                        onClick={handleNextPage}
+                        disabled={!hasNextPage}
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
-
-          {/* Pagination controls - Fixed at bottom above nav, appears on scroll */}
-          {shouldShowPaginationControls && (
-            <div 
-              id="nextPageCourt"
-              className="fixed left-0 right-0 flex items-center justify-center gap-6 py-4 px-6 bg-background border-t border-border shadow-lg"
-              style={{ 
-                zIndex: 10,
-                bottom: '280px',
-              }}
-            >
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-10 w-10 rounded-full shadow-lg border-2 disabled:opacity-40"
-                onClick={handlePrevPage}
-                disabled={!hasPrevPage}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              
-              <span className="text-sm font-medium text-foreground min-w-[60px] text-center">
-                {currentPage} / {totalPages}
-              </span>
-              
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-10 w-10 rounded-full shadow-lg border-2 disabled:opacity-40"
-                onClick={handleNextPage}
-                disabled={!hasNextPage}
-              >
-                <ChevronRight className="h-5 w-5" />
-              </Button>
-            </div>
-          )}
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
     </DrawerPrimitive.Root>
