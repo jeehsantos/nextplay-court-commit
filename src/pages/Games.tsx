@@ -98,7 +98,8 @@ export default function Games() {
           courts (
             *,
             venues (*)
-          )
+          ),
+          sport_categories (*)
         `)
         .eq("is_cancelled", false);
 
@@ -139,10 +140,11 @@ export default function Games() {
           const group = session.groups;
           const court = session.courts;
           
-          // Enrich with sport category data
-          const sportCategory = group?.sport_type 
-            ? sportCategoriesMap.get(group.sport_type) 
-            : undefined;
+          // Use sport category directly from session (preferred) or fallback to group's sport_type
+          let sportCategory = (session as any).sport_categories;
+          if (!sportCategory && group?.sport_type) {
+            sportCategory = sportCategoriesMap.get(group.sport_type);
+          }
 
           // Calculate end time
           const [hours, minutes] = session.start_time.split(":").map(Number);

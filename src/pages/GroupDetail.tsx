@@ -125,7 +125,8 @@ export default function GroupDetail() {
           courts (
             *,
             venues (*)
-          )
+          ),
+          sport_categories (*)
         `)
         .eq("group_id", id)
         .eq("is_cancelled", false)
