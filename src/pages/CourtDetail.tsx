@@ -503,6 +503,7 @@ export default function CourtDetail() {
           payment_deadline: paymentDeadline.toISOString(),
           state: "protected",
           payment_type: paymentType,
+          sport_category_id: sportCategoryId,
         })
         .select()
         .single();

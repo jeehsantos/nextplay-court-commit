@@ -118,7 +118,7 @@ export default function GameDetail() {
 
     setLoading(true);
     try {
-      // Fetch session with court and venue
+      // Fetch session with court, venue, and sport category
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
         .select(`
@@ -126,7 +126,8 @@ export default function GameDetail() {
           courts (
             *,
             venues (*)
-          )
+          ),
+          sport_categories (*)
         `)
         .eq("id", id)
         .maybeSingle();
@@ -147,10 +148,11 @@ export default function GameDetail() {
 
       if (groupError) throw groupError;
 
-      // Fetch sport category for the group's sport type
-      const sportCategory = groupData?.sport_type 
-        ? await getSportCategory(groupData.sport_type)
-        : null;
+      // Use sport category directly from session (preferred) or fallback to group's sport_type
+      let sportCategory = (sessionData as any).sport_categories as SportCategory | null;
+      if (!sportCategory && groupData?.sport_type) {
+        sportCategory = await getSportCategory(groupData.sport_type);
+      }
 
       // Fetch players with profiles
       const { data: playersData } = await supabase

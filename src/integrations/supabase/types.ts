@@ -738,6 +738,7 @@ export type Database = {
             | null
           session_date: string
           session_type: Database["public"]["Enums"]["session_type"] | null
+          sport_category_id: string | null
           start_time: string
           state: Database["public"]["Enums"]["session_state"]
           updated_at: string
@@ -760,6 +761,7 @@ export type Database = {
             | null
           session_date: string
           session_type?: Database["public"]["Enums"]["session_type"] | null
+          sport_category_id?: string | null
           start_time: string
           state?: Database["public"]["Enums"]["session_state"]
           updated_at?: string
@@ -782,6 +784,7 @@ export type Database = {
             | null
           session_date?: string
           session_type?: Database["public"]["Enums"]["session_type"] | null
+          sport_category_id?: string | null
           start_time?: string
           state?: Database["public"]["Enums"]["session_state"]
           updated_at?: string
@@ -799,6 +802,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_sport_category_id_fkey"
+            columns: ["sport_category_id"]
+            isOneToOne: false
+            referencedRelation: "sport_categories"
             referencedColumns: ["id"]
           },
         ]
