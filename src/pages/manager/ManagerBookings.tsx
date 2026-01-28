@@ -11,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
   Calendar, 
   MapPin, 
@@ -26,6 +28,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Booking {
   id: string;
@@ -82,6 +85,7 @@ export default function ManagerBookings() {
   const [loading, setLoading] = useState(true);
   const [selectedVenue, setSelectedVenue] = useState<string>("all");
   const [selectedCourt, setSelectedCourt] = useState<string>("all");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<BookingStatus>("active");
 
   useEffect(() => {
@@ -176,17 +180,18 @@ export default function ManagerBookings() {
       // Get profiles for direct bookings
       const userIds = (bookingsData || [])
         .filter(b => b.booked_by_user_id && !b.booked_by_session_id)
-        .map(b => b.booked_by_user_id);
+        .map(b => b.booked_by_user_id)
+        .filter((id): id is string => id !== null);
 
       let profilesMap: Record<string, any> = {};
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
           .from("profiles")
-          .select("user_id, full_name")
+          .select("id, user_id, full_name")
           .in("user_id", userIds);
 
         profilesData?.forEach(p => {
-          profilesMap[p.user_id] = p;
+          profilesMap[p.user_id] = { full_name: p.full_name };
         });
       }
 
@@ -216,12 +221,11 @@ export default function ManagerBookings() {
     setSelectedCourt("all");
   }, [selectedVenue]);
 
-  // Filter bookings based on status, venue, and court
+  // Filter bookings based on status, venue, court, and date
   const filteredBookings = useMemo(() => {
     return bookings.filter(booking => {
       // Status filter
       const isSessionCancelled = booking.session?.is_cancelled;
-      const isPaid = booking.payment_status === "paid";
       const isPast = new Date(`${booking.available_date}T${booking.end_time}`) < new Date();
 
       let matchesStatus = false;
@@ -233,7 +237,7 @@ export default function ManagerBookings() {
           matchesStatus = !!isSessionCancelled;
           break;
         case "completed":
-          matchesStatus = !isSessionCancelled && isPast && isPaid;
+          matchesStatus = !isSessionCancelled && isPast;
           break;
       }
 
@@ -244,9 +248,13 @@ export default function ManagerBookings() {
       // Court filter
       const matchesCourt = selectedCourt === "all" || booking.court_id === selectedCourt;
 
-      return matchesStatus && matchesVenue && matchesCourt;
+      // Date filter
+      const matchesDate = !selectedDate || 
+        format(new Date(booking.available_date), "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd");
+
+      return matchesStatus && matchesVenue && matchesCourt && matchesDate;
     });
-  }, [bookings, activeTab, selectedVenue, selectedCourt]);
+  }, [bookings, activeTab, selectedVenue, selectedCourt, selectedDate]);
 
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(":");
@@ -368,6 +376,40 @@ export default function ManagerBookings() {
                     ))}
                   </SelectContent>
                 </Select>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[200px] justify-start text-left font-normal",
+                        !selectedDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDate, "MMM d, yyyy") : "All Dates"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      initialFocus
+                    />
+                    {selectedDate && (
+                      <div className="p-3 border-t">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => setSelectedDate(undefined)}
+                        >
+                          Clear Date
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </CardContent>
