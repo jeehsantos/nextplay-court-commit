@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Building2,
   Calendar,
@@ -16,6 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { format } from "date-fns";
+import { EarningsAnalytics } from "@/components/manager/EarningsAnalytics";
 
 export default function ManagerDashboard() {
   const { user } = useAuth();
@@ -142,7 +144,7 @@ export default function ManagerDashboard() {
             <h1 className="font-display text-2xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Manage your venues and bookings</p>
           </div>
-          <Link to="/manager/courts/new">
+          <Link to="/manager/venues/new">
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
               Add Venue
@@ -150,23 +152,31 @@ export default function ManagerDashboard() {
           </Link>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {statCards.map((stat) => (
-            <Card key={stat.label}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                </div>
-                <div className="text-2xl font-bold">{loading ? "—" : stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* Tabs for Overview and Earnings */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="earnings">Earnings Analytics</TabsTrigger>
+          </TabsList>
 
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <TabsContent value="overview" className="space-y-6">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {statCards.map((stat) => (
+                <Card key={stat.label}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                    </div>
+                    <div className="text-2xl font-bold">{loading ? "—" : stat.value}</div>
+                    <div className="text-sm text-muted-foreground">{stat.label}</div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Your Venues</CardTitle>
@@ -176,12 +186,12 @@ export default function ManagerDashboard() {
                 <div className="text-center py-8">
                   <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground mb-4">No venues yet</p>
-                  <Link to="/manager/courts/new">
+                  <Link to="/manager/venues/new">
                     <Button>Add Your First Venue</Button>
                   </Link>
                 </div>
               ) : (
-                <Link to="/manager/courts">
+                <Link to="/manager/venues">
                   <Button variant="outline" className="w-full justify-between">
                     Manage Venues
                     <ArrowRight className="h-4 w-4" />
@@ -200,7 +210,7 @@ export default function ManagerDashboard() {
                 <div className="text-center py-8">
                   <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground mb-4">Add venues first</p>
-                  <Link to="/manager/courts/new">
+                  <Link to="/manager/venues/new">
                     <Button variant="outline">Add Venue</Button>
                   </Link>
                 </div>
@@ -240,22 +250,28 @@ export default function ManagerDashboard() {
           </Card>
         </div>
 
-        {/* Messages Info */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <MessageCircle className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium">Chat with Organizers</p>
-                <p className="text-sm text-muted-foreground">
-                  Use the chat widget in the bottom right to communicate with organizers who have booked your venues.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Messages Info */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <MessageCircle className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">Chat with Organizers</p>
+                    <p className="text-sm text-muted-foreground">
+                      Use the chat widget in the bottom right to communicate with organizers who have booked your venues.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="earnings">
+            {user && <EarningsAnalytics userId={user.id} />}
+          </TabsContent>
+        </Tabs>
       </div>
     </ManagerLayout>
   );
