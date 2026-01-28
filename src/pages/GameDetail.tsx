@@ -118,7 +118,7 @@ export default function GameDetail() {
 
     setLoading(true);
     try {
-      // Fetch session with court and venue
+      // Fetch session with court, venue, and sport category
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
         .select(`
@@ -126,7 +126,8 @@ export default function GameDetail() {
           courts (
             *,
             venues (*)
-          )
+          ),
+          sport_categories (*)
         `)
         .eq("id", id)
         .maybeSingle();
@@ -147,10 +148,11 @@ export default function GameDetail() {
 
       if (groupError) throw groupError;
 
-      // Fetch sport category for the group's sport type
-      const sportCategory = groupData?.sport_type 
-        ? await getSportCategory(groupData.sport_type)
-        : null;
+      // Use sport category directly from session (preferred) or fallback to group's sport_type
+      let sportCategory = (sessionData as any).sport_categories as SportCategory | null;
+      if (!sportCategory && groupData?.sport_type) {
+        sportCategory = await getSportCategory(groupData.sport_type);
+      }
 
       // Fetch players with profiles
       const { data: playersData } = await supabase
@@ -924,21 +926,56 @@ const getGoogleMapsUrl = (address: string): string => {
                 // Organizer pays full amount
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                      <CheckCircle2 className="h-5 w-5 text-success" />
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      currentPlayerPayment?.isPaid || (isOrganizer && currentPlayerPayment?.isPaid)
+                        ? "bg-success/10" 
+                        : "bg-warning/10"
+                    }`}>
+                      {currentPlayerPayment?.isPaid || (isOrganizer && currentPlayerPayment?.isPaid) ? (
+                        <CheckCircle2 className="h-5 w-5 text-success" />
+                      ) : (
+                        <DollarSign className="h-5 w-5 text-warning" />
+                      )}
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Payment</p>
-                      <p className="font-semibold text-success">Covered by Organizer</p>
-                      <p className="text-sm text-muted-foreground">Total: ${session.court_price.toFixed(2)}</p>
+                      {isOrganizer ? (
+                        currentPlayerPayment?.isPaid ? (
+                          <>
+                            <p className="font-semibold text-success">Paid & Confirmed</p>
+                            <p className="text-sm text-muted-foreground">Total: ${session.court_price.toFixed(2)}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-semibold text-warning">Payment Pending</p>
+                            <p className="text-sm text-muted-foreground">Total: ${session.court_price.toFixed(2)}</p>
+                          </>
+                        )
+                      ) : (
+                        <>
+                          <p className="font-semibold text-success">Covered by Organizer</p>
+                          <p className="text-sm text-muted-foreground">Total: ${session.court_price.toFixed(2)}</p>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {isOrganizer && !isGamePast && (
-                      <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg">
-                        <DollarSign className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-semibold">${session.court_price.toFixed(2)}</span>
-                      </div>
+                      currentPlayerPayment?.isPaid ? (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-success/10 text-success rounded-lg">
+                          <CheckCircle2 className="h-5 w-5" />
+                          <span className="font-semibold">Paid</span>
+                        </div>
+                      ) : (
+                        <Button 
+                          className="btn-athletic"
+                          onClick={handleMakePayment}
+                          disabled={actionLoading}
+                        >
+                          {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                          Pay Now - ${session.court_price.toFixed(2)}
+                        </Button>
+                      )
                     )}
                     {!isOrganizer && isPlayerInGame && !isGamePast && (
                       currentPlayerPayment?.is_confirmed ? (
