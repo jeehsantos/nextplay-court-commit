@@ -37,6 +37,7 @@ const mobileNavItems = [
   { icon: Building2, label: "Venues", path: "/manager/courts" },
   { icon: CreditCard, label: "Bookings", path: "/manager/bookings" },
   { icon: Settings, label: "Settings", path: "/manager/settings" },
+  { icon: LogOut, label: "Sign Out", path: "/signout", action: "signout" as const },
 ];
 
 export function ManagerLayout({ children }: ManagerLayoutProps) {
@@ -179,9 +180,26 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-[100] bg-background border-t lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
-          {mobileNavItems.map(({ icon: Icon, label, path }) => {
+          {mobileNavItems.map(({ icon: Icon, label, path, action }) => {
             const isActive = location.pathname === path || 
-              (path !== "/manager" && location.pathname.startsWith(path));
+              (path !== "/manager" && path !== "/signout" && location.pathname.startsWith(path));
+            
+            if (action === "signout") {
+              return (
+                <button
+                  key={path}
+                  onClick={handleSignOut}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-1 w-16 h-full transition-colors",
+                    "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-[10px] font-medium">{label}</span>
+                </button>
+              );
+            }
+            
             return (
               <Link
                 key={path}
