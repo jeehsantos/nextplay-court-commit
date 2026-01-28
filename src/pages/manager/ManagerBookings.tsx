@@ -291,10 +291,18 @@ export default function ManagerBookings() {
       let matchesDateRange = true;
       if (dateRange?.from) {
         const bookingDate = new Date(booking.available_date);
+        bookingDate.setHours(0, 0, 0, 0); // Normalize to start of day
+        
         if (dateRange.to) {
+          const startDate = new Date(dateRange.from);
+          startDate.setHours(0, 0, 0, 0);
+          
+          const endDate = new Date(dateRange.to);
+          endDate.setHours(23, 59, 59, 999); // Include the entire end day
+          
           matchesDateRange = isWithinInterval(bookingDate, {
-            start: dateRange.from,
-            end: dateRange.to
+            start: startDate,
+            end: endDate
           });
         } else {
           matchesDateRange = format(bookingDate, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd");
