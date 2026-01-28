@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Building2,
   Calendar,
@@ -152,31 +151,23 @@ export default function ManagerDashboard() {
           </Link>
         </div>
 
-        {/* Tabs for Overview and Earnings */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="earnings">Earnings Analytics</TabsTrigger>
-          </TabsList>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {statCards.map((stat) => (
+            <Card key={stat.label}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                </div>
+                <div className="text-2xl font-bold">{loading ? "—" : stat.value}</div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-          <TabsContent value="overview" className="space-y-6">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {statCards.map((stat) => (
-                <Card key={stat.label}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                    </div>
-                    <div className="text-2xl font-bold">{loading ? "—" : stat.value}</div>
-                    <div className="text-sm text-muted-foreground">{stat.label}</div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* Quick Actions */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Your Venues</CardTitle>
@@ -250,28 +241,25 @@ export default function ManagerDashboard() {
           </Card>
         </div>
 
-            {/* Messages Info */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <MessageCircle className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Chat with Organizers</p>
-                    <p className="text-sm text-muted-foreground">
-                      Use the chat widget in the bottom right to communicate with organizers who have booked your venues.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+        {/* Messages Info */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <MessageCircle className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">Chat with Organizers</p>
+                <p className="text-sm text-muted-foreground">
+                  Use the chat widget in the bottom right to communicate with organizers who have booked your venues.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <TabsContent value="earnings">
-            {user && <EarningsAnalytics userId={user.id} />}
-          </TabsContent>
-        </Tabs>
+        {/* Earnings Analytics Section */}
+        {user && <EarningsAnalytics userId={user.id} />}
       </div>
     </ManagerLayout>
   );
