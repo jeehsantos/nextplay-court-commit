@@ -1,148 +1,216 @@
 
-# Plan: Replace `session_type` with `sport_category_id` in Sessions Table
+# Quick Challenge Booking Flow Implementation Plan
 
-## Overview
-This improvement replaces the deprecated `session_type` enum column with a new `sport_category_id` column that references the `sport_categories` table as a foreign key. This aligns with the architecture mandate to use database-driven sport categories exclusively.
+## Problem Analysis
 
-## Current State Analysis
-- The `sessions` table has a `session_type` column using a PostgreSQL enum (`casual`, `competitive`, `training`, `private`, `tournament`)
-- The `BookingWizard` already collects `sportCategoryId` from the user during booking
-- However, this value is **not being saved** to the sessions table
-- Pages like `GameDetail.tsx` and `Games.tsx` currently derive sport info from the `group.sport_type` instead of having it directly on the session
+The current Quick Challenge flow is **clashing with the normal booking process**:
 
-## Implementation Approach
+1. **Current Flow Issue**: After selecting sport + game mode in `QuickGameModal`, users are redirected to `/courts?quickGame=true` but the normal booking flow (which creates a Group + Session) is triggered
+2. **Key Difference**: Quick Challenges should NOT create a group - they create a standalone `quick_challenges` record where external players can join
+3. **Build Error**: There's also a TypeScript error in `ManagerLayout.tsx` at line 214 that needs fixing first
 
-### Phase 1: Database Migration (Backend First)
+## Proposed Solution
 
-**Add the new column with foreign key reference:**
-- Add `sport_category_id` column to `sessions` table as a UUID
-- Create foreign key constraint referencing `sport_categories.id`
-- Migrate existing data by mapping current `session_type` values to corresponding sport categories
-- Keep `session_type` nullable during transition (can be deprecated later)
+Create a **dedicated Quick Challenge Booking Wizard** that follows a distinct flow from the normal group-based booking.
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                     SESSIONS TABLE                              │
-├─────────────────────────────────────────────────────────────────┤
-│ + sport_category_id (UUID)  ─────────►  sport_categories.id     │
-│   session_type (nullable, deprecated)                           │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   SPORT_CATEGORIES TABLE                        │
-├─────────────────────────────────────────────────────────────────┤
-│ id (PK) │ name │ display_name │ icon │ is_active │ sort_order  │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        QUICK CHALLENGE FLOW                                  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. Player clicks "Quick Game" button on /discover                           │
+│                     ▼                                                        │
+│  2. QuickGameModal: Select Sport Category + Game Mode (1vs1 to 5vs5)        │
+│                     ▼                                                        │
+│  3. Redirect to /courts?quickGame=true&sport=futsal                          │
+│                     ▼                                                        │
+│  4. Player selects a court → Opens CourtDetail                               │
+│                     ▼                                                        │
+│  5. Player selects date + time slot → Clicks "Book"                          │
+│                     ▼                                                        │
+│  6. DETECT quickGame=true → Open QuickChallengeWizard (NOT BookingWizard)   │
+│                     ▼                                                        │
+│  7. Step 1: Terms & Rules (accept court rules)                               │
+│                     ▼                                                        │
+│  8. Step 2: Equipment (optional equipment rental)                            │
+│                     ▼                                                        │
+│  9. Step 3: Payment Choice                                                   │
+│       - Pay full amount (organizer pays everything upfront)                  │
+│       - Split between players (each player pays their share)                 │
+│                     ▼                                                        │
+│  10. Confirm Booking → Creates quick_challenges + court_availability records │
+│                     ▼                                                        │
+│  11. Lobby is available for external players to join at /discover            │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 2: Update Session Creation (CourtDetail.tsx)
+## Implementation Steps
 
-Modify `handleBookingConfirm` to include the `sport_category_id` when inserting a new session:
+### Phase 1: Fix Build Error
 
-```
-Current insert:
-{
-  group_id: groupId,
-  court_id: bookingCourtId,
-  session_date: dateStr,
-  ...other fields
-}
+**File**: `src/components/layout/ManagerLayout.tsx`
 
-Updated insert:
-{
-  group_id: groupId,
-  court_id: bookingCourtId,
-  session_date: dateStr,
-  sport_category_id: sportCategoryId,  // ◄── NEW
-  ...other fields
-}
-```
+The issue is at line 214 where TypeScript can't infer the icon type correctly when `action` is `"signout"`. The fix is to add an explicit type annotation to the `mobileNavItems` array.
 
-### Phase 3: Update Session Display (GameCard, GameDetail, Games)
+### Phase 2: Detect Quick Game Mode in CourtDetail
 
-**Modify queries to include sport_category relation:**
+**File**: `src/pages/CourtDetail.tsx`
 
-1. **GameDetail.tsx** - Add `sport_categories` join to session query
-2. **Games.tsx** - Fetch sport category directly from session instead of deriving from group
-3. **GameCard.tsx** - Already accepts `sportCategory` prop; ensure it receives the data
-4. **GroupDetail.tsx** - Update session list to show sport category from session
+1. Read `quickGame` parameter from URL
+2. Check `sessionStorage.quickGameConfig` for sport category and game mode
+3. When user clicks "Book", check if in quick game mode:
+   - If YES → Open `QuickChallengeWizard`
+   - If NO → Open existing `BookingWizard`
 
-### Phase 4: Responsive & Performance Optimizations
+### Phase 3: Create QuickChallengeWizard Component
 
-- Add index on `sessions.sport_category_id` for query performance
-- The sport category dropdown in BookingWizard is already responsive with proper touch targets
-- Queries will join on indexed foreign key for optimal performance
+**New File**: `src/components/booking/QuickChallengeWizard.tsx`
 
----
+A 3-step wizard tailored for Quick Challenges:
+
+| Step | Title | Content |
+|------|-------|---------|
+| 1 | Terms & Rules | Display court rules, require acceptance |
+| 2 | Equipment | Optional equipment rental selector |
+| 3 | Payment | Pay Full Amount OR Split Between Players |
+
+**Key Differences from BookingWizard**:
+- NO group selection/creation
+- NO sport category selection (already selected in QuickGameModal)
+- Payment split is per-player based on total_slots
+
+### Phase 4: Quick Challenge Creation Logic
+
+When the user confirms in the wizard:
+
+1. **Create `quick_challenges` record**:
+   - `sport_category_id`: from sessionStorage config
+   - `game_mode`: from sessionStorage config (e.g., "2vs2")
+   - `venue_id`: from court.venue_id
+   - `court_id`: selected court
+   - `scheduled_date`: selected date
+   - `scheduled_time`: selected start time
+   - `price_per_player`: calculated based on total price / total_slots
+   - `total_slots`: from game mode (e.g., 4 for 2vs2)
+   - `status`: "open"
+   - `created_by`: current user
+
+2. **Create `court_availability` record**:
+   - Mark the slot as booked
+   - `booked_by_user_id`: current user
+   - `is_booked`: true
+   - `payment_status`: pending
+
+3. **Auto-add creator as first player**:
+   - Insert into `quick_challenge_players`
+   - `team`: "left"
+   - `slot_position`: 0
+   - `payment_status`: "pending" (or "paid" if paying now)
+
+4. **Handle Payment**:
+   - If "Pay Full Amount": Redirect to Stripe for full court price
+   - If "Split": Each player pays `price_per_player` when joining
+
+### Phase 5: Update Courts.tsx to Handle Filters
+
+**File**: `src/pages/Courts.tsx`
+
+Read the `quickGame` and `sport` query parameters:
+- Display a banner indicating Quick Game mode is active
+- Pre-filter courts by sport if provided
+
+### Phase 6: Clear Quick Game State After Booking
+
+After successful quick challenge creation:
+- Clear `sessionStorage.quickGameConfig`
+- Navigate to `/discover?filter=quickgames` or show the new challenge
+
+## Database Schema Confirmation
+
+The existing `quick_challenges` table schema supports this flow:
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| sport_category_id | UUID | Links to sport_categories |
+| game_mode | TEXT | "1vs1", "2vs2", etc. |
+| venue_id | UUID | Venue where court is located |
+| court_id | UUID | Selected court |
+| scheduled_date | DATE | Booking date |
+| scheduled_time | TIME | Start time |
+| price_per_player | NUMERIC | Cost per player slot |
+| total_slots | INTEGER | Total player positions |
+| created_by | UUID | User who created challenge |
+| status | TEXT | "open", "full", "completed" |
 
 ## Technical Details
 
-### Database Migration SQL
-
-```sql
--- Add sport_category_id column to sessions table
-ALTER TABLE public.sessions 
-ADD COLUMN sport_category_id UUID REFERENCES public.sport_categories(id);
-
--- Create index for performance
-CREATE INDEX idx_sessions_sport_category_id 
-ON public.sessions(sport_category_id);
-
--- Migrate existing sessions: Map session_type to default sport category 
--- (use 'futsal' as default since most sessions have 'casual' session_type)
-UPDATE public.sessions 
-SET sport_category_id = (
-  SELECT id FROM public.sport_categories 
-  WHERE name = 'futsal' LIMIT 1
-)
-WHERE sport_category_id IS NULL;
-```
-
-### Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/pages/CourtDetail.tsx` | Add `sport_category_id` to session insert |
-| `src/pages/GameDetail.tsx` | Join sport_categories in query, use session's category |
-| `src/pages/Games.tsx` | Fetch sport_category from session, remove group derivation |
-| `src/pages/GroupDetail.tsx` | Update session list rendering to use session's category |
-| `src/components/cards/GameCard.tsx` | Already handles sportCategory prop (no change needed) |
-
-### Updated Query Pattern
+### QuickChallengeWizard Props
 
 ```typescript
-// Before (deriving from group):
-const { data: sessionData } = await supabase
-  .from("sessions")
-  .select(`*, courts (*), groups (*)`)
-  .eq("id", id);
-
-const sportCategory = await getSportCategory(groupData.sport_type);
-
-// After (direct from session):
-const { data: sessionData } = await supabase
-  .from("sessions")
-  .select(`*, courts (*), groups (*), sport_categories (*)`)
-  .eq("id", id);
-
-const sportCategory = sessionData.sport_categories; // Direct access
+interface QuickChallengeWizardProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (data: {
+    paymentType: "single" | "split";
+    equipment: SelectedEquipment[];
+  }) => void;
+  // Court/Venue info
+  courtId: string;
+  courtName: string;
+  courtRules: string | null;
+  venueId: string;
+  venueName: string;
+  venueAddress: string;
+  courtPrice: number;
+  // Slot info
+  slotDate: string;
+  startTime: string;
+  endTime: string;
+  // Quick game config
+  sportCategoryId: string;
+  sportName: string;
+  gameMode: string;
+  totalPlayers: number;
+  // Equipment
+  equipment: Equipment[];
+  selectedEquipment: SelectedEquipment[];
+  onEquipmentChange: (equipment: SelectedEquipment[]) => void;
+  // Payment
+  paymentTiming: "at_booking" | "before_session" | null;
+}
 ```
 
-### BookingWizard Validation
+### Price Calculation for Split Payment
 
-The wizard already validates sport category selection. If none is selected, it auto-selects the first available category. This ensures the field is never null when creating a session.
+```typescript
+// Calculate price per player for split payment
+const totalCost = courtPrice + equipmentTotal;
+const pricePerPlayer = Math.ceil((totalCost / totalPlayers) * 100) / 100;
+```
 
----
+### Responsive Design Requirements
+
+The wizard will follow the same responsive patterns as `BookingWizard`:
+- Mobile: Full-width dialog with safe area padding
+- Desktop: Centered modal with max-width
+- Touch-friendly buttons (min 44px touch targets)
+- Skeleton loaders for async data
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/layout/ManagerLayout.tsx` | Modify | Fix TypeScript build error |
+| `src/components/booking/QuickChallengeWizard.tsx` | Create | New 3-step wizard for quick challenges |
+| `src/pages/CourtDetail.tsx` | Modify | Add quick game mode detection and routing |
+| `src/pages/Courts.tsx` | Modify | Add quick game mode banner and sport filter |
+| `src/components/quick-challenge/QuickGameModal.tsx` | Modify | Minor cleanup if needed |
 
 ## Expected Results
 
-1. **Session Creation**: When a player books a court, the selected Sport Category is saved to the session's `sport_category_id` column
-
-2. **Session Display**: Game cards and detail pages show the sport selected during booking, not a hardcoded default
-
-3. **Data Integrity**: Foreign key constraint ensures only valid sport categories can be assigned
-
-4. **Performance**: Indexed join provides fast lookups without additional queries
-
-5. **Backward Compatibility**: Existing sessions will be migrated to have a default sport category (futsal)
+1. **Distinct Flow**: Quick Challenge booking is completely separate from group-based booking
+2. **No Group Creation**: Quick Challenges don't create groups, only `quick_challenges` records
+3. **Lobby Visibility**: After creation, the challenge appears in "Quick Games" tab on /discover
+4. **Player Joining**: Other players can join vacant slots and pay their share
+5. **Real-time Updates**: TanStack Query + Supabase Realtime keeps the lobby synced
