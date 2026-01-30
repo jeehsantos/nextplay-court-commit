@@ -19,9 +19,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSportCategories } from "@/hooks/useSportCategories";
 import { useSurfaceTypes } from "@/hooks/useSurfaceTypes";
 import { QuickGameModal } from "@/components/quick-challenge/QuickGameModal";
-import { QuickChallengeCard } from "@/components/quick-challenge/QuickChallengeCard";
 import { QuickChallengeSummaryCard } from "@/components/quick-challenge/QuickChallengeSummaryCard";
-import { useQuickChallenges, useJoinChallenge } from "@/hooks/useQuickChallenges";
+import { useQuickChallenges } from "@/hooks/useQuickChallenges";
 
 type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "other";
 
