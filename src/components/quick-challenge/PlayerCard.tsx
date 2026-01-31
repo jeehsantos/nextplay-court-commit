@@ -24,7 +24,7 @@ interface PlayerCardProps {
 
 const normalizeCountryCode = (countryCode?: string | null): string | null => {
   if (!countryCode) return null;
-  const normalized = countryCode.trim().toLowerCase();
+  const normalized = countryCode.trim().toUpperCase();
   if (normalized.length !== 2) return null;
   return normalized;
 };
@@ -88,7 +88,8 @@ export function PlayerCard({
   if (!player) return null;
 
   const isPaid = player.paymentStatus === "paid";
-  const flagCode = normalizeCountryCode(player.nationalityCode);
+  const normalizedNationality = normalizeCountryCode(player.nationalityCode);
+  const flagCode = normalizedNationality?.toLowerCase() ?? null;
   const initials = player.name
     .split(" ")
     .map(n => n[0])
@@ -131,17 +132,6 @@ export function PlayerCard({
         </Badge>
       </div>
 
-      {/* Flag Badge */}
-      {flagCode && (
-        <div className="absolute top-2 left-2">
-          <span
-            className={cn("fi", `fi-${flagCode}`, "rounded-sm shadow-sm text-base md:text-lg")}
-            title={player.nationalityCode?.toUpperCase()}
-            aria-label={`Flag of ${player.nationalityCode?.toUpperCase()}`}
-          />
-        </div>
-      )}
-
       {/* Avatar */}
       <div className="relative mt-3 md:mt-4">
         <Avatar className="h-14 w-14 border-2 border-border md:h-16 md:w-16">
@@ -158,8 +148,20 @@ export function PlayerCard({
       </div>
 
       {/* Name */}
-      <h4 className="mt-2 font-semibold text-xs text-center line-clamp-1 md:mt-3 md:text-sm">
-        {player.name}
+      <h4 className="mt-2 flex items-center justify-center gap-1 text-center font-semibold text-xs md:mt-3 md:text-sm">
+        <span className="line-clamp-1">{player.name}</span>
+        {flagCode && (
+          <span
+            className={cn(
+              "fi",
+              `fi-${flagCode}`,
+              "inline-flex h-4 w-4 items-center justify-center rounded-full shadow-sm md:h-5 md:w-5"
+            )}
+            role="img"
+            aria-label={`Flag of ${normalizedNationality}`}
+            title={normalizedNationality}
+          />
+        )}
       </h4>
 
       {/* Current User Tag */}

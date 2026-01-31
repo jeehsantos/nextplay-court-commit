@@ -86,6 +86,13 @@ interface GameData {
   courtManagerProfile?: { full_name: string | null; phone: string | null } | null;
 }
 
+const normalizeCountryCode = (countryCode?: string | null): string | null => {
+  if (!countryCode) return null;
+  const normalized = countryCode.trim().toUpperCase();
+  if (normalized.length !== 2) return null;
+  return normalized;
+};
+
 export default function GameDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, isLoading: authLoading } = useAuth();
@@ -1085,50 +1092,67 @@ const getGoogleMapsUrl = (address: string): string => {
             <CardContent className="p-4 lg:p-6 pt-2">
               {players.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {players.map((player) => (
-                    <div
-                      key={player.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
-                    >
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={player.profile?.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                          {player.profile?.full_name?.split(" ").map(n => n[0]).join("") || "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
-                          {player.profile?.full_name || "Player"}
-                          {player.user_id === user.id && " (You)"}
-                        </p>
-                        <div className="flex items-center gap-1">
-                      {session.payment_type === "single" ? (
-                            // For organizer-paid sessions, check is_confirmed
-                            player.is_confirmed ? (
-                              <span className="text-xs text-success flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3" /> Confirmed
-                              </span>
+                  {players.map((player) => {
+                    const normalizedNationality = normalizeCountryCode(
+                      player.profile?.nationality_code
+                    );
+                    const flagCode = normalizedNationality?.toLowerCase() ?? null;
+
+                    return (
+                      <div
+                        key={player.id}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                      >
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={player.profile?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                            {player.profile?.full_name?.split(" ").map(n => n[0]).join("") || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="flex items-center gap-1 font-medium">
+                            <span className="truncate">
+                              {player.profile?.full_name || "Player"}
+                              {player.user_id === user.id && " (You)"}
+                            </span>
+                            {flagCode && (
+                              <span
+                                className={`fi fi-${flagCode} inline-flex h-4 w-4 items-center justify-center rounded-full shadow-sm`}
+                                role="img"
+                                aria-label={`Flag of ${normalizedNationality}`}
+                                title={normalizedNationality}
+                              />
+                            )}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {session.payment_type === "single" ? (
+                              // For organizer-paid sessions, check is_confirmed
+                              player.is_confirmed ? (
+                                <span className="text-xs text-success flex items-center gap-1">
+                                  <CheckCircle2 className="h-3 w-3" /> Confirmed
+                                </span>
+                              ) : (
+                                <span className="text-xs text-warning flex items-center gap-1">
+                                  <XCircle className="h-3 w-3" /> Pending
+                                </span>
+                              )
                             ) : (
-                              <span className="text-xs text-warning flex items-center gap-1">
-                                <XCircle className="h-3 w-3" /> Pending
-                              </span>
-                            )
-                          ) : (
-                            // For split payment sessions, check isPaid
-                            player.isPaid ? (
-                              <span className="text-xs text-success flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3" /> Confirmed
-                              </span>
-                            ) : (
-                              <span className="text-xs text-warning flex items-center gap-1">
-                                <XCircle className="h-3 w-3" /> Pending
-                              </span>
-                            )
-                          )}
+                              // For split payment sessions, check isPaid
+                              player.isPaid ? (
+                                <span className="text-xs text-success flex items-center gap-1">
+                                  <CheckCircle2 className="h-3 w-3" /> Confirmed
+                                </span>
+                              ) : (
+                                <span className="text-xs text-warning flex items-center gap-1">
+                                  <XCircle className="h-3 w-3" /> Pending
+                                </span>
+                              )
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-center text-muted-foreground py-4">No players yet</p>
