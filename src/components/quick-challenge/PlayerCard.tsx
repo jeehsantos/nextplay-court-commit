@@ -91,7 +91,6 @@ export function PlayerCard({
   const isPaid = player.paymentStatus === "paid";
   const normalizedNationality = normalizeCountryCode(player.nationalityCode);
   const flagCode = normalizedNationality?.toLowerCase() ?? null;
-  const flagEmoji = normalizedNationality ? getFlagEmojiByCode(normalizedNationality) : null;
   const initials = player.name
     .split(" ")
     .map(n => n[0])
@@ -152,15 +151,17 @@ export function PlayerCard({
       {/* Name */}
       <h4 className="mt-2 flex items-center justify-center gap-1 text-center font-semibold text-xs md:mt-3 md:text-sm">
         <span className="line-clamp-1">{player.name}</span>
-        {flagEmoji && (
+        {flagCode && (
           <span
-            className="text-sm md:text-base"
+            className={cn(
+              "fi",
+              `fi-${flagCode}`,
+              "inline-flex h-4 w-4 items-center justify-center rounded-full shadow-sm md:h-5 md:w-5"
+            )}
             role="img"
             aria-label={`Flag of ${normalizedNationality}`}
             title={normalizedNationality}
-          >
-            {flagEmoji}
-          </span>
+          />
         )}
       </h4>
 
