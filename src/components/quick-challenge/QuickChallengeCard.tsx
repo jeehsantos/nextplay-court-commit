@@ -158,11 +158,11 @@ export function QuickChallengeCard({
       </div>
 
       {/* Player Cards Grid */}
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <CardContent className="p-3 md:p-4">
+        <div className="flex flex-col gap-3 md:gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Left Team */}
           <div className={cn(
-            "w-full flex-1 space-y-3",
+            "w-full flex-1 space-y-2 md:space-y-3",
             playersPerTeam > 2 && "grid grid-cols-2 gap-2 space-y-0"
           )}>
             {leftTeamSlots.map(slot => (
@@ -186,17 +186,17 @@ export function QuickChallengeCard({
           {/* VS Divider */}
           <div className="flex items-center justify-center gap-3 sm:flex-col sm:gap-2 sm:px-2">
             <div className={cn(
-              "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center",
+              "w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center",
               "bg-primary/10 border-2 border-primary/20"
             )}>
-              <span className="text-base sm:text-lg font-bold text-primary">VS</span>
+              <span className="text-sm md:text-lg font-bold text-primary">VS</span>
             </div>
             <Zap className="h-4 w-4 text-primary animate-pulse" />
           </div>
 
           {/* Right Team */}
           <div className={cn(
-            "w-full flex-1 space-y-3",
+            "w-full flex-1 space-y-2 md:space-y-3",
             playersPerTeam > 2 && "grid grid-cols-2 gap-2 space-y-0"
           )}>
             {rightTeamSlots.map(slot => (

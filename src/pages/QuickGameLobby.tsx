@@ -44,15 +44,32 @@ export default function QuickGameLobby() {
 
   if (!user) return null;
 
+  const handleLeaveLobby = () => {
+    navigate("/discover?filter=quickgames");
+  };
+
   return (
-    <MobileLayout showBack title="Quick Game Lobby">
-      <div className="px-4 py-4 space-y-4 max-w-5xl mx-auto lg:px-6">
-        <div className="flex items-center justify-between gap-4">
+    <MobileLayout
+      showBack
+      title="Session Lobby"
+      rightAction={(
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2 text-xs font-semibold"
+          onClick={handleLeaveLobby}
+        >
+          Leave
+        </Button>
+      )}
+    >
+      <div className="px-3 py-3 space-y-4 max-w-5xl mx-auto sm:px-4 sm:py-4 lg:px-6">
+        <div className="hidden lg:flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/discover?filter=quickgames")}
+              onClick={handleLeaveLobby}
               aria-label="Back to quick games"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -66,7 +83,7 @@ export default function QuickGameLobby() {
           </div>
           <Button
             variant="outline"
-            onClick={() => navigate("/discover?filter=quickgames")}
+            onClick={handleLeaveLobby}
           >
             Leave Lobby
           </Button>
@@ -92,7 +109,7 @@ export default function QuickGameLobby() {
                 userId: p.user_id,
                 name: p.profiles?.full_name || "Player",
                 avatarUrl: p.profiles?.avatar_url,
-                nationalityCode: p.profiles?.nationality_code || null,
+                nationalityCode: p.profiles?.nationality_code ?? null,
                 paymentStatus: p.payment_status as "pending" | "paid" | "refunded",
                 team: p.team as "left" | "right",
                 slotPosition: p.slot_position,

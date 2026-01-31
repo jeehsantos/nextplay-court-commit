@@ -18,7 +18,7 @@ interface QuickChallengePlayer {
     full_name: string | null;
     avatar_url: string | null;
     city: string | null;
-    nationality_code: string | null;
+    nationality_code?: string | null;
   } | null;
 }
 
