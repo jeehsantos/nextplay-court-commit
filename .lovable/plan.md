@@ -1,147 +1,141 @@
 
-
-# Add Nationality Selection and Display Feature
+# Add Lobby Chat to Quick Game Lobby
 
 ## Overview
 
-Add a searchable nationality dropdown to the Profile page and display nationality flags next to player names in Quick Challenge lobbies and session views.
+Implement a real-time chat system at the bottom of the Quick Game Lobby, allowing players who have joined the match to communicate with each other. Chat history will be automatically deleted when the session ends or the organizer cancels the lobby.
 
-## What Will Change
+## What Will Be Added
 
-### For You (the Player)
-- **Profile Page**: A new "Nationality" field in Personal Information section
-- **Searchable Dropdown**: Type to quickly find your country from 200+ options
-- **Flag Display**: Your nationality flag will appear as a small rounded image next to your name when other players see you
+### For Players
+- **Lobby Chat**: A chat section at the bottom of the Quick Game Lobby page
+- **System Messages**: Automatic notifications (e.g., "Alex created the match")
+- **Player Messages**: Send and receive messages from other players in the lobby
+- **Real-time Updates**: Messages appear instantly for all players
 
-### Where Flags Will Appear
-- Quick Game lobby player cards (next to name)
-- Session player lists
-- Any other location where player names are shown
+### Chat Rules
+- Only players who have joined the lobby can see and send messages
+- Chat history is deleted when:
+  - The match session is completed
+  - The organizer cancels/quits the lobby
+  - The scheduled date passes (automatic cleanup)
 
 ---
 
 ## Technical Implementation
 
-### Phase 1: Database Update
+### Phase 1: Database Schema
 
-Add `nationality_code` column to the `profiles` table:
+Create a new table `quick_challenge_messages` to store lobby chat messages:
 
 | Column | Type | Purpose |
 |--------|------|---------|
-| nationality_code | TEXT | ISO 3166-1 alpha-2 code (e.g., "NZ", "BR", "US") |
+| id | UUID | Primary key |
+| challenge_id | UUID | Foreign key to quick_challenges |
+| sender_id | UUID | Foreign key to auth.users |
+| content | TEXT | Message content |
+| message_type | TEXT | 'system' or 'user' |
+| created_at | TIMESTAMPTZ | When the message was sent |
 
-The migration will:
-- Add nullable `nationality_code` column
-- No default value (users choose their nationality)
+**RLS Policies:**
+- Players who have joined the challenge can read messages for that challenge
+- Players can only insert messages for challenges they've joined
+- Only the sender can delete their own messages
+- No updates allowed (messages are immutable)
 
-### Phase 2: Create Country Data File
+**Realtime:**
+- Enable realtime for the table so messages appear instantly
 
-Create a new data file with all countries and their ISO codes:
+### Phase 2: Backend - Auto-Cleanup Function
 
-**File**: `src/data/countries.ts`
+Create a database function and trigger to delete chat messages when a challenge status changes to 'completed' or 'cancelled':
 
-Contains:
-- All countries with ISO alpha-2 codes
-- Pre-sorted alphabetically
-- Unicode flag emoji generation from code
+```sql
+-- Function to clean up chat when challenge ends
+CREATE OR REPLACE FUNCTION cleanup_challenge_chat()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status IN ('completed', 'cancelled') AND OLD.status NOT IN ('completed', 'cancelled') THEN
+    DELETE FROM quick_challenge_messages WHERE challenge_id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-Example structure:
+-- Trigger on quick_challenges
+CREATE TRIGGER trigger_cleanup_challenge_chat
+AFTER UPDATE ON quick_challenges
+FOR EACH ROW
+EXECUTE FUNCTION cleanup_challenge_chat();
+```
+
+### Phase 3: Create Lobby Chat Hook
+
+Create a new hook `src/hooks/useLobbyChatMessages.ts` to manage chat messages:
+
+**Features:**
+- Fetch messages for a specific challenge
+- Real-time subscription to new messages
+- Send message mutation
+- System message creation (when player joins/leaves)
+
 ```typescript
-export interface Country {
-  code: string;      // "NZ"
-  name: string;      // "New Zealand"
-  flag: string;      // "🇳🇿"
+// Hook interface
+export function useLobbyChatMessages(challengeId: string) {
+  // Returns:
+  // - messages: array of chat messages
+  // - isLoading: loading state
+  // - sendMessage: function to send a message
+  // - sendSystemMessage: function to send system notifications
 }
-
-export const countries: Country[] = [
-  { code: "AF", name: "Afghanistan", flag: "🇦🇫" },
-  { code: "NZ", name: "New Zealand", flag: "🇳🇿" },
-  // ... 200+ countries
-];
 ```
 
-### Phase 3: Create Nationality Combobox Component
+### Phase 4: Create LobbyChatPanel Component
 
-**File**: `src/components/ui/nationality-combobox.tsx`
+Create `src/components/quick-challenge/LobbyChatPanel.tsx`:
 
-Features:
-- Searchable dropdown using existing `cmdk` library
-- Type-ahead filtering by country name
-- Shows flag + country name in dropdown options
-- Selected value displays flag + country name
-- Accessible with keyboard navigation
+**Based on Reference Design:**
+- Left side: Chat messages area with scroll
+- Right side: Player count badge + Match status badge + Arena Rules link
+- Bottom: Input field with placeholder "Send a message to the group..."
 
-Uses existing components:
-- `Popover` + `PopoverTrigger` + `PopoverContent`
-- `Command` + `CommandInput` + `CommandList` + `CommandItem`
-- `Button` for trigger
+**Layout (from reference image):**
+```text
++--------------------------------------------------+
+| SYSTEM: Alex Silva created the group.            |
+| ALEX SILVA: Let's win team!                      |
+|                                                  |
+| [Send a message to the group...]                 |
++----------------------------------+---------------+
+                                   | 4/10 PLAYERS  |
+                                   | MATCH CONFIRMED|
+                                   | ARENA RULES 👥 |
+                                   +---------------+
+```
 
-### Phase 4: Update Profile Pages
-
-**File**: `src/pages/Profile.tsx` - Personal Information section
-
-Add nationality field after the City dropdown:
-- Label: "Nationality"
-- Component: `NationalityCombobox`
-- Helper text: "Your flag will be shown to other players"
-
-**File**: `src/pages/ProfileEdit.tsx`
-
-Same changes as Profile.tsx for consistency.
-
-### Phase 5: Update Profile Data Handling
-
-Both Profile and ProfileEdit pages:
-- Add `nationality_code` to `ProfileData` interface
-- Include in fetch query
-- Include in save/upsert operations
-
-### Phase 6: Update Player Data Fetching
-
-**File**: `src/hooks/useQuickChallenges.ts`
-
-Update profile select query:
+**Component Props:**
 ```typescript
-// Before
-.select("user_id, full_name, avatar_url, city")
-
-// After
-.select("user_id, full_name, avatar_url, city, nationality_code")
+interface LobbyChatPanelProps {
+  challengeId: string;
+  currentUserId: string;
+  totalSlots: number;
+  filledSlots: number;
+  isMatchFull: boolean;
+}
 ```
 
-Update `QuickChallengePlayer` interface to include:
-```typescript
-profiles?: {
-  full_name: string | null;
-  avatar_url: string | null;
-  city: string | null;
-  nationality_code: string | null;  // NEW
-} | null;
-```
+### Phase 5: Update QuickGameLobby.tsx
 
-### Phase 7: Pass Nationality to Components
+Modify the footer section to include the chat panel:
 
-**File**: `src/pages/QuickGameLobby.tsx`
+**Current Footer (lines 610-646):**
+- Shows player count and status badges
 
-```typescript
-// Before
-nationalityCode: null,
-
-// After
-nationalityCode: p.profiles?.nationality_code || null,
-```
-
-**File**: `src/pages/Discover.tsx`
-
-Same pattern when mapping quick challenge players to card props.
-
-### Phase 8: PlayerCard Already Supports Flags
-
-The `PlayerCard.tsx` component already has:
-- `getFlagEmoji()` function that converts country codes to flag emoji
-- Display logic for the flag next to the player name
-
-Current implementation shows flag in top-left corner. Based on the reference image, we may adjust to show it inline next to the player's name at the bottom of the card instead.
+**Updated Footer:**
+- Replace with `LobbyChatPanel` component that includes:
+  - Chat messages area on the left
+  - Status badges on the right
+  - Message input at the bottom
 
 ---
 
@@ -149,38 +143,41 @@ Current implementation shows flag in top-left corner. Based on the reference ima
 
 | File | Action | Description |
 |------|--------|-------------|
-| Database Migration | Create | Add `nationality_code` column to profiles |
-| `src/data/countries.ts` | Create | Country list with ISO codes |
-| `src/components/ui/nationality-combobox.tsx` | Create | Searchable country selector |
-| `src/pages/Profile.tsx` | Modify | Add nationality field to Personal Information |
-| `src/pages/ProfileEdit.tsx` | Modify | Add nationality field |
-| `src/hooks/useQuickChallenges.ts` | Modify | Fetch nationality_code from profiles |
-| `src/pages/QuickGameLobby.tsx` | Modify | Pass nationality to player cards |
-| `src/pages/Discover.tsx` | Modify | Pass nationality to player cards |
-| `src/components/quick-challenge/PlayerCard.tsx` | Modify | Adjust flag position to match design |
+| Database Migration | Create | Add `quick_challenge_messages` table with RLS |
+| Database Migration | Create | Add cleanup trigger for chat messages |
+| `src/hooks/useLobbyChatMessages.ts` | Create | Hook for fetching/sending chat messages |
+| `src/components/quick-challenge/LobbyChatPanel.tsx` | Create | Chat panel component |
+| `src/pages/QuickGameLobby.tsx` | Modify | Replace footer with chat panel |
 
 ---
 
-## User Experience
+## User Experience Flow
 
-1. **Go to Profile** > Open "Personal Information" section
-2. **See new Nationality field** with a searchable dropdown
-3. **Click dropdown** > Type country name (e.g., "Braz...") > Select "Brazil"
-4. **Save changes** > Profile updated
-5. **Join a Quick Challenge** > Your flag (🇧🇷) appears next to your name
-6. **Other players see** your flag when viewing the lobby
+1. **Player joins lobby** -> System message appears: "[Player] joined the match"
+2. **Player sends message** -> Message appears for all players in real-time
+3. **Other players see** -> Messages update instantly via Supabase Realtime
+4. **Match completes/cancelled** -> All chat history is automatically deleted
 
 ---
 
-## Design Details (Based on Reference Image)
+## Design Details (Matching Reference Image)
 
-The reference image shows:
-- Player name displayed below avatar (e.g., "Rafael N.")
-- Small circular flag shown inline to the right of the name
-- Flag appears as a small rounded badge/circle
+### Chat Message Styling
+- **System messages**: Highlighted in blue/cyan color with "SYSTEM:" prefix
+- **User messages**: Yellow/gold username, white/light message text
+- **Font size**: Small (10-11px) for compact display
 
-The current `PlayerCard.tsx` shows the flag in the top-left corner. I will adjust to:
-- Move flag display to inline with the player name
-- Render flag as a small circular element next to the name
-- Keep the emoji flag approach (works across all devices without images)
+### Footer Layout
+- **Height**: ~128px (h-32)
+- **Left section**: Chat messages + input (flex-1)
+- **Right section**: Status badges (1/3 width on mobile, 1/2 on desktop)
 
+### Input Field
+- Dark background with subtle border
+- Placeholder: "Send a message to the group..."
+- No send button (Enter key to send)
+
+### Status Section
+- Player count badge: "4/10 PLAYERS"
+- Match status badge: "MATCH CONFIRMED" (green, only when full)
+- "Arena Rules" link with Users icon
