@@ -5,6 +5,7 @@ import { useQuickChallenges, useJoinChallenge, useCancelChallenge, useUpdateChal
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Loader2,
   ArrowLeft,
@@ -349,6 +350,7 @@ export default function QuickGameLobby() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isQuitDialogOpen, setIsQuitDialogOpen] = useState(false);
   const [joiningSlot, setJoiningSlot] = useState<{ team: TeamSide; position: number } | null>(null);
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
 
   // Find the challenge
   const challenge = useMemo(
@@ -364,10 +366,11 @@ export default function QuickGameLobby() {
   }, [challenge?.game_mode]);
 
   // Check if current user is the organizer
-  const isOrganizer = useMemo(
-    () => challenge?.created_by === user?.id,
-    [challenge?.created_by, user?.id]
-  );
+  const isOrganizer = useMemo(() => {
+    if (!challenge || !user) return false;
+    if (challenge.created_by === user.id) return true;
+    return currentProfileId ? challenge.created_by === currentProfileId : false;
+  }, [challenge, user, currentProfileId]);
 
   // Map players from backend to lobby format - deduplicate by user_id
   const players: LobbyPlayer[] = useMemo(() => {
@@ -474,6 +477,39 @@ export default function QuickGameLobby() {
       navigate("/auth", { replace: true });
     }
   }, [isLoading, user, navigate]);
+
+  useEffect(() => {
+    if (!user) {
+      setCurrentProfileId(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchProfileId = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!isMounted) return;
+
+      if (error) {
+        console.error("Failed to load profile id", error);
+        setCurrentProfileId(null);
+        return;
+      }
+
+      setCurrentProfileId(data?.id ?? null);
+    };
+
+    fetchProfileId();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   // Loading state
   if (isLoading || loadingChallenges) {
