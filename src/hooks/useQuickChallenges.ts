@@ -426,8 +426,8 @@ export function useUpdateChallengeFormat() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quick-challenges"] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["quick-challenges"] });
       toast({
         title: "Format updated",
         description: "The match format has been changed.",
