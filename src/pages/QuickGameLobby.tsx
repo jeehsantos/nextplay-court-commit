@@ -307,7 +307,7 @@ function SettingsModal({
                 <SelectTrigger className="w-[120px]">
                   <SelectValue placeholder="Select format" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[200]">
                   {MATCH_FORMATS.map((format) => (
                     <SelectItem 
                       key={format} 
