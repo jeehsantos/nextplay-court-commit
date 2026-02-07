@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { LobbyChatPanel } from "@/components/quick-challenge/LobbyChatPanel";
+import { InviteFriendDialog } from "@/components/quick-challenge/InviteFriendDialog";
 import {
   Select,
   SelectContent,
@@ -347,6 +348,7 @@ export default function QuickGameLobby() {
   const [joiningSlot, setJoiningSlot] = useState<{ team: TeamSide; position: number } | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   // Find the challenge
   const challenge = useMemo(
@@ -467,12 +469,13 @@ export default function QuickGameLobby() {
     updateFormat.mutate({ challengeId: id, gameMode: newFormat });
   };
 
-  // Auth redirect
+  // Auth redirect — store lobby path so user returns here after login/signup
   useEffect(() => {
     if (!isLoading && !user) {
+      localStorage.setItem("redirectAfterAuth", `/quick-games/${id}`);
       navigate("/auth", { replace: true });
     }
-  }, [isLoading, user, navigate]);
+  }, [isLoading, user, navigate, id]);
 
   useEffect(() => {
     if (!user) {
@@ -616,6 +619,15 @@ export default function QuickGameLobby() {
         currentPlayerCount={players.length}
         onFormatChange={handleFormatChange}
         isUpdating={updateFormat.isPending}
+      />
+
+      {/* Invite Friend Dialog */}
+      <InviteFriendDialog
+        open={isInviteOpen}
+        onOpenChange={setIsInviteOpen}
+        challengeId={challenge.id}
+        sportName={challenge.sport_categories?.display_name}
+        gameMode={challenge.game_mode}
       />
 
       {/* Header */}
@@ -814,6 +826,7 @@ export default function QuickGameLobby() {
               <Button
                 className="flex-1 py-5 md:py-6 font-black text-[10px] md:text-xs uppercase tracking-[0.15em]"
                 variant="outline"
+                onClick={() => setIsInviteOpen(true)}
               >
                 Invite Friend
               </Button>
