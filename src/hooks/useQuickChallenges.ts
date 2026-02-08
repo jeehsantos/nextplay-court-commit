@@ -305,19 +305,21 @@ export function useLeaveChallenge() {
     mutationFn: async (challengeId: string) => {
       if (!user) throw new Error("Must be logged in");
 
-      const { error } = await supabase
-        .from("quick_challenge_players")
-        .delete()
-        .eq("challenge_id", challengeId)
-        .eq("user_id", user.id);
+      const { data, error } = await supabase.functions.invoke(
+        "leave-quick-challenge",
+        { body: { challengeId } }
+      );
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      return data as { success: boolean; creditsAdded: number; message: string };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["quick-challenges"] });
       toast({
         title: "Left challenge",
-        description: "You've left the challenge.",
+        description: data?.message || "You've left the challenge.",
       });
     },
     onError: (error: Error) => {

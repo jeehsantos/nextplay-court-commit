@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useQuickChallenges, useJoinChallenge, useCancelChallenge, useUpdateChallengeFormat } from "@/hooks/useQuickChallenges";
+import { useQuickChallenges, useJoinChallenge, useCancelChallenge, useUpdateChallengeFormat, useLeaveChallenge } from "@/hooks/useQuickChallenges";
 import { useQuickChallengePayment } from "@/hooks/useQuickChallengePayment";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/hooks/useTheme";
@@ -340,11 +340,13 @@ export default function QuickGameLobby() {
   const { data: quickChallenges = [], isLoading: loadingChallenges } = useQuickChallenges();
   const joinChallenge = useJoinChallenge();
   const cancelChallenge = useCancelChallenge();
+  const leaveChallenge = useLeaveChallenge();
   const updateFormat = useUpdateChallengeFormat();
   const { isPaying, initiatePayment, verifyPayment } = useQuickChallengePayment();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isQuitDialogOpen, setIsQuitDialogOpen] = useState(false);
+  const [isPlayerQuitDialogOpen, setIsPlayerQuitDialogOpen] = useState(false);
   const [joiningSlot, setJoiningSlot] = useState<{ team: TeamSide; position: number } | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
@@ -448,7 +450,11 @@ export default function QuickGameLobby() {
   };
 
   const handleQuitLobby = () => {
-    setIsQuitDialogOpen(true);
+    if (isOrganizer) {
+      setIsQuitDialogOpen(true);
+    } else {
+      setIsPlayerQuitDialogOpen(true);
+    }
   };
 
   const confirmQuitLobby = () => {
@@ -460,6 +466,19 @@ export default function QuickGameLobby() {
       },
       onError: () => {
         setIsQuitDialogOpen(false);
+      },
+    });
+  };
+
+  const confirmPlayerQuitLobby = () => {
+    if (!id) return;
+    leaveChallenge.mutate(id, {
+      onSuccess: () => {
+        setIsPlayerQuitDialogOpen(false);
+        navigate("/discover?tab=quickgames");
+      },
+      onError: () => {
+        setIsPlayerQuitDialogOpen(false);
       },
     });
   };
@@ -608,7 +627,53 @@ export default function QuickGameLobby() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Settings Modal */}
+      {/* Player Quit Lobby Confirmation Dialog */}
+      <AlertDialog open={isPlayerQuitDialogOpen} onOpenChange={setIsPlayerQuitDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Quit this lobby?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>Are you sure you want to leave this quick game?</p>
+                {players.find(p => p.isMe)?.paymentStatus === "paid" && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-foreground">
+                    <p className="font-semibold flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      Payment will be converted to credits
+                    </p>
+                    <p className="text-xs mt-1 text-muted-foreground">
+                      Your payment of <span className="font-bold text-primary">${challenge?.price_per_player?.toFixed(2) || "0.00"}</span> will be converted into platform credits that can be used in future sessions.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={leaveChallenge.isPending}>
+              Stay in Lobby
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmPlayerQuitLobby}
+              disabled={leaveChallenge.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {leaveChallenge.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Leaving...
+                </>
+              ) : (
+                "Yes, Quit Lobby"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -668,6 +733,21 @@ export default function QuickGameLobby() {
               disabled={cancelChallenge.isPending}
             >
               {cancelChallenge.isPending ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <LogOut size={12} />
+              )}
+              <span className="hidden sm:inline">Quit Lobby</span>
+            </Button>
+          ) : hasUserJoined ? (
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              className="h-7 text-[9px] uppercase font-bold tracking-wide gap-1 px-2"
+              onClick={handleQuitLobby}
+              disabled={leaveChallenge.isPending}
+            >
+              {leaveChallenge.isPending ? (
                 <Loader2 size={12} className="animate-spin" />
               ) : (
                 <LogOut size={12} />
