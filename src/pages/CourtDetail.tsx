@@ -979,7 +979,8 @@ export default function CourtDetail() {
     try {
       if (choice === "now") {
         // User chose to pay now - check for credits first
-        if (credits > 0 && !loadingCredits) {
+        const totalCost = court.hourly_rate + selectedEquipment.reduce((sum, item) => sum + item.quantity * item.pricePerUnit, 0);
+        if (credits >= totalCost && !loadingCredits) {
           setShowPaymentTimingChoice(false);
           setShowCreditsModal(true);
         } else {

@@ -416,8 +416,9 @@ export default function GameDetail() {
   const handleMakePayment = async () => {
     if (!gameData || !id || !user) return;
 
-    // Check if user has credits and show modal
-    if (credits > 0 && !loadingCredits) {
+    // Check if user has enough credits to cover full amount
+    const pricePerPlayer = gameData.session.court_price / gameData.session.min_players;
+    if (credits >= pricePerPlayer && !loadingCredits) {
       setShowCreditsModal(true);
       return;
     }
