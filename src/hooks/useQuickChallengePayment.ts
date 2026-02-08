@@ -5,7 +5,7 @@ import { toast } from "@/hooks/use-toast";
 export function useQuickChallengePayment() {
   const [isPaying, setIsPaying] = useState(false);
 
-  const initiatePayment = async (challengeId: string): Promise<boolean> => {
+  const initiatePayment = async (challengeId: string, useCredits: boolean = false): Promise<boolean> => {
     setIsPaying(true);
     
     try {
@@ -24,6 +24,7 @@ export function useQuickChallengePayment() {
         body: {
           challengeId,
           origin: window.location.origin,
+          useCredits,
         },
       });
 

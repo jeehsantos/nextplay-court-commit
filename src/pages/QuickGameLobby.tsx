@@ -6,6 +6,8 @@ import { useQuickChallengePayment } from "@/hooks/useQuickChallengePayment";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
+import { useUserCredits } from "@/hooks/useUserCredits";
+import { PaymentMethodDialog } from "@/components/payment/PaymentMethodDialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Loader2,
@@ -343,6 +345,7 @@ export default function QuickGameLobby() {
   const leaveChallenge = useLeaveChallenge();
   const updateFormat = useUpdateChallengeFormat();
   const { isPaying, initiatePayment, verifyPayment } = useQuickChallengePayment();
+  const { balance: credits, loading: loadingCredits, refetch: refetchCredits } = useUserCredits();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isQuitDialogOpen, setIsQuitDialogOpen] = useState(false);
@@ -351,6 +354,7 @@ export default function QuickGameLobby() {
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
 
   // Find the challenge
   const challenge = useMemo(
@@ -441,8 +445,38 @@ export default function QuickGameLobby() {
   };
 
   const handlePayment = async () => {
-    if (!id) return;
+    if (!id || !challenge) return;
+
+    const pricePerPlayer = challenge.price_per_player || 0;
+
+    // If user has enough credits to cover the full amount, show credits modal
+    if (pricePerPlayer > 0 && credits >= pricePerPlayer && !loadingCredits) {
+      setShowCreditsModal(true);
+      return;
+    }
+
+    // Otherwise go straight to Stripe
     await initiatePayment(id);
+  };
+
+  const handleSelectPaymentMethod = async (
+    method: "credits" | "payment",
+    creditsToUse?: number
+  ) => {
+    if (!id) return;
+
+    if (method === "credits") {
+      // Pay with credits via edge function
+      const success = await initiatePayment(id, true);
+      if (success) {
+        setShowCreditsModal(false);
+        refetchCredits();
+      }
+    } else {
+      // Pay with card
+      setShowCreditsModal(false);
+      await initiatePayment(id);
+    }
   };
 
   const handleLeaveLobby = () => {
@@ -962,6 +996,16 @@ export default function QuickGameLobby() {
         totalSlots={teamSize * 2}
         filledSlots={totalPlayers}
         isMatchFull={totalPlayers >= teamSize * 2}
+      />
+
+      {/* Credits Payment Modal */}
+      <PaymentMethodDialog
+        open={showCreditsModal}
+        onOpenChange={setShowCreditsModal}
+        userCredits={credits}
+        sessionCost={challenge.price_per_player || 0}
+        onSelectPaymentMethod={handleSelectPaymentMethod}
+        isLoading={isPaying}
       />
     </div>
   );

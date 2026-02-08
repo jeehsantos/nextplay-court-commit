@@ -21,7 +21,7 @@ serve(async (req) => {
   );
 
   try {
-    const { challengeId, origin } = await req.json();
+    const { challengeId, origin, useCredits } = await req.json();
 
     if (!challengeId) {
       throw new Error("Challenge ID is required");
@@ -93,11 +93,8 @@ serve(async (req) => {
     }
 
     const venue = challenge.venues;
-    const court = challenge.courts;
-    const sport = challenge.sport_categories;
-
-    // Calculate amount in cents
-    const amountCents = Math.round((challenge.price_per_player || 0) * 100);
+    const pricePerPlayer = challenge.price_per_player || 0;
+    const amountCents = Math.round(pricePerPlayer * 100);
 
     if (amountCents <= 0) {
       // Free challenge - mark as paid immediately
@@ -109,7 +106,6 @@ serve(async (req) => {
         })
         .eq("id", playerRecord.id);
 
-      // Check if all players are now paid and update challenge status
       await checkAndUpdateChallengeStatus(supabaseAdmin, challengeId);
 
       return new Response(JSON.stringify({
@@ -121,17 +117,71 @@ serve(async (req) => {
       });
     }
 
-    // Create Stripe checkout session
+    // --- CREDITS PAYMENT FLOW ---
+    if (useCredits) {
+      // Check user's credit balance
+      const { data: creditBalance, error: creditError } = await supabaseAdmin
+        .rpc("get_user_credits", { p_user_id: user.id });
+
+      if (creditError) {
+        console.error("Error fetching credits:", creditError);
+        throw new Error("Failed to check credit balance");
+      }
+
+      const balance = Number(creditBalance) || 0;
+
+      if (balance < pricePerPlayer) {
+        throw new Error("Insufficient credits");
+      }
+
+      // Deduct credits
+      const { data: useResult, error: useError } = await supabaseAdmin
+        .rpc("use_user_credits", {
+          p_user_id: user.id,
+          p_amount: pricePerPlayer,
+          p_reason: `Quick Match payment: ${challenge.game_mode}`,
+          p_session_id: null,
+        });
+
+      if (useError || useResult !== true) {
+        console.error("Error using credits:", useError);
+        throw new Error("Failed to deduct credits");
+      }
+
+      // Mark player as paid
+      await supabaseAdmin
+        .from("quick_challenge_players")
+        .update({
+          payment_status: "paid",
+          paid_at: new Date().toISOString(),
+        })
+        .eq("id", playerRecord.id);
+
+      await checkAndUpdateChallengeStatus(supabaseAdmin, challengeId);
+
+      console.log(`Quick challenge paid with credits - User: ${user.id}, Amount: $${pricePerPlayer}`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Payment of $${pricePerPlayer.toFixed(2)} completed using your credits.`,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // --- STRIPE PAYMENT FLOW ---
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2024-12-18.acacia",
     });
 
-    // Build success and cancel URLs - redirect back to lobby
+    const court = challenge.courts;
+    const sport = challenge.sport_categories;
+
     const baseUrl = origin || "https://sportarenaxp.lovable.app";
     const successUrl = `${baseUrl}/quick-games/${challengeId}?payment=success&checkout_session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${baseUrl}/quick-games/${challengeId}?payment=cancelled`;
 
-    // Build description
     const description = [
       sport?.display_name || "Quick Match",
       challenge.game_mode,
@@ -139,7 +189,6 @@ serve(async (req) => {
       challenge.scheduled_date ? `on ${challenge.scheduled_date}` : "",
     ].filter(Boolean).join(" - ");
 
-    // Build line items
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
       {
         price_data: {
@@ -154,7 +203,6 @@ serve(async (req) => {
       },
     ];
 
-    // Check if venue has Stripe Connect account
     const stripeAccountId = venue?.stripe_account_id;
     
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -171,11 +219,6 @@ serve(async (req) => {
       },
     };
 
-    // Enable Apple Pay and Google Pay by adding wallet support
-    // Note: These are automatically enabled when using "card" payment method
-    // Apple Pay requires domain verification in Stripe dashboard
-
-    // If venue has Stripe Connect, set up destination charge
     if (stripeAccountId) {
       const applicationFee = Math.min(PLATFORM_FEE, amountCents);
       sessionParams.payment_intent_data = {
@@ -193,7 +236,6 @@ serve(async (req) => {
 
     console.log(`Quick challenge checkout session created: ${checkoutSession.id}`);
 
-    // Store the checkout session ID on the player record
     await supabaseAdmin
       .from("quick_challenge_players")
       .update({
@@ -222,7 +264,6 @@ async function checkAndUpdateChallengeStatus(
   supabaseAdmin: any,
   challengeId: string
 ) {
-  // Get challenge and players
   const { data: challenge } = await supabaseAdmin
     .from("quick_challenges")
     .select("total_slots, quick_challenge_players(payment_status)")
@@ -234,14 +275,12 @@ async function checkAndUpdateChallengeStatus(
   const players = (challenge as any).quick_challenge_players || [];
   const paidCount = players.filter((p: { payment_status: string }) => p.payment_status === "paid").length;
   
-  // If all slots are filled and paid, update status to "ready"
   if (paidCount >= (challenge as any).total_slots) {
     await supabaseAdmin
       .from("quick_challenges")
       .update({ status: "ready" })
       .eq("id", challengeId);
   } else if (players.length >= (challenge as any).total_slots) {
-    // All slots filled but not all paid
     await supabaseAdmin
       .from("quick_challenges")
       .update({ status: "full" })
