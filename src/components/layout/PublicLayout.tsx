@@ -5,46 +5,46 @@ import { ArrowLeft, Menu } from "lucide-react";
 import { Footer } from "./Footer";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-
 interface PublicLayoutProps {
   children: ReactNode;
   showBack?: boolean;
   showFooter?: boolean;
 }
-
-const navLinks = [
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
-  { label: "Browse Courts", href: "/courts" },
-];
-
-export function PublicLayout({ children, showBack = false, showFooter = true }: PublicLayoutProps) {
+const navLinks = [{
+  label: "About",
+  href: "/about"
+}, {
+  label: "Contact",
+  href: "/contact"
+}, {
+  label: "Browse Courts",
+  href: "/courts"
+}];
+export function PublicLayout({
+  children,
+  showBack = false,
+  showFooter = true
+}: PublicLayoutProps) {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
+  return <div className="min-h-screen bg-background flex flex-col">
       {/* Navigation - Sticky Frosted Glass */}
       <header className="fixed top-0 left-0 right-0 z-50 navbar-glass">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {showBack && (
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
+            {showBack && <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
                 <ArrowLeft className="h-5 w-5" />
-              </Button>
-            )}
+              </Button>}
             <Link to="/" className="flex items-center" aria-label="Sport Arena home">
-              <img src="/sportarena-logo.png" alt="Sport Arena logo" className="h-20 w-auto" />
+              <img src="/sportarena-logo.png" alt="Sport Arena logo" className="h-36 w-auto" />
             </Link>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <Link key={link.href} to={link.href} className="nav-link text-sm font-medium">
+            {navLinks.map(link => <Link key={link.href} to={link.href} className="nav-link text-sm font-medium">
                 {link.label}
-              </Link>
-            ))}
+              </Link>)}
           </nav>
 
           <div className="flex items-center gap-3">
@@ -65,16 +65,9 @@ export function PublicLayout({ children, showBack = false, showFooter = true }: 
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px] sm:w-[320px]">
                 <div className="flex flex-col gap-6 mt-8">
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      className="text-lg font-medium hover:text-primary transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
+                  {navLinks.map(link => <Link key={link.href} to={link.href} className="text-lg font-medium hover:text-primary transition-colors" onClick={() => setMobileMenuOpen(false)}>
                       {link.label}
-                    </Link>
-                  ))}
+                    </Link>)}
                   <hr className="border-border" />
                   <ThemeToggle showLabel className="w-full justify-start" variant="outline" />
                   <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
@@ -97,6 +90,5 @@ export function PublicLayout({ children, showBack = false, showFooter = true }: 
 
       {/* Footer */}
       {showFooter && <Footer />}
-    </div>
-  );
+    </div>;
 }
