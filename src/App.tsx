@@ -39,7 +39,7 @@ import AdminSurfaceTypes from "./pages/admin/AdminSurfaceTypes";
 import AdminArchiving from "./pages/admin/AdminArchiving";
 import ArchivedSessions from "./pages/ArchivedSessions";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
