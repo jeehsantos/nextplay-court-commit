@@ -8,13 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Loader2, Search, AlertTriangle, Zap } from "lucide-react";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Loader2, Search, AlertTriangle, Zap, SlidersHorizontal, Filter, CalendarDays, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSportCategories } from "@/hooks/useSportCategories";
 import { useSurfaceTypes } from "@/hooks/useSurfaceTypes";
@@ -49,6 +49,7 @@ export default function Discover() {
   const [selectedSport, setSelectedSport] = useState("all");
   const [selectedCourtType, setSelectedCourtType] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [todayOnly, setTodayOnly] = useState(false);
   const [rescueGames, setRescueGames] = useState<RescueGame[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [quickGameModalOpen, setQuickGameModalOpen] = useState(false);
@@ -163,8 +164,14 @@ export default function Discover() {
           .select("*", { count: "exact", head: true })
           .eq("session_id", session.id);
 
-        const group = session.groups as any;
-        const court = session.courts as any;
+        const group = session.groups as {
+          name?: string;
+          sport_type?: string;
+        } | null;
+        const court = session.courts as {
+          name?: string;
+          venues?: { name?: string } | null;
+        } | null;
         
         // If organizer pays (payment_type = 'single'), price is 0 (free for players)
         const isFreeForPlayers = session.payment_type === "single";
@@ -197,26 +204,39 @@ export default function Discover() {
 
   // Filter rescue games based on sport and search
   const filteredRescueGames = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     return rescueGames.filter((game) => {
       const matchesSport = selectedSport === "all" || game.sport === selectedSport;
       const matchesSearch = searchQuery === "" || 
         game.groupName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         game.venueName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         game.sport.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSport && matchesSearch;
+      const gameDate = new Date(game.date);
+      gameDate.setHours(0, 0, 0, 0);
+      const matchesToday = !todayOnly || gameDate.getTime() === today.getTime();
+
+      return matchesSport && matchesSearch && matchesToday;
     });
-  }, [rescueGames, selectedSport, searchQuery]);
+  }, [rescueGames, selectedSport, searchQuery, todayOnly]);
 
   // Filter quick challenges based on search
   const filteredChallenges = useMemo(() => {
-    if (!searchQuery) return quickChallenges;
+    const today = new Date().toISOString().split("T")[0];
+
     return quickChallenges.filter((challenge) => {
       const sportName = challenge.sport_categories?.display_name?.toLowerCase() || "";
       const venueName = challenge.venues?.name?.toLowerCase() || "";
-      return sportName.includes(searchQuery.toLowerCase()) ||
-             venueName.includes(searchQuery.toLowerCase());
+      const matchesSearch =
+        !searchQuery ||
+        sportName.includes(searchQuery.toLowerCase()) ||
+        venueName.includes(searchQuery.toLowerCase());
+      const matchesToday = !todayOnly || challenge.scheduled_date === today;
+
+      return matchesSearch && matchesToday;
     });
-  }, [quickChallenges, searchQuery]);
+  }, [quickChallenges, searchQuery, todayOnly]);
 
   if (isLoading) {
     return (
@@ -267,71 +287,82 @@ export default function Discover() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search games, groups, or sports..."
-            className="pl-10 h-11"
+            className="pl-10 h-11 rounded-xl bg-muted/30 border-border/70"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        {/* Filter Dropdowns */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Sport Filter */}
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2">
           {loadingSports ? (
-            <div className="flex items-center gap-2 h-11 px-3 text-muted-foreground">
+            <div className="flex items-center gap-2 h-10 px-3 text-muted-foreground border rounded-xl bg-muted/20">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Loading sports...</span>
             </div>
           ) : (
-            <Select value={selectedSport} onValueChange={setSelectedSport}>
-              <SelectTrigger className="w-full sm:w-[180px] h-11">
-                <SelectValue>
-                  <div className="flex items-center gap-2">
-                    <span>{sports.find(s => s.value === selectedSport)?.emoji}</span>
-                    <span>{sports.find(s => s.value === selectedSport)?.label}</span>
-                  </div>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="bg-popover border border-border shadow-lg z-50">
-                {sports.map((sport) => (
-                  <SelectItem key={sport.value} value={sport.value}>
-                    <div className="flex items-center gap-2">
-                      <span>{sport.emoji}</span>
-                      <span>{sport.label}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-xl px-4 bg-muted/20 border-border/70 text-foreground hover:bg-muted/40"
+                >
+                  <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                  {sports.find((s) => s.value === selectedSport)?.label || "All Sports"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[220px]">
+                <DropdownMenuRadioGroup value={selectedSport} onValueChange={setSelectedSport}>
+                  {sports.map((sport) => (
+                    <DropdownMenuRadioItem key={sport.value} value={sport.value}>
+                      <span className="mr-2">{sport.emoji}</span>
+                      {sport.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
-          {/* Court Type Filter */}
           {loadingSurfaces ? (
-            <div className="flex items-center gap-2 h-11 px-3 text-muted-foreground">
+            <div className="flex items-center gap-2 h-10 px-3 text-muted-foreground border rounded-xl bg-muted/20">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Loading surfaces...</span>
             </div>
           ) : (
-            <Select value={selectedCourtType} onValueChange={setSelectedCourtType}>
-              <SelectTrigger className="w-full sm:w-[180px] h-11">
-                <SelectValue>
-                  <div className="flex items-center gap-2">
-                    <span>{courtTypes.find(c => c.value === selectedCourtType)?.emoji}</span>
-                    <span>{courtTypes.find(c => c.value === selectedCourtType)?.label}</span>
-                  </div>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="bg-popover border border-border shadow-lg z-50">
-                {courtTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    <div className="flex items-center gap-2">
-                      <span>{type.emoji}</span>
-                      <span>{type.label}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-xl px-4 bg-muted/20 border-border/70 text-foreground hover:bg-muted/40"
+                >
+                  <SlidersHorizontal className="h-4 w-4 mr-2 text-muted-foreground" />
+                  {courtTypes.find((c) => c.value === selectedCourtType)?.label || "All Surfaces"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[220px]">
+                <DropdownMenuRadioGroup value={selectedCourtType} onValueChange={setSelectedCourtType}>
+                  {courtTypes.map((type) => (
+                    <DropdownMenuRadioItem key={type.value} value={type.value}>
+                      <span className="mr-2">{type.emoji}</span>
+                      {type.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setTodayOnly((prev) => !prev)}
+            className="h-10 rounded-xl px-4 border-border/70 bg-muted/20 hover:bg-muted/40 text-foreground"
+          >
+            <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground" />
+            Today
+            {todayOnly && <Check className="h-4 w-4 ml-2 text-primary" />}
+          </Button>
         </div>
 
         {/* Tabs */}
