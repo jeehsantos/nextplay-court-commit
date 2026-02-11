@@ -6,11 +6,11 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { label: "Home", href: "/" },
-  { label: "Our Story", href: "/about" },
-  { label: "Venues", href: "/courts" },
-  { label: "Contact", href: "/contact" },
-];
+{ label: "Home", href: "/" },
+{ label: "Our Story", href: "/about" },
+{ label: "Venues", href: "/courts" },
+{ label: "Contact", href: "/contact" }];
+
 
 interface GuestNavbarProps {
   className?: string;
@@ -24,15 +24,15 @@ export function GuestNavbar({ className }: GuestNavbarProps) {
     <header className={cn("fixed top-0 left-0 right-0 z-50 border-b border-slate-200/70 bg-white/75 backdrop-blur-md", className)}>
       <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center" aria-label="Sport Arena home">
-          <img src="/sportarena-logo.png" alt="Sport Arena logo" className="h-12 w-auto object-contain sm:h-14" />
+          <img src="/sportarena-logo.png" alt="Sport Arena logo" className="h-36 w-auto object-contain sm:h-14" />
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex">
           {navLinks.map((link) => {
             const isActive =
-              link.href === "/"
-                ? location.pathname === "/"
-                : location.pathname.startsWith(link.href);
+            link.href === "/" ?
+            location.pathname === "/" :
+            location.pathname.startsWith(link.href);
 
             return (
               <Link
@@ -40,12 +40,12 @@ export function GuestNavbar({ className }: GuestNavbarProps) {
                 to={link.href}
                 className={cn(
                   "transition-colors hover:text-sky-500",
-                  isActive && "text-blue-600",
-                )}
-              >
+                  isActive && "text-blue-600"
+                )}>
+
                 {link.label}
-              </Link>
-            );
+              </Link>);
+
           })}
         </nav>
 
@@ -69,20 +69,20 @@ export function GuestNavbar({ className }: GuestNavbarProps) {
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
               <div className="mt-10 flex flex-col gap-5">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    to={link.href}
-                    className={cn(
-                      "text-base font-medium text-slate-700 transition-colors hover:text-sky-500",
-                      location.pathname.startsWith(link.href) && link.href !== "/" && "text-blue-600",
-                      location.pathname === "/" && link.href === "/" && "text-blue-600",
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                {navLinks.map((link) =>
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={cn(
+                    "text-base font-medium text-slate-700 transition-colors hover:text-sky-500",
+                    location.pathname.startsWith(link.href) && link.href !== "/" && "text-blue-600",
+                    location.pathname === "/" && link.href === "/" && "text-blue-600"
+                  )}
+                  onClick={() => setMobileMenuOpen(false)}>
+
                     {link.label}
                   </Link>
-                ))}
+                )}
                 <hr className="my-1 border-slate-200" />
                 <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full">
@@ -97,6 +97,6 @@ export function GuestNavbar({ className }: GuestNavbarProps) {
           </Sheet>
         </div>
       </div>
-    </header>
-  );
+    </header>);
+
 }
