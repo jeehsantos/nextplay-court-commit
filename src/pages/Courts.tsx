@@ -76,7 +76,7 @@ export default function Courts() {
 
   // Fetch surface and sport types from database - NO FALLBACKS
   const { data: surfaceTypes = [] } = useSurfaceTypes();
-  const { data: sportCategories = [] } = useSportCategories();
+  const { data: sportCategories = [], isLoading: loadingSports } = useSportCategories();
 
   // Build ground type data from database
   const groundTypeData = useMemo(() => {
