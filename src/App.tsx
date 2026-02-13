@@ -37,6 +37,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminSportCategories from "./pages/admin/AdminSportCategories";
 import AdminSurfaceTypes from "./pages/admin/AdminSurfaceTypes";
 import AdminArchiving from "./pages/admin/AdminArchiving";
+import AdminReferralSettings from "./pages/admin/AdminReferralSettings";
 import ArchivedSessions from "./pages/ArchivedSessions";
 
 const queryClient = new QueryClient({});
@@ -86,6 +87,7 @@ const App = () => (
             <Route path="/admin/sports" element={<AdminSportCategories />} />
             <Route path="/admin/surfaces" element={<AdminSurfaceTypes />} />
             <Route path="/admin/archiving" element={<AdminArchiving />} />
+            <Route path="/admin/referrals" element={<AdminReferralSettings />} />
             {/* User Routes */}
             <Route path="/archived-sessions" element={<ArchivedSessions />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

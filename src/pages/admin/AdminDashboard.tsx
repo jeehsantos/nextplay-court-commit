@@ -7,7 +7,8 @@ import {
   Activity,
   ArrowLeft,
   Shield,
-  Archive
+  Archive,
+  Gift
 } from "lucide-react";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MobileLayout } from "@/components/layout/MobileLayout";
@@ -33,6 +34,12 @@ function AdminDashboardContent() {
       description: "Monitor and manage data archiving and cleanup tasks",
       icon: Archive,
       href: "/admin/archiving",
+    },
+    {
+      title: "Referral Program",
+      description: "Configure referral credit amount and view stats",
+      icon: Gift,
+      href: "/admin/referrals",
     },
   ];
 

@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 // Platform fee: $1.50 fixed
@@ -148,6 +148,19 @@ serve(async (req) => {
         console.error("Error calling transfer-payment function:", transferError);
         // Don't fail the payment verification - transfer can be retried
       }
+    }
+
+    // Process referral credit for the paying user (if they were referred)
+    try {
+      const { data: referralResult } = await supabaseClient.rpc("process_referral_credit", {
+        p_referred_user_id: actualUserId,
+      });
+      if (referralResult) {
+        console.log("Referral credit awarded for user:", actualUserId);
+      }
+    } catch (refError) {
+      console.error("Error processing referral credit:", refError);
+      // Don't fail payment verification for referral errors
     }
 
     console.log("Payment verified and recorded:", {
