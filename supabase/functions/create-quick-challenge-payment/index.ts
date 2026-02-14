@@ -7,9 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Platform fee: $1.50 fixed
-const PLATFORM_FEE = 150; // in cents
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -95,6 +92,17 @@ serve(async (req) => {
     const venue = challenge.venues;
     const pricePerPlayer = challenge.price_per_player || 0;
     const amountCents = Math.round(pricePerPlayer * 100);
+
+    // Fetch platform settings from DB
+    const { data: platformSettings } = await supabaseAdmin
+      .from("platform_settings")
+      .select("player_fee, is_active")
+      .limit(1)
+      .maybeSingle();
+
+    const playerFee = platformSettings?.is_active ? (platformSettings?.player_fee ?? 1.5) : 0;
+    const playerFeeCents = Math.round(playerFee * 100);
+
 
     if (amountCents <= 0) {
       // Free challenge - mark as paid immediately
@@ -189,6 +197,8 @@ serve(async (req) => {
       challenge.scheduled_date ? `on ${challenge.scheduled_date}` : "",
     ].filter(Boolean).join(" - ");
 
+    const baseAmountCents = Math.max(0, amountCents - playerFeeCents);
+
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
       {
         price_data: {
@@ -197,11 +207,24 @@ serve(async (req) => {
             name: `Quick Match: ${challenge.game_mode}`,
             description,
           },
-          unit_amount: amountCents,
+          unit_amount: baseAmountCents,
         },
         quantity: 1,
       },
     ];
+
+    if (playerFeeCents > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "nzd",
+          product_data: {
+            name: "Platform Service Fee",
+          },
+          unit_amount: playerFeeCents,
+        },
+        quantity: 1,
+      });
+    }
 
     const stripeAccountId = venue?.stripe_account_id;
     
@@ -220,7 +243,7 @@ serve(async (req) => {
     };
 
     if (stripeAccountId) {
-      const applicationFee = Math.min(PLATFORM_FEE, amountCents);
+      const applicationFee = Math.min(playerFeeCents, amountCents);
       sessionParams.payment_intent_data = {
         application_fee_amount: applicationFee,
         transfer_data: {
