@@ -683,13 +683,15 @@ export default function CourtDetail() {
       if (sessionError) throw sessionError;
 
       // Add the organizer as a session player automatically
+      // Only confirm if payment is NOT required at booking time
+      const requiresPaymentFirst = court.payment_timing === "at_booking";
       const { error: playerError } = await supabase
         .from("session_players")
         .insert({
           session_id: session.id,
           user_id: user.id,
-          is_confirmed: true,
-          confirmed_at: new Date().toISOString(),
+          is_confirmed: !requiresPaymentFirst,
+          confirmed_at: requiresPaymentFirst ? null : new Date().toISOString(),
         });
 
       if (playerError) {
