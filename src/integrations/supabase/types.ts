@@ -1512,7 +1512,13 @@ export type Database = {
         | "slot_released"
         | "player_joined"
         | "group_invite"
-      payment_status: "pending" | "completed" | "failed" | "refunded"
+      payment_status:
+        | "pending"
+        | "completed"
+        | "failed"
+        | "refunded"
+        | "transferred"
+        | "cancelled"
       payment_timing: "at_booking" | "before_session"
       session_state: "protected" | "rescue" | "released"
       session_type:
@@ -1668,7 +1674,14 @@ export const Constants = {
         "player_joined",
         "group_invite",
       ],
-      payment_status: ["pending", "completed", "failed", "refunded"],
+      payment_status: [
+        "pending",
+        "completed",
+        "failed",
+        "refunded",
+        "transferred",
+        "cancelled",
+      ],
       payment_timing: ["at_booking", "before_session"],
       session_state: ["protected", "rescue", "released"],
       session_type: [
