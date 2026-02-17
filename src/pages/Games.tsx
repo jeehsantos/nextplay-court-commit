@@ -218,7 +218,7 @@ export default function Games() {
               state: "protected" as Database["public"]["Enums"]["session_state"],
               isPaid: qcPaymentMap.get(qc.id) === "paid",
               durationMinutes: 60,
-              linkTo: `/quick-game/${qc.id}`,
+              linkTo: `/quick-games/${qc.id}`,
             };
           });
         }
