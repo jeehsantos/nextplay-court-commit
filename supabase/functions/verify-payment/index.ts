@@ -81,8 +81,9 @@ serve(async (req) => {
         console.log("Stripe confirms payment — processing inline");
 
         const metadata = checkoutSession.metadata || {};
-        const platformFeeCents = parseFloat(metadata.platform_fee || "0");
-        const platformFeeDollars = platformFeeCents / 100;
+        // Support both old and new metadata field names
+        const serviceFeeCents = parseFloat(metadata.service_fee || metadata.platform_fee || "0");
+        const serviceFeeDollars = serviceFeeCents / 100;
         const totalChargeDollars = (checkoutSession.amount_total || 0) / 100;
         const creditsApplied = parseFloat(metadata.credits_applied || "0");
         const paymentIntentId = checkoutSession.payment_intent as string;
@@ -93,7 +94,7 @@ serve(async (req) => {
           .update({
             amount: totalChargeDollars,
             paid_with_credits: creditsApplied,
-            platform_fee: platformFeeDollars,
+            platform_fee: serviceFeeDollars,
             status: "completed",
             paid_at: new Date().toISOString(),
             stripe_payment_intent_id: paymentIntentId,
@@ -154,7 +155,7 @@ serve(async (req) => {
           sessionId,
           userId,
           totalCharge: totalChargeDollars,
-          platformFee: platformFeeDollars,
+          serviceFee: serviceFeeDollars,
         });
 
         return new Response(JSON.stringify({
