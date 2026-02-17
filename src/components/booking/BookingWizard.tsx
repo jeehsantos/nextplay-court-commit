@@ -278,7 +278,9 @@ export function BookingWizard({
     0
   );
   const courtTotal = courtPrice + equipmentTotal;
-  const totalPrice = courtTotal + platformFee;
+  // Service fee is the platform player_fee (read-only display, backend is authoritative)
+  const serviceFee = platformFee;
+  const totalPrice = courtTotal + serviceFee;
 
   const progress = (currentStep / STEPS.length) * 100;
 
@@ -556,10 +558,10 @@ export function BookingWizard({
                       <span>${(item.quantity * item.pricePerUnit).toFixed(2)}</span>
                     </div>
                   ))}
-                  {platformFee > 0 && (
+                  {serviceFee > 0 && (
                     <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Platform fee</span>
-                      <span>${platformFee.toFixed(2)}</span>
+                      <span>Service fee</span>
+                      <span>${serviceFee.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="border-t border-border pt-2 mt-2">
