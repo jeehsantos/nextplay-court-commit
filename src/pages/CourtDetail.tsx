@@ -1377,17 +1377,19 @@ export default function CourtDetail() {
             </div>
 
             {/* Venue Details: Allowed Sports + Amenities */}
-            {((court.venues?.amenities && court.venues.amenities.length > 0) || (court.allowed_sports && court.allowed_sports.length > 0)) && (
+            {(() => {
+              const displaySports = getSelectedCourt()?.allowed_sports || court.allowed_sports || [];
+              return ((court.venues?.amenities && court.venues.amenities.length > 0) || displaySports.length > 0) ? (
               <div className="px-4 lg:px-0 space-y-4">
                 {/* Allowed Sports */}
-                {court.allowed_sports && court.allowed_sports.length > 0 && (
+                {displaySports.length > 0 && (
                   <div>
                     <h3 className="font-semibold mb-3 flex items-center gap-2">
                       <span className="text-lg">🏅</span>
                       Sports Available
                     </h3>
                     <div className="flex flex-wrap gap-2">
-                      {court.allowed_sports.map((sport: string, i: number) => (
+                      {displaySports.map((sport: string, i: number) => (
                         <Badge key={i} variant="secondary" className="gap-1.5 py-1 px-3">
                           <SportIcon sport={sport} size="sm" className="w-5 h-5 text-xs" />
                           <span className="capitalize">{sport.replace(/_/g, " ")}</span>
@@ -1418,7 +1420,8 @@ export default function CourtDetail() {
                   </div>
                 )}
               </div>
-            )}
+              ) : null;
+            })()}
 
             {/* Court Rules - Dynamic based on selected court */}
             {(getSelectedCourt()?.rules || (court as any).rules) && (
