@@ -81,13 +81,18 @@ export default function ManagerCourtForm() {
 
     try {
       const { data, error } = await supabase
-        .from("venues")
+        .from("courts")
         .select("allowed_sports")
-        .eq("id", venueId)
-        .single();
+        .eq("venue_id", venueId)
+        .not("allowed_sports", "is", null);
 
       if (error) throw error;
-      setVenueAllowedSports((data as any)?.allowed_sports || []);
+
+      const uniqueSports = Array.from(
+        new Set((data || []).flatMap((court: { allowed_sports: string[] | null }) => court.allowed_sports || []))
+      );
+
+      setVenueAllowedSports(uniqueSports);
     } catch (error) {
       console.error("Error fetching venue allowed sports:", error);
       setVenueAllowedSports([]);
