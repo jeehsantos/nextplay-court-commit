@@ -25,8 +25,8 @@ import {
   CreditCard,
   AlertTriangle,
   Maximize2,
-  X,
-} from "lucide-react";
+  X } from
+"lucide-react";
 import { format } from "date-fns";
 import { LobbyChatPanel } from "@/components/quick-challenge/LobbyChatPanel";
 import { InviteFriendDialog } from "@/components/quick-challenge/InviteFriendDialog";
@@ -35,8 +35,8 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from
+"@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,8 +45,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTitle } from
+"@/components/ui/alert-dialog";
 
 // --- TYPES ---
 type TeamSide = "left" | "right";
@@ -94,44 +94,44 @@ function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoinin
     <div
       className={cn(
         "relative flex items-center h-14 md:h-16 transition-all duration-300 rounded-lg px-2 cursor-pointer",
-        isMe
-          ? "bg-primary/10 ring-1 ring-primary shadow-[0_0_15px_hsl(var(--primary)/0.2)]"
-          : "hover:bg-accent/50",
+        isMe ?
+        "bg-primary/10 ring-1 ring-primary shadow-[0_0_15px_hsl(var(--primary)/0.2)]" :
+        "hover:bg-accent/50",
         isLeft ? "flex-row" : "flex-row-reverse"
       )}
-      onClick={isEmpty ? onJoin : undefined}
-    >
+      onClick={isEmpty ? onJoin : undefined}>
+
       {/* Avatar */}
       <div
         className={cn(
           "relative z-10 w-9 h-9 md:w-11 md:h-11 rounded-full border-2 shrink-0 transition-transform overflow-hidden",
-          isEmpty
-            ? "border-muted-foreground/20 bg-muted"
-            : isMe
-            ? "border-primary scale-105"
-            : isLeft
-            ? "border-blue-500"
-            : "border-red-500"
-        )}
-      >
-        {!isEmpty && player ? (
-          <img
-            src={
-              player.avatarUrl ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=${isLeft ? "3b82f6" : "ef4444"}&color=fff`
-            }
-            className="w-full h-full rounded-full object-cover"
-            alt={player.name}
-          />
-        ) : (
-          <div className="w-full h-full rounded-full flex items-center justify-center bg-muted">
-            {isJoining ? (
-              <Loader2 size={14} className="text-muted-foreground animate-spin" />
-            ) : (
-              <Plus size={14} className="text-muted-foreground/50" />
-            )}
+          isEmpty ?
+          "border-muted-foreground/20 bg-muted" :
+          isMe ?
+          "border-primary scale-105" :
+          isLeft ?
+          "border-blue-500" :
+          "border-red-500"
+        )}>
+
+        {!isEmpty && player ?
+        <img
+          src={
+          player.avatarUrl ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=${isLeft ? "3b82f6" : "ef4444"}&color=fff`
+          }
+          className="w-full h-full rounded-full object-cover"
+          alt={player.name} /> :
+
+
+        <div className="w-full h-full rounded-full flex items-center justify-center bg-muted">
+            {isJoining ?
+          <Loader2 size={14} className="text-muted-foreground animate-spin" /> :
+
+          <Plus size={14} className="text-muted-foreground/50" />
+          }
           </div>
-        )}
+        }
       </div>
 
       {/* Player Info */}
@@ -139,18 +139,18 @@ function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoinin
         className={cn(
           "flex flex-col px-2 md:px-3 z-10 overflow-hidden flex-1",
           isLeft ? "text-left" : "text-right"
-        )}
-      >
+        )}>
+
         <span
           className={cn(
             "text-[7px] md:text-[9px] font-bold uppercase tracking-tighter truncate",
-            isMe
-              ? "text-primary"
-              : isLeft
-              ? "text-blue-500/70"
-              : "text-red-500/70"
-          )}
-        >
+            isMe ?
+            "text-primary" :
+            isLeft ?
+            "text-blue-500/70" :
+            "text-red-500/70"
+          )}>
+
           {role}
         </span>
         <span
@@ -158,52 +158,52 @@ function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoinin
             "text-[10px] md:text-sm font-bold truncate flex items-center gap-1",
             isMe ? "text-foreground" : "text-foreground/90",
             !isLeft && "flex-row-reverse"
-          )}
-        >
-          {isEmpty ? (
-            isJoining ? "Joining..." : "Waiting for player"
-          ) : (
-            <>
+          )}>
+
+          {isEmpty ?
+          isJoining ? "Joining..." : "Waiting for player" :
+
+          <>
               {player.name}
-              {flagUrl && (
-                <img
-                  src={flagUrl}
-                  alt="flag"
-                  className="h-3 w-4 rounded-sm object-cover inline-block"
-                />
-              )}
+              {flagUrl &&
+            <img
+              src={flagUrl}
+              alt="flag"
+              className="h-3 w-4 rounded-sm object-cover inline-block" />
+
+            }
             </>
-          )}
+          }
         </span>
 
-        {!isEmpty && (
-          <div
-            className={cn(
-              "flex items-center gap-1 mt-0.5",
-              !isLeft && "flex-row-reverse"
-            )}
-          >
-            {isPaid ? (
-              <>
+        {!isEmpty &&
+        <div
+          className={cn(
+            "flex items-center gap-1 mt-0.5",
+            !isLeft && "flex-row-reverse"
+          )}>
+
+            {isPaid ?
+          <>
                 <CheckCircle2 size={10} className="text-green-500" />
                 <span className="text-[7px] md:text-[8px] font-black text-green-500 uppercase tracking-tighter">
                   Paid
                 </span>
-              </>
-            ) : (
-              <>
+              </> :
+
+          <>
                 <Clock size={10} className="text-warning" />
                 <span className="text-[7px] md:text-[8px] font-black text-warning uppercase tracking-tighter">
                   Pending
                 </span>
               </>
-            )}
+          }
           </div>
-        )}
+        }
       </div>
 
-    </div>
-  );
+    </div>);
+
 }
 
 // --- SETTINGS MODAL ---
@@ -222,17 +222,17 @@ interface SettingsModalProps {
 
 const MATCH_FORMATS = ["1vs1", "2vs2", "3vs3", "4vs4", "5vs5"];
 
-function SettingsModal({ 
-  isOpen, 
-  onClose, 
-  teamSize, 
-  gameMode, 
+function SettingsModal({
+  isOpen,
+  onClose,
+  teamSize,
+  gameMode,
   isOrganizer,
   challengeId,
   currentPlayerCount,
   onFormatChange,
   isUpdating,
-  hasPaidPlayers,
+  hasPaidPlayers
 }: SettingsModalProps) {
   const { theme, setTheme } = useTheme();
   const [selectedFormat, setSelectedFormat] = useState(gameMode);
@@ -265,8 +265,8 @@ function SettingsModal({
           </h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-accent rounded-full transition-colors"
-          >
+            className="p-1 hover:bg-accent rounded-full transition-colors">
+
             <LogOut size={20} />
           </button>
         </div>
@@ -279,8 +279,8 @@ function SettingsModal({
             </span>
             <button
               onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-muted border-border transition-all"
-            >
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-muted border-border transition-all">
+
               {theme === "light" ? <Sun size={14} /> : <Moon size={14} />}
               <span className="text-[10px] font-black uppercase">
                 {theme} Mode
@@ -294,41 +294,41 @@ function SettingsModal({
               <span className="text-xs font-bold uppercase text-muted-foreground">
                 Match Format
               </span>
-              {isOrganizer && !hasPaidPlayers ? (
-                <Select 
-                  value={selectedFormat} 
-                  onValueChange={handleFormatChange}
-                  disabled={isUpdating}
-                >
+              {isOrganizer && !hasPaidPlayers ?
+              <Select
+                value={selectedFormat}
+                onValueChange={handleFormatChange}
+                disabled={isUpdating}>
+
                   <SelectTrigger className="w-[120px]">
                     <SelectValue placeholder="Select format" />
                   </SelectTrigger>
                   <SelectContent className="z-[200]">
-                    {MATCH_FORMATS.map((format) => (
-                      <SelectItem 
-                        key={format} 
-                        value={format}
-                        disabled={getFormatDisabled(format)}
-                      >
+                    {MATCH_FORMATS.map((format) =>
+                  <SelectItem
+                    key={format}
+                    value={format}
+                    disabled={getFormatDisabled(format)}>
+
                         {format}
                       </SelectItem>
-                    ))}
+                  )}
                   </SelectContent>
-                </Select>
-              ) : (
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-muted border-border">
+                </Select> :
+
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-muted border-border">
                   <span className="text-[10px] font-black uppercase">
                     {gameMode}
                   </span>
                 </div>
-              )}
+              }
             </div>
-            {isOrganizer && hasPaidPlayers && (
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+            {isOrganizer && hasPaidPlayers &&
+            <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                 <AlertTriangle size={12} className="text-warning shrink-0" />
                 Format cannot be changed after a player has paid.
               </p>
-            )}
+            }
           </div>
         </div>
 
@@ -336,8 +336,8 @@ function SettingsModal({
           Close
         </Button>
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 // --- MAIN COMPONENT ---
@@ -358,7 +358,7 @@ export default function QuickGameLobby() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isQuitDialogOpen, setIsQuitDialogOpen] = useState(false);
   const [isPlayerQuitDialogOpen, setIsPlayerQuitDialogOpen] = useState(false);
-  const [joiningSlot, setJoiningSlot] = useState<{ team: TeamSide; position: number } | null>(null);
+  const [joiningSlot, setJoiningSlot] = useState<{team: TeamSide;position: number;} | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -390,21 +390,21 @@ export default function QuickGameLobby() {
   // Map players from backend to lobby format - deduplicate by user_id
   const players: LobbyPlayer[] = useMemo(() => {
     if (!challenge?.quick_challenge_players) return [];
-    
+
     // Use a Map to deduplicate by user_id - keep the first occurrence (lowest slot)
     const uniquePlayersMap = new Map<string, typeof challenge.quick_challenge_players[0]>();
-    
+
     // Sort by slot_position to ensure consistent ordering
     const sortedPlayers = [...challenge.quick_challenge_players].sort(
       (a, b) => a.slot_position - b.slot_position
     );
-    
+
     for (const player of sortedPlayers) {
       if (!uniquePlayersMap.has(player.user_id)) {
         uniquePlayersMap.set(player.user_id, player);
       }
     }
-    
+
     return Array.from(uniquePlayersMap.values()).map((p) => ({
       id: p.id,
       name: p.profiles?.full_name || "Player",
@@ -413,7 +413,7 @@ export default function QuickGameLobby() {
       team: p.team as TeamSide,
       slotPosition: p.slot_position,
       paymentStatus: p.payment_status as PaymentStatus,
-      isMe: p.user_id === user?.id,
+      isMe: p.user_id === user?.id
     }));
   }, [challenge?.quick_challenge_players, user?.id]);
 
@@ -443,7 +443,7 @@ export default function QuickGameLobby() {
     [players]
   );
 
-  const platformFee = platformSettings?.is_active ? (platformSettings?.player_fee ?? 0) : 0;
+  const platformFee = platformSettings?.is_active ? platformSettings?.player_fee ?? 0 : 0;
   const challengePricePerPlayer = challenge?.price_per_player || 0;
   const gameFeePerPlayer = Math.max(0, challengePricePerPlayer - platformFee);
 
@@ -454,7 +454,7 @@ export default function QuickGameLobby() {
     joinChallenge.mutate(
       { challengeId: id, team, slotPosition },
       {
-        onSettled: () => setJoiningSlot(null),
+        onSettled: () => setJoiningSlot(null)
       }
     );
   };
@@ -477,9 +477,9 @@ export default function QuickGameLobby() {
   };
 
   const handleSelectPaymentMethod = async (
-    method: "credits" | "payment",
-    creditsToUse?: number
-  ) => {
+  method: "credits" | "payment",
+  creditsToUse?: number) =>
+  {
     if (!id) return;
 
     if (method === "credits") {
@@ -517,7 +517,7 @@ export default function QuickGameLobby() {
       },
       onError: () => {
         setIsQuitDialogOpen(false);
-      },
+      }
     });
   };
 
@@ -530,7 +530,7 @@ export default function QuickGameLobby() {
       },
       onError: () => {
         setIsPlayerQuitDialogOpen(false);
-      },
+      }
     });
   };
 
@@ -556,11 +556,11 @@ export default function QuickGameLobby() {
     let isMounted = true;
 
     const fetchProfileId = async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const { data, error } = await supabase.
+      from("profiles").
+      select("id").
+      eq("user_id", user.id).
+      maybeSingle();
 
       if (!isMounted) return;
 
@@ -602,8 +602,8 @@ export default function QuickGameLobby() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>);
+
   }
 
   if (!user) return null;
@@ -621,35 +621,35 @@ export default function QuickGameLobby() {
             <Button
               className="mt-4"
               variant="outline"
-              onClick={() => navigate("/discover?tab=quickgames")}
-            >
+              onClick={() => navigate("/discover?tab=quickgames")}>
+
               Back to Quick Games
             </Button>
           </div>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   // Format date/time
-  const formattedDateTime = challenge.scheduled_date
-    ? format(
-        new Date(`${challenge.scheduled_date}T${challenge.scheduled_time || "00:00"}`),
-        "EEEE, MMMM d • h:mm a"
-      )
-    : "Date TBD";
+  const formattedDateTime = challenge.scheduled_date ?
+  format(
+    new Date(`${challenge.scheduled_date}T${challenge.scheduled_time || "00:00"}`),
+    "EEEE, MMMM d • h:mm a"
+  ) :
+  "Date TBD";
 
-  const venueAddress = [challenge.venues?.address, challenge.venues?.city]
-    .filter(Boolean)
-    .join(", ");
+  const venueAddress = [challenge.venues?.address, challenge.venues?.city].
+  filter(Boolean).
+  join(", ");
   const venueName = challenge.venues?.name || "Venue TBD";
   const hasVenueAddress = Boolean(venueAddress);
   const mapsQuery = encodeURIComponent(hasVenueAddress ? `${venueName}, ${venueAddress}` : venueName);
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
   const courtImageUrl =
-    challenge.courts?.photo_url ||
-    challenge.venues?.photo_url ||
-    "https://images.unsplash.com/photo-1544919396-1033604f552e?q=80&w=2070&auto=format&fit=crop";
+  challenge.courts?.photo_url ||
+  challenge.venues?.photo_url ||
+  "https://images.unsplash.com/photo-1544919396-1033604f552e?q=80&w=2070&auto=format&fit=crop";
 
   const totalPlayers = players.length;
 
@@ -675,16 +675,16 @@ export default function QuickGameLobby() {
             <AlertDialogAction
               onClick={confirmQuitLobby}
               disabled={cancelChallenge.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {cancelChallenge.isPending ? (
-                <>
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+
+              {cancelChallenge.isPending ?
+              <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Cancelling...
-                </>
-              ) : (
-                "Yes, Cancel Lobby"
-              )}
+                </> :
+
+              "Yes, Cancel Lobby"
+              }
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -701,8 +701,8 @@ export default function QuickGameLobby() {
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <p>Are you sure you want to leave this quick game?</p>
-                {players.find(p => p.isMe)?.paymentStatus === "paid" && (
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-foreground">
+                {players.find((p) => p.isMe)?.paymentStatus === "paid" &&
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-foreground">
                     <p className="font-semibold flex items-center gap-2">
                       <CreditCard className="h-4 w-4 text-primary" />
                       Payment will be converted to credits
@@ -711,7 +711,7 @@ export default function QuickGameLobby() {
                       Your payment of <span className="font-bold text-primary">${challenge?.price_per_player?.toFixed(2) || "0.00"}</span> will be converted into platform credits that can be used in future sessions.
                     </p>
                   </div>
-                )}
+                }
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -722,16 +722,16 @@ export default function QuickGameLobby() {
             <AlertDialogAction
               onClick={confirmPlayerQuitLobby}
               disabled={leaveChallenge.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {leaveChallenge.isPending ? (
-                <>
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+
+              {leaveChallenge.isPending ?
+              <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Leaving...
-                </>
-              ) : (
-                "Yes, Quit Lobby"
-              )}
+                </> :
+
+              "Yes, Quit Lobby"
+              }
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -747,8 +747,8 @@ export default function QuickGameLobby() {
         currentPlayerCount={players.length}
         onFormatChange={handleFormatChange}
         isUpdating={updateFormat.isPending}
-        hasPaidPlayers={players.some(p => p.paymentStatus === "paid")}
-      />
+        hasPaidPlayers={players.some((p) => p.paymentStatus === "paid")} />
+
 
       {/* Invite Friend Dialog */}
       <InviteFriendDialog
@@ -756,32 +756,32 @@ export default function QuickGameLobby() {
         onOpenChange={setIsInviteOpen}
         challengeId={challenge.id}
         sportName={challenge.sport_categories?.display_name}
-        gameMode={challenge.game_mode}
-      />
+        gameMode={challenge.game_mode} />
 
-      {isCourtImageOpen && (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Court image preview"
-          onClick={() => setIsCourtImageOpen(false)}
-        >
+
+      {isCourtImageOpen &&
+      <div
+        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Court image preview"
+        onClick={() => setIsCourtImageOpen(false)}>
+
           <button
-            className="absolute top-4 right-4 rounded-full border border-white/40 bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
-            onClick={() => setIsCourtImageOpen(false)}
-            aria-label="Close court image"
-          >
+          className="absolute top-4 right-4 rounded-full border border-white/40 bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+          onClick={() => setIsCourtImageOpen(false)}
+          aria-label="Close court image">
+
             <X size={18} />
           </button>
           <img
-            src={courtImageUrl}
-            className="max-h-[90vh] w-full max-w-5xl rounded-xl object-contain"
-            alt="Court full view"
-            onClick={(event) => event.stopPropagation()}
-          />
+          src={courtImageUrl}
+          className="max-h-[90vh] w-full max-w-5xl rounded-xl object-contain"
+          alt="Court full view"
+          onClick={(event) => event.stopPropagation()} />
+
         </div>
-      )}
+      }
 
       {/* Header */}
       <div className="h-14 flex items-center justify-between px-4 md:px-6 relative z-20 shrink-0 border-b border-border bg-card">
@@ -798,49 +798,49 @@ export default function QuickGameLobby() {
         </div>
 
         <div className="flex items-center justify-end gap-2 w-1/4 text-muted-foreground">
-          {isOrganizer && (
-            <button onClick={() => setIsSettingsOpen(true)} className="p-1 hover:bg-accent rounded-full transition-colors">
+          {isOrganizer &&
+          <button onClick={() => setIsSettingsOpen(true)} className="p-1 hover:bg-accent rounded-full transition-colors">
               <Settings
-                size={18}
-                className="cursor-pointer hover:rotate-90 transition-transform duration-500 hover:text-primary"
-              />
+              size={18}
+              className="cursor-pointer hover:rotate-90 transition-transform duration-500 hover:text-primary" />
+
             </button>
-          )}
-          {isOrganizer ? (
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              className="h-7 text-[9px] uppercase font-bold tracking-wide gap-1 px-2"
-              onClick={handleQuitLobby}
-              disabled={cancelChallenge.isPending}
-            >
-              {cancelChallenge.isPending ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <LogOut size={12} />
-              )}
+          }
+          {isOrganizer ?
+          <Button
+            variant="destructive"
+            size="sm"
+            className="h-7 text-[9px] uppercase font-bold tracking-wide gap-1 px-2"
+            onClick={handleQuitLobby}
+            disabled={cancelChallenge.isPending}>
+
+              {cancelChallenge.isPending ?
+            <Loader2 size={12} className="animate-spin" /> :
+
+            <LogOut size={12} />
+            }
               <span className="hidden sm:inline">Quit Lobby</span>
-            </Button>
-          ) : hasUserJoined ? (
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              className="h-7 text-[9px] uppercase font-bold tracking-wide gap-1 px-2"
-              onClick={handleQuitLobby}
-              disabled={leaveChallenge.isPending}
-            >
-              {leaveChallenge.isPending ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <LogOut size={12} />
-              )}
+            </Button> :
+          hasUserJoined ?
+          <Button
+            variant="destructive"
+            size="sm"
+            className="h-7 text-[9px] uppercase font-bold tracking-wide gap-1 px-2"
+            onClick={handleQuitLobby}
+            disabled={leaveChallenge.isPending}>
+
+              {leaveChallenge.isPending ?
+            <Loader2 size={12} className="animate-spin" /> :
+
+            <LogOut size={12} />
+            }
               <span className="hidden sm:inline">Quit Lobby</span>
-            </Button>
-          ) : (
-            <button onClick={handleLeaveLobby} className="p-1 hover:bg-accent rounded-full transition-colors">
+            </Button> :
+
+          <button onClick={handleLeaveLobby} className="p-1 hover:bg-accent rounded-full transition-colors">
               <LogOut size={18} className="cursor-pointer hover:text-destructive" />
             </button>
-          )}
+          }
         </div>
       </div>
 
@@ -863,7 +863,7 @@ export default function QuickGameLobby() {
                   (p) => p.slotPosition === i
                 ) || leftTeamPlayers[i]; // Fallback to array index if slot_position doesn't match
                 const isJoiningThis =
-                  joiningSlot?.team === "left" && joiningSlot?.position === i;
+                joiningSlot?.team === "left" && joiningSlot?.position === i;
                 return (
                   <PlayerSlot
                     key={`left-${i}`}
@@ -873,9 +873,9 @@ export default function QuickGameLobby() {
                     isCurrentUser={player?.isMe}
                     onJoin={() => handleJoinSlot("left", i)}
                     onPay={handlePayment}
-                    isJoining={isJoiningThis}
-                  />
-                );
+                    isJoining={isJoiningThis} />);
+
+
               })}
             </div>
           </div>
@@ -895,7 +895,7 @@ export default function QuickGameLobby() {
                   (p) => p.slotPosition === i
                 ) || rightTeamPlayers[i]; // Fallback to array index if slot_position doesn't match
                 const isJoiningThis =
-                  joiningSlot?.team === "right" && joiningSlot?.position === i;
+                joiningSlot?.team === "right" && joiningSlot?.position === i;
                 return (
                   <PlayerSlot
                     key={`right-mobile-${i}`}
@@ -905,9 +905,9 @@ export default function QuickGameLobby() {
                     isCurrentUser={player?.isMe}
                     onJoin={() => handleJoinSlot("right", i)}
                     onPay={handlePayment}
-                    isJoining={isJoiningThis}
-                  />
-                );
+                    isJoining={isJoiningThis} />);
+
+
               })}
             </div>
           </div>
@@ -929,8 +929,8 @@ export default function QuickGameLobby() {
               className={cn(
                 "w-full text-center text-[10px] font-semibold text-muted-foreground transition-colors flex items-center justify-center gap-1",
                 hasVenueAddress && "hover:text-primary"
-              )}
-            >
+              )}>
+
               <MapPin size={12} className="text-primary shrink-0" />
               <span className="truncate">
                 {hasVenueAddress ? `${venueName} • ${venueAddress}` : venueName}
@@ -943,13 +943,13 @@ export default function QuickGameLobby() {
             type="button"
             className="relative w-full max-w-2xl aspect-video border-4 md:border-[6px] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden rounded-xl bg-muted border-card group cursor-zoom-in text-left"
             onClick={() => setIsCourtImageOpen(true)}
-            aria-label="Open court image"
-          >
+            aria-label="Open court image">
+
             <img
               src={courtImageUrl}
               className="w-full h-full object-cover opacity-90"
-              alt="Arena"
-            />
+              alt="Arena" />
+
             <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
             <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full border border-white/40 bg-black/45 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white opacity-100 md:opacity-0 transition-opacity md:group-hover:opacity-100">
               <Maximize2 size={11} />
@@ -975,41 +975,41 @@ export default function QuickGameLobby() {
           {/* Action Buttons */}
           <div className="mt-6 md:mt-8 flex flex-col items-center gap-4 w-full max-w-2xl">
             <div className="flex flex-row gap-3 w-full">
-              {hasUserJoined && !players.find(p => p.isMe)?.paymentStatus?.includes("paid") ? (
-                <Button
-                  className="flex-1 py-5 md:py-6 font-black text-[10px] md:text-xs uppercase tracking-[0.15em] gap-2"
-                  variant="default"
-                  onClick={handlePayment}
-                  disabled={isPaying || isVerifyingPayment}
-                >
-                  {isPaying || isVerifyingPayment ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <CreditCard size={14} />
-                  )}
+              {hasUserJoined && !players.find((p) => p.isMe)?.paymentStatus?.includes("paid") ?
+              <Button
+                className="flex-1 py-5 md:py-6 font-black text-[10px] md:text-xs uppercase tracking-[0.15em] gap-2"
+                variant="default"
+                onClick={handlePayment}
+                disabled={isPaying || isVerifyingPayment}>
+
+                  {isPaying || isVerifyingPayment ?
+                <Loader2 size={14} className="animate-spin" /> :
+
+                <CreditCard size={14} />
+                }
                   {isVerifyingPayment ? "Verifying..." : "Pay and Confirm"}
-                </Button>
-              ) : (
-                <Button
-                  className="flex-1 py-5 md:py-6 font-black text-[10px] md:text-xs uppercase tracking-[0.15em] gap-2"
-                  variant="default"
-                  disabled={!hasUserJoined || players.find(p => p.isMe)?.paymentStatus === "paid"}
-                >
-                  {players.find(p => p.isMe)?.paymentStatus === "paid" ? (
-                    <>
+                </Button> :
+
+              <Button
+                className="flex-1 py-5 md:py-6 font-black text-[10px] md:text-xs uppercase tracking-[0.15em] gap-2"
+                variant="default"
+                disabled={!hasUserJoined || players.find((p) => p.isMe)?.paymentStatus === "paid"}>
+
+                  {players.find((p) => p.isMe)?.paymentStatus === "paid" ?
+                <>
                       <CheckCircle2 size={14} />
                       Confirmed
-                    </>
-                  ) : (
-                    "Confirm Presence"
-                  )}
+                    </> :
+
+                "Confirm Presence"
+                }
                 </Button>
-              )}
+              }
               <Button
                 className="flex-1 py-5 md:py-6 font-black text-[10px] md:text-xs uppercase tracking-[0.15em]"
                 variant="outline"
-                onClick={() => setIsInviteOpen(true)}
-              >
+                onClick={() => setIsInviteOpen(true)}>
+
                 Invite Friend
               </Button>
             </div>
@@ -1019,22 +1019,22 @@ export default function QuickGameLobby() {
                   Total:
                 </span>
                 <span className="text-sm font-black uppercase tracking-widest text-primary">
-                  ${challenge.price_per_player != null
-                    ? (challenge.price_per_player + estimateServiceFee(challenge.price_per_player, playerFee)).toFixed(2)
-                    : "0.00"}
+                  ${challenge.price_per_player != null ?
+                  (challenge.price_per_player + estimateServiceFee(challenge.price_per_player, playerFee)).toFixed(2) :
+                  "0.00"}
                 </span>
               </div>
-              {challenge.price_per_player > 0 && (
-                <span className="text-[9px] text-muted-foreground">
+              {challenge.price_per_player > 0 &&
+              <span className="text-[10px] text-muted-foreground">
                   Court price ${challenge.price_per_player.toFixed(2)} + Service fee ${estimateServiceFee(challenge.price_per_player, playerFee).toFixed(2)}
                 </span>
-              )}
+              }
             </div>
-            {challengePricePerPlayer > 0 && (
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                ${gameFeePerPlayer.toFixed(2)} game fee + ${platformFee.toFixed(2)} platform fee
-              </p>
-            )}
+            {challengePricePerPlayer > 0
+
+
+
+            }
           </div>
         </div>
 
@@ -1053,7 +1053,7 @@ export default function QuickGameLobby() {
                 (p) => p.slotPosition === i
               ) || rightTeamPlayers[i]; // Fallback to array index if slot_position doesn't match
               const isJoiningThis =
-                joiningSlot?.team === "right" && joiningSlot?.position === i;
+              joiningSlot?.team === "right" && joiningSlot?.position === i;
               return (
                 <PlayerSlot
                   key={`right-desktop-${i}`}
@@ -1063,9 +1063,9 @@ export default function QuickGameLobby() {
                   isCurrentUser={player?.isMe}
                   onJoin={() => handleJoinSlot("right", i)}
                   onPay={handlePayment}
-                  isJoining={isJoiningThis}
-                />
-              );
+                  isJoining={isJoiningThis} />);
+
+
             })}
           </div>
         </div>
@@ -1077,8 +1077,8 @@ export default function QuickGameLobby() {
         currentUserId={user.id}
         totalSlots={teamSize * 2}
         filledSlots={totalPlayers}
-        isMatchFull={totalPlayers >= teamSize * 2}
-      />
+        isMatchFull={totalPlayers >= teamSize * 2} />
+
 
       {/* Credits Payment Modal */}
       <PaymentMethodDialog
@@ -1087,8 +1087,8 @@ export default function QuickGameLobby() {
         userCredits={credits}
         sessionCost={(challenge.price_per_player || 0) + estimateServiceFee(challenge.price_per_player || 0, playerFee)}
         onSelectPaymentMethod={handleSelectPaymentMethod}
-        isLoading={isPaying}
-      />
-    </div>
-  );
+        isLoading={isPaying} />
+
+    </div>);
+
 }
