@@ -917,7 +917,7 @@ export default function QuickGameLobby() {
         <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 min-h-[300px] md:min-h-[400px]">
           <div className="w-full max-w-2xl mb-4 md:mb-6 flex flex-col items-center gap-2">
             <div className="w-full flex items-center justify-center px-4 py-2 rounded-full border bg-card/50 border-border text-muted-foreground">
-              <div className="text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 text-center">
+              <div className="text-[14px] font-bold uppercase tracking-widest flex items-center gap-2 text-center">
                 <Clock size={12} className="text-primary" />
                 {formattedDateTime}
               </div>
