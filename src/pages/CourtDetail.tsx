@@ -234,7 +234,10 @@ export default function CourtDetail() {
     }
   }, [id, navigate]);
 
-  const fetchAvailability = useCallback(async (venueId: string, courtId: string, date: Date) => {
+  // Ref to block useEffect re-trigger when we're doing an internal court switch
+  const isAutoSwitchingRef = useRef(false);
+
+  const fetchAvailability = useCallback(async (venueId: string, courtId: string, date: Date, isInitialLoad = false) => {
     setAvailabilityLoading(true);
     setAvailabilityError(null);
 
@@ -248,7 +251,51 @@ export default function CourtDetail() {
       });
 
       if (error) throw error;
-      setAvailabilityData(data as AvailabilityResponse);
+
+      const response = data as AvailabilityResponse;
+      const venueCourts = response.venue_courts || [];
+
+      // One-time preferred-sport correction on initial load:
+      // If the URL court doesn't match preferred sports, silently switch and
+      // immediately fetch for the correct court — spinner stays visible the whole time.
+      if (
+        isInitialLoad &&
+        !hasAutoSelectedRef.current &&
+        preferredSports.length > 0 &&
+        venueCourts.length > 1
+      ) {
+        hasAutoSelectedRef.current = true;
+        const currentCourtSports = venueCourts.find(c => c.id === courtId)?.allowed_sports || [];
+        const currentMatchesPreferred =
+          currentCourtSports.length === 0 ||
+          currentCourtSports.some(s => preferredSports.includes(s));
+
+        if (!currentMatchesPreferred) {
+          const betterCourt = venueCourts.find(c => {
+            const sports = c.allowed_sports || [];
+            return sports.length === 0 || sports.some(s => preferredSports.includes(s));
+          });
+
+          if (betterCourt && betterCourt.id !== courtId) {
+            // Block the useEffect from re-triggering for this state change
+            isAutoSwitchingRef.current = true;
+            setSelectedCourtId(betterCourt.id);
+            setCurrentImageIndex(0);
+
+            // Fetch directly for the correct court while spinner is still visible
+            const { data: data2, error: error2 } = await supabase.functions.invoke("get-availability", {
+              body: { venueId, courtId: betterCourt.id, date: format(date, "yyyy-MM-dd") },
+            });
+            isAutoSwitchingRef.current = false;
+
+            if (error2) throw error2;
+            setAvailabilityData(data2 as AvailabilityResponse);
+            return;
+          }
+        }
+      }
+
+      setAvailabilityData(response);
     } catch (error: any) {
       console.error("Error fetching availability:", error);
       setAvailabilityError(error.message || "Failed to load availability");
@@ -256,7 +303,7 @@ export default function CourtDetail() {
     } finally {
       setAvailabilityLoading(false);
     }
-  }, []);
+  }, [preferredSports]);
 
   // Restore booking state from localStorage after auth redirect - only runs once
   useEffect(() => {
@@ -301,7 +348,9 @@ export default function CourtDetail() {
   // Fetch availability when date or selected court changes
   useEffect(() => {
     if (court?.venues && selectedDate && selectedCourtId) {
-      fetchAvailability(court.venues.id, selectedCourtId, selectedDate);
+      // Skip if we're mid auto-switch — fetchAvailability already handles the second fetch internally
+      if (isAutoSwitchingRef.current) return;
+      fetchAvailability(court.venues.id, selectedCourtId, selectedDate, !hasAutoSelectedRef.current);
     }
   }, [court, selectedDate, selectedCourtId, fetchAvailability]);
 
@@ -1191,45 +1240,17 @@ export default function CourtDetail() {
     return selectedCourt ? [selectedCourt, ...courtsToShow] : courtsToShow;
   }, [allVenueCourts, preferredSports, selectedCourtId]);
 
-  // Fallback + one-time preferred-sport auto-selection
+  // Fallback: if the selected court no longer exists in venue availability, reset to first available
   useEffect(() => {
     if (!selectedCourtId || allVenueCourts.length === 0) return;
 
-    // 1. Fallback: if selected court no longer exists, reset to first available
     const selectedCourtExists = allVenueCourts.some(c => c.id === selectedCourtId);
     if (!selectedCourtExists) {
       setSelectedCourtId(allVenueCourts[0].id);
       setSelectedSlots([]);
       setCurrentImageIndex(0);
-      return;
     }
-
-    // 2. One-time auto-selection: switch to a preferred-sport court on first load
-    if (hasAutoSelectedRef.current || preferredSports.length === 0 || allVenueCourts.length <= 1) {
-      hasAutoSelectedRef.current = true;
-      return;
-    }
-
-    const currentCourt = allVenueCourts.find(c => c.id === selectedCourtId);
-    const currentCourtSports = currentCourt?.allowed_sports || [];
-    const currentMatchesPreferred =
-      currentCourtSports.length === 0 ||
-      currentCourtSports.some(s => preferredSports.includes(s));
-
-    if (!currentMatchesPreferred) {
-      const betterCourt = allVenueCourts.find(c => {
-        const sports = c.allowed_sports || [];
-        return sports.length === 0 || sports.some(s => preferredSports.includes(s));
-      });
-
-      if (betterCourt && betterCourt.id !== selectedCourtId) {
-        setSelectedCourtId(betterCourt.id);
-        setCurrentImageIndex(0);
-      }
-    }
-
-    hasAutoSelectedRef.current = true;
-  }, [allVenueCourts, selectedCourtId, preferredSports]);
+  }, [allVenueCourts, selectedCourtId]);
 
   // Use public layout for unauthenticated users
   const Layout = user ? MobileLayout : PublicLayout;
