@@ -208,6 +208,9 @@ export default function CourtDetail() {
   // Ref to track if wizard is open (avoids stale closure in real-time subscriptions)
   const wizardOpenRef = useRef(false);
 
+  // Prevents auto-selecting a preferred court more than once per page load
+  const hasAutoSelectedRef = useRef(false);
+
   // Function declarations first (before useEffects that use them)
   const fetchCourt = useCallback(async () => {
     try {
@@ -1188,17 +1191,45 @@ export default function CourtDetail() {
     return selectedCourt ? [selectedCourt, ...courtsToShow] : courtsToShow;
   }, [allVenueCourts, preferredSports, selectedCourtId]);
 
-  // Only fall back if the currently selected court no longer exists in venue availability
+  // Fallback + one-time preferred-sport auto-selection
   useEffect(() => {
     if (!selectedCourtId || allVenueCourts.length === 0) return;
 
+    // 1. Fallback: if selected court no longer exists, reset to first available
     const selectedCourtExists = allVenueCourts.some(c => c.id === selectedCourtId);
     if (!selectedCourtExists) {
       setSelectedCourtId(allVenueCourts[0].id);
       setSelectedSlots([]);
       setCurrentImageIndex(0);
+      return;
     }
-  }, [allVenueCourts, selectedCourtId]);
+
+    // 2. One-time auto-selection: switch to a preferred-sport court on first load
+    if (hasAutoSelectedRef.current || preferredSports.length === 0 || allVenueCourts.length <= 1) {
+      hasAutoSelectedRef.current = true;
+      return;
+    }
+
+    const currentCourt = allVenueCourts.find(c => c.id === selectedCourtId);
+    const currentCourtSports = currentCourt?.allowed_sports || [];
+    const currentMatchesPreferred =
+      currentCourtSports.length === 0 ||
+      currentCourtSports.some(s => preferredSports.includes(s));
+
+    if (!currentMatchesPreferred) {
+      const betterCourt = allVenueCourts.find(c => {
+        const sports = c.allowed_sports || [];
+        return sports.length === 0 || sports.some(s => preferredSports.includes(s));
+      });
+
+      if (betterCourt && betterCourt.id !== selectedCourtId) {
+        setSelectedCourtId(betterCourt.id);
+        setCurrentImageIndex(0);
+      }
+    }
+
+    hasAutoSelectedRef.current = true;
+  }, [allVenueCourts, selectedCourtId, preferredSports]);
 
   // Use public layout for unauthenticated users
   const Layout = user ? MobileLayout : PublicLayout;
