@@ -936,6 +936,7 @@ export default function CourtDetail() {
       if (challengeError) throw challengeError;
 
       // Create court_availability record to mark the slot as booked
+      // For at_booking courts, keep is_booked false until payment is confirmed
       const { data: bookingRecord, error: bookingError } = await supabase
         .from("court_availability")
         .insert({
@@ -943,7 +944,7 @@ export default function CourtDetail() {
           available_date: dateStr,
           start_time: startTime,
           end_time: endTime,
-          is_booked: true,
+          is_booked: court.payment_timing !== "at_booking",
           booked_by_user_id: user.id,
           payment_status: "pending",
         })
