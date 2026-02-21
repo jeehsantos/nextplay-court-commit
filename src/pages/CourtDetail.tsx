@@ -224,20 +224,59 @@ export default function CourtDetail() {
         .single();
 
       if (error) throw error;
-      setCourt(data as CourtWithVenue);
-      setSelectedCourtId(data.id);
+
+      let resolvedCourt = data as CourtWithVenue;
+      let resolvedCourtId = data.id;
+
+      // For multi-court venues, check if we should show a different court
+      // that matches the user's preferred sports
+      if (preferredSports.length > 0 && !profileLoading) {
+        const isMultiCourt = data.is_multi_court || data.parent_court_id;
+
+        if (isMultiCourt) {
+          const courtSports = data.allowed_sports || [];
+          const matchesPreferred =
+            courtSports.length === 0 ||
+            courtSports.some((s: string) => preferredSports.includes(s));
+
+          if (!matchesPreferred) {
+            // Fetch sibling courts from the same venue
+            const venueId = data.venue_id;
+            const { data: siblings } = await supabase
+              .from("courts")
+              .select("*, venues (*)")
+              .eq("venue_id", venueId)
+              .eq("is_active", true)
+              .order("name");
+
+            if (siblings && siblings.length > 1) {
+              const betterCourt = siblings.find((c: any) => {
+                const sports = c.allowed_sports || [];
+                return sports.length === 0 ||
+                  sports.some((s: string) => preferredSports.includes(s));
+              });
+
+              if (betterCourt) {
+                resolvedCourt = betterCourt as CourtWithVenue;
+                resolvedCourtId = betterCourt.id;
+              }
+            }
+          }
+        }
+      }
+
+      hasAutoSelectedRef.current = true;
+      setCourt(resolvedCourt);
+      setSelectedCourtId(resolvedCourtId);
     } catch (error) {
       console.error("Error fetching court:", error);
       navigate("/courts");
     } finally {
       setLoading(false);
     }
-  }, [id, navigate]);
+  }, [id, navigate, preferredSports, profileLoading]);
 
-  // Ref to block useEffect re-trigger when we're doing an internal court switch
-  const isAutoSwitchingRef = useRef(false);
-
-  const fetchAvailability = useCallback(async (venueId: string, courtId: string, date: Date, isInitialLoad = false) => {
+  const fetchAvailability = useCallback(async (venueId: string, courtId: string, date: Date) => {
     setAvailabilityLoading(true);
     setAvailabilityError(null);
 
@@ -251,51 +290,7 @@ export default function CourtDetail() {
       });
 
       if (error) throw error;
-
-      const response = data as AvailabilityResponse;
-      const venueCourts = response.venue_courts || [];
-
-      // One-time preferred-sport correction on initial load.
-      // Only attempt if preferredSports is already loaded (non-empty check is done inside).
-      // If preferredSports hasn't loaded yet, we leave hasAutoSelectedRef=false so the
-      // separate preferredSports useEffect below can perform the correction once it arrives.
-      if (isInitialLoad && !hasAutoSelectedRef.current && venueCourts.length > 1) {
-        if (preferredSports.length > 0) {
-          // Sports are loaded — do the correction now
-          hasAutoSelectedRef.current = true;
-          const currentCourtSports = venueCourts.find(c => c.id === courtId)?.allowed_sports || [];
-          const currentMatchesPreferred =
-            currentCourtSports.length === 0 ||
-            currentCourtSports.some(s => preferredSports.includes(s));
-
-          if (!currentMatchesPreferred) {
-            const betterCourt = venueCourts.find(c => {
-              const sports = c.allowed_sports || [];
-              return sports.length === 0 || sports.some(s => preferredSports.includes(s));
-            });
-
-            if (betterCourt && betterCourt.id !== courtId) {
-              isAutoSwitchingRef.current = true;
-              setSelectedCourtId(betterCourt.id);
-              setCurrentImageIndex(0);
-
-              const { data: data2, error: error2 } = await supabase.functions.invoke("get-availability", {
-                body: { venueId, courtId: betterCourt.id, date: format(date, "yyyy-MM-dd") },
-              });
-              isAutoSwitchingRef.current = false;
-
-              if (error2) throw error2;
-              setAvailabilityData(data2 as AvailabilityResponse);
-              return;
-            }
-          }
-          // No switch needed — mark done
-        }
-        // else: preferredSports not loaded yet; leave hasAutoSelectedRef=false
-        // The useEffect below will handle correction once preferredSports resolves
-      }
-
-      setAvailabilityData(response);
+      setAvailabilityData(data as AvailabilityResponse);
     } catch (error: any) {
       console.error("Error fetching availability:", error);
       setAvailabilityError(error.message || "Failed to load availability");
@@ -303,7 +298,7 @@ export default function CourtDetail() {
     } finally {
       setAvailabilityLoading(false);
     }
-  }, [preferredSports]);
+  }, []);
 
   // Restore booking state from localStorage after auth redirect - only runs once
   useEffect(() => {
@@ -339,63 +334,20 @@ export default function CourtDetail() {
     }
   }, [id]);
 
+  // Fetch court data — gated on profile loading so preferredSports is available
+  // for resolving the correct sub-court before any render
   useEffect(() => {
-    if (id) {
+    if (id && !profileLoading) {
       fetchCourt();
     }
-  }, [id, fetchCourt]);
+  }, [id, profileLoading, fetchCourt]);
 
-  // Fetch availability when date or selected court changes.
-  // Wait for the profile to resolve first so preferredSports is accurate on the first fetch,
-  // enabling the inline correction path inside fetchAvailability (no flicker).
+  // Fetch availability when date or selected court changes
   useEffect(() => {
-    if (court?.venues && selectedDate && selectedCourtId && !profileLoading) {
-      // Skip if we're mid auto-switch — fetchAvailability already handles the second fetch internally
-      if (isAutoSwitchingRef.current) return;
-      fetchAvailability(court.venues.id, selectedCourtId, selectedDate, !hasAutoSelectedRef.current);
+    if (court?.venues && selectedDate && selectedCourtId) {
+      fetchAvailability(court.venues.id, selectedCourtId, selectedDate);
     }
-  }, [court, selectedDate, selectedCourtId, fetchAvailability, profileLoading]);
-
-  // Fallback correction: if preferredSports loaded AFTER the initial availability fetch
-  // (profile query resolves async), perform the court switch using already-fetched venue_courts.
-  useEffect(() => {
-    if (
-      hasAutoSelectedRef.current ||
-      preferredSports.length === 0 ||
-      !availabilityData ||
-      !court?.venues ||
-      !selectedDate ||
-      !selectedCourtId
-    ) return;
-
-    const venueCourts = availabilityData.venue_courts || [];
-    if (venueCourts.length <= 1) return;
-
-    hasAutoSelectedRef.current = true;
-
-    const currentCourtSports = venueCourts.find(c => c.id === selectedCourtId)?.allowed_sports || [];
-    const currentMatchesPreferred =
-      currentCourtSports.length === 0 ||
-      currentCourtSports.some(s => preferredSports.includes(s));
-
-    if (!currentMatchesPreferred) {
-      const betterCourt = venueCourts.find(c => {
-        const sports = c.allowed_sports || [];
-        return sports.length === 0 || sports.some(s => preferredSports.includes(s));
-      });
-
-      if (betterCourt && betterCourt.id !== selectedCourtId) {
-        // Switch to the correct court; fetchAvailability useEffect will re-fire and load it
-        isAutoSwitchingRef.current = true;
-        setAvailabilityLoading(true);
-        setSelectedCourtId(betterCourt.id);
-        setCurrentImageIndex(0);
-        fetchAvailability(court.venues.id, betterCourt.id, selectedDate).finally(() => {
-          isAutoSwitchingRef.current = false;
-        });
-      }
-    }
-  }, [preferredSports, availabilityData, selectedCourtId, court, selectedDate, fetchAvailability]);
+  }, [court, selectedDate, selectedCourtId, fetchAvailability]);
 
   // Restore selected slots after availability loads - only if we're in restoration mode
   useEffect(() => {
