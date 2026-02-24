@@ -378,10 +378,12 @@ export default function Discover() {
         const group = session.groups as {
           name?: string;
           sport_type?: string;
+          city?: string;
         } | null;
         const court = session.courts as {
           name?: string;
-          venues?: { name?: string } | null;
+          ground_type?: string;
+          venues?: { name?: string; city?: string } | null;
         } | null;
         
         // If organizer pays (payment_type = 'single'), price is 0 (free for players)
