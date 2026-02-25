@@ -47,11 +47,36 @@ CREATE UNIQUE INDEX IF NOT EXISTS quick_challenge_payments_challenge_user_intent
   ON public.quick_challenge_payments (challenge_id, user_id, stripe_payment_intent_id)
   WHERE stripe_payment_intent_id IS NOT NULL;
 
+CREATE UNIQUE INDEX IF NOT EXISTS quick_challenge_payments_challenge_user_credit_only_uidx
+  ON public.quick_challenge_payments (challenge_id, user_id)
+  WHERE stripe_payment_intent_id IS NULL;
+
 CREATE INDEX IF NOT EXISTS quick_challenge_payments_challenge_idx
   ON public.quick_challenge_payments (challenge_id);
 
 CREATE INDEX IF NOT EXISTS quick_challenge_payments_user_idx
   ON public.quick_challenge_payments (user_id);
+
+CREATE INDEX IF NOT EXISTS quick_challenge_payments_status_idx
+  ON public.quick_challenge_payments (status);
+
+ALTER TABLE public.quick_challenge_payments ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'quick_challenge_payments'
+      AND policyname = 'Users can view own quick challenge payments'
+  ) THEN
+    CREATE POLICY "Users can view own quick challenge payments"
+    ON public.quick_challenge_payments
+    FOR SELECT
+    USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
 DO $$
 BEGIN
