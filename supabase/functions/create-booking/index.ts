@@ -234,15 +234,22 @@ serve(async (req) => {
       if (equipmentError) throw equipmentError;
     }
 
+    const splitPricePerPlayer = paymentType === "split" && splitPlayers
+      ? Math.ceil((courtAmountWithEquipment / splitPlayers) * 100) / 100
+      : courtAmountWithEquipment;
+    const fundingRequired = courtAmountWithEquipment;
+    const fundingCurrent = 0;
+
     return new Response(
       JSON.stringify({
         session_id: session.id,
         booking_id: bookingRecord.id,
-        pricing: {
-          court_amount: courtAmountWithEquipment,
-          service_fee: serviceFee,
-          total: totalAmount,
-        },
+        court_amount: courtAmountWithEquipment,
+        service_fee_total: serviceFee,
+        total_charge: totalAmount,
+        funding_required: fundingRequired,
+        funding_current: fundingCurrent,
+        price_per_player: splitPricePerPlayer + serviceFee,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );

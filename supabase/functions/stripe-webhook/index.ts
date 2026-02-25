@@ -101,7 +101,8 @@ Deno.serve(async (req) => {
 // ── payment_intent.succeeded: store actual Stripe fee ──────────────────────
 async function handlePaymentIntentSucceeded(
   event: Stripe.Event,
-  supabaseAdmin: ReturnType<typeof createClient>
+  // deno-lint-ignore no-explicit-any
+  supabaseAdmin: any
 ) {
   const paymentIntent = event.data.object as Stripe.PaymentIntent;
   const piId = paymentIntent.id;
@@ -167,7 +168,8 @@ async function handlePaymentIntentSucceeded(
 // ── checkout.session.completed ─────────────────────────────────────────────
 async function handleCheckoutCompleted(
   event: Stripe.Event,
-  supabaseAdmin: ReturnType<typeof createClient>
+  // deno-lint-ignore no-explicit-any
+  supabaseAdmin: any
 ): Promise<boolean> {
   const session = event.data.object as Stripe.Checkout.Session;
   const metadata = session.metadata || {};
@@ -184,7 +186,8 @@ async function handleCheckoutCompleted(
 async function handleSessionPayment(
   session: Stripe.Checkout.Session,
   metadata: Record<string, string>,
-  supabaseAdmin: ReturnType<typeof createClient>
+  // deno-lint-ignore no-explicit-any
+  supabaseAdmin: any
 ): Promise<boolean> {
   const sessionId = metadata.session_id;
   const userId = metadata.payer_user_id || metadata.user_id;
@@ -379,7 +382,8 @@ async function handleSessionPayment(
 async function handleQuickChallengePayment(
   session: Stripe.Checkout.Session,
   metadata: Record<string, string>,
-  supabaseAdmin: ReturnType<typeof createClient>
+  // deno-lint-ignore no-explicit-any
+  supabaseAdmin: any
 ): Promise<boolean> {
   const challengeId = metadata.challenge_id;
   const playerRecordId = metadata.player_record_id;
