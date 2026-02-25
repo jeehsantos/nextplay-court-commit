@@ -735,7 +735,7 @@ export default function CourtDetail() {
       if (bookingError) throw bookingError;
 
       const sessionId = bookingData?.session_id as string | undefined;
-      const totalPrice = Number(bookingData?.pricing?.total ?? 0);
+      const totalPrice = Number(bookingData?.total_charge ?? 0);
       if (!sessionId) throw new Error("Booking created without session id");
 
       if (court.payment_timing === "at_booking") {

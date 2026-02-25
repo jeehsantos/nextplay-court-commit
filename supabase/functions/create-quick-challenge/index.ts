@@ -173,11 +173,12 @@ serve(async (req) => {
       JSON.stringify({
         challenge_id: challenge.id,
         booking_id: bookingRecord.id,
-        pricing: {
-          court_amount: courtAmountWithEquipment,
-          service_fee: serviceFee,
-          total: totalAmount,
-        },
+        court_amount: courtAmountWithEquipment,
+        service_fee_total: serviceFee,
+        total_charge: totalAmount,
+        funding_required: courtAmountWithEquipment,
+        funding_current: 0,
+        price_per_player: pricePerPlayer,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
