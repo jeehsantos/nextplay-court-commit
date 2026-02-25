@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { sessionId, attempt } = await req.json();
+    const { sessionId } = await req.json();
 
     if (!sessionId) {
       throw new Error("sessionId is required");
@@ -120,6 +120,7 @@ Deno.serve(async (req) => {
         .update({
           status: "transferred",
           transferred_at: new Date().toISOString(),
+          transferring_at: null,
           transfer_amount: 0,
         })
         .eq("session_id", sessionId)
@@ -181,12 +182,44 @@ Deno.serve(async (req) => {
       );
     }
 
+    const claimTime = new Date().toISOString();
+    const eligiblePaymentIds = eligiblePayments.map((payment) => payment.id);
+    const { data: claimedPayments, error: claimError } = await supabaseAdmin
+      .from("payments")
+      .update({ transferring_at: claimTime })
+      .in("id", eligiblePaymentIds)
+      .eq("status", "completed")
+      .is("transferred_at", null)
+      .is("converted_to_credits_at", null)
+      .is("transferring_at", null)
+      .select("*");
+
+    if (claimError) {
+      throw new Error("Failed to claim payments for transfer");
+    }
+
+    if (!claimedPayments || claimedPayments.length === 0) {
+      console.log("No payments claimed; transfer is already in progress or completed", sessionId);
+      return new Response(
+        JSON.stringify({ success: true, alreadyProcessing: true, message: "Transfer is already processing or completed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const releaseClaims = async () => {
+      await supabaseAdmin
+        .from("payments")
+        .update({ transferring_at: null })
+        .in("id", claimedPayments.map((payment) => payment.id))
+        .is("transferred_at", null);
+    };
+
     // 4. Calculate venue payout: SUM of court_amount snapshots only
     // Platform retains service_fee by NOT including it in the transfer
     let totalTransferCents = 0;
     const paymentIds: string[] = [];
 
-    for (const payment of eligiblePayments) {
+    for (const payment of claimedPayments) {
       // Use court_amount snapshot; fall back to (amount - platform_fee) for legacy rows
       const courtAmount = payment.court_amount != null
         ? Number(payment.court_amount)
@@ -203,6 +236,7 @@ Deno.serve(async (req) => {
         .update({
           status: "transferred",
           transferred_at: new Date().toISOString(),
+          transferring_at: null,
           transfer_amount: 0,
         })
         .in("id", paymentIds);
@@ -218,42 +252,55 @@ Deno.serve(async (req) => {
       apiVersion: "2024-12-18.acacia",
     });
 
-    const normalizedAttempt = Number.isFinite(Number(attempt)) && Number(attempt) > 0
-      ? Math.trunc(Number(attempt))
-      : 1;
-    const transferIdempotencyKey = `transfer:session:${sessionId}:venue:${venue.id}:attempt:${normalizedAttempt}`;
+    const transferIdempotencyKey = `transfer:${sessionId}:${venue.id}`;
 
-    const transfer = await stripe.transfers.create(
-      {
-        amount: totalTransferCents,
-        currency: "nzd",
-        destination: venue.stripe_account_id,
-        description: `Session payout: ${sessionId}`,
-        metadata: {
-          session_id: sessionId,
-          venue_id: venue.id,
-          venue_name: venue.name,
-          payment_count: eligiblePayments.length.toString(),
+    let transfer;
+    try {
+      transfer = await stripe.transfers.create(
+        {
+          amount: totalTransferCents,
+          currency: "nzd",
+          destination: venue.stripe_account_id,
+          description: `Session payout: ${sessionId}`,
+          metadata: {
+            session_id: sessionId,
+            venue_id: venue.id,
+            venue_name: venue.name,
+            payment_count: claimedPayments.length.toString(),
+          },
         },
-      },
-      { idempotencyKey: transferIdempotencyKey }
-    );
+        { idempotencyKey: transferIdempotencyKey }
+      );
+    } catch (stripeError) {
+      await releaseClaims();
+      throw stripeError;
+    }
 
     // 6. Mark each payment as transferred with its individual court_amount
-    for (const payment of eligiblePayments) {
-      const courtAmount = payment.court_amount != null
-        ? Number(payment.court_amount)
-        : Math.max(0, Number(payment.amount) - Number(payment.platform_fee || 0));
+    try {
+      for (const payment of claimedPayments) {
+        const courtAmount = payment.court_amount != null
+          ? Number(payment.court_amount)
+          : Math.max(0, Number(payment.amount) - Number(payment.platform_fee || 0));
 
-      await supabaseAdmin
-        .from("payments")
-        .update({
-          status: "transferred",
-          transferred_at: new Date().toISOString(),
-          stripe_transfer_id: transfer.id,
-          transfer_amount: courtAmount,
-        })
-        .eq("id", payment.id);
+        const { error: paymentUpdateError } = await supabaseAdmin
+          .from("payments")
+          .update({
+            status: "transferred",
+            transferred_at: new Date().toISOString(),
+            transferring_at: null,
+            stripe_transfer_id: transfer.id,
+            transfer_amount: courtAmount,
+          })
+          .eq("id", payment.id);
+
+        if (paymentUpdateError) {
+          throw new Error(`Failed to update payment ${payment.id} after transfer`);
+        }
+      }
+    } catch (updateError) {
+      await releaseClaims();
+      throw updateError;
     }
 
     console.log("Session payout completed:", {
@@ -261,7 +308,7 @@ Deno.serve(async (req) => {
       transferId: transfer.id,
       totalCents: totalTransferCents,
       destination: venue.stripe_account_id,
-      paymentCount: eligiblePayments.length,
+      paymentCount: claimedPayments.length,
     });
 
     return new Response(
@@ -269,7 +316,7 @@ Deno.serve(async (req) => {
         success: true,
         transferId: transfer.id,
         totalTransferred: totalTransferCents / 100,
-        paymentCount: eligiblePayments.length,
+        paymentCount: claimedPayments.length,
         message: `$${(totalTransferCents / 100).toFixed(2)} transferred to ${venue.name}`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
