@@ -4,12 +4,22 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const WEBHOOK_WAITING_STATUS = "paid_but_waiting_for_webhook";
 const PENDING_STATUS = "pending";
 const NEXT_ACTION = "poll_payments_table";
+
+class HttpError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
 
 function buildResponse(payload: Record<string, unknown>) {
   return new Response(JSON.stringify(payload), {
@@ -62,18 +72,41 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Missing or invalid Authorization header" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 401,
+    });
+  }
+
+  const supabaseAuth = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
   try {
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      throw new HttpError(401, "Invalid or expired JWT");
+    }
+
     const { sessionId, userId, checkoutSessionId } = await req.json();
 
     if (!sessionId || !userId) {
       throw new Error("sessionId and userId are required");
     }
 
+    if (user.id !== userId) {
+      throw new HttpError(403, "Forbidden: user mismatch");
+    }
+
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from("payments")
       .select("id, status, amount, paid_with_credits, paid_at, stripe_payment_intent_id")
       .eq("session_id", sessionId)
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .maybeSingle();
 
     if (paymentError) {
@@ -87,7 +120,7 @@ serve(async (req) => {
         .from("session_players")
         .select("is_confirmed")
         .eq("session_id", sessionId)
-        .eq("user_id", userId)
+        .eq("user_id", user.id)
         .maybeSingle();
 
       return buildResponse({
@@ -115,7 +148,7 @@ serve(async (req) => {
       if (checkoutSession.payment_status === "paid") {
         console.log("Stripe shows paid; waiting for webhook to update DB", {
           sessionId,
-          userId,
+          userId: user.id,
           checkoutSessionId,
         });
 
@@ -137,10 +170,11 @@ serve(async (req) => {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const status = error instanceof HttpError ? error.status : 500;
     console.error("Error in verify-payment:", errorMessage);
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status,
     });
   }
 });

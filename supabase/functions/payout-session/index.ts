@@ -1,6 +1,28 @@
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
+class HttpError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -17,7 +39,53 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
+  const supabaseClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+  );
+
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw new HttpError(401, "Missing or invalid Authorization header");
+    }
+
+    const token = authHeader.slice("Bearer ".length).trim();
+    if (!token) {
+      throw new HttpError(401, "Missing bearer token");
+    }
+
+    const payload = decodeJwtPayload(token);
+    if (!payload) {
+      throw new HttpError(401, "Invalid JWT format");
+    }
+
+    const jwtRole = String(payload.role ?? "");
+    const serviceRoleToken = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const isServiceExecution = jwtRole === "service_role" && token === serviceRoleToken;
+
+    if (!isServiceExecution) {
+      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+      if (userError || !userData.user) {
+        throw new HttpError(401, "Invalid or expired JWT");
+      }
+
+      const { data: adminRole, error: adminRoleError } = await supabaseAdmin
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", userData.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (adminRoleError) {
+        throw new Error("Failed to verify admin role");
+      }
+
+      if (!adminRole) {
+        throw new HttpError(403, "Forbidden: admin role required");
+      }
+    }
+
     const { sessionId, attempt } = await req.json();
 
     if (!sessionId) {
@@ -208,12 +276,13 @@ Deno.serve(async (req) => {
     );
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
+    const status = error instanceof HttpError ? error.status : 500;
     console.error("Payout session error:", msg);
     return new Response(
       JSON.stringify({ success: false, error: msg }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
+        status,
       }
     );
   }
