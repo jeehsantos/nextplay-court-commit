@@ -593,6 +593,9 @@ export default function QuickGameLobby() {
         setSearchParams({}, { replace: true });
       });
   } else if (paymentStatus === "cancelled" && id) {
+      // Wait for challenge data to load before processing cancellation
+      if (isLoading || loadingChallenges || !challenge) return;
+
       // Clean up URL params
       setSearchParams({}, { replace: true });
 
@@ -618,7 +621,7 @@ export default function QuickGameLobby() {
         });
       }
     }
-  }, [searchParams, id, verifyPayment, setSearchParams]);
+  }, [searchParams, id, verifyPayment, setSearchParams, isOrganizer, players, isLoading, loadingChallenges, challenge, navigate]);
 
   if (isLoading || loadingChallenges) {
     return (
