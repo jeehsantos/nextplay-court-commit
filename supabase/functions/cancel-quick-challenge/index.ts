@@ -102,6 +102,31 @@ serve(async (req) => {
       }
     }
 
+    // Release the court_availability slot tied to this challenge
+    const { data: challengeFull } = await supabaseAdmin
+      .from("quick_challenges")
+      .select("court_id, scheduled_date, scheduled_time")
+      .eq("id", challengeId)
+      .single();
+
+    if (challengeFull?.court_id && challengeFull?.scheduled_date && challengeFull?.scheduled_time) {
+      const { error: releaseError } = await supabaseAdmin
+        .from("court_availability")
+        .delete()
+        .eq("court_id", challengeFull.court_id)
+        .eq("available_date", challengeFull.scheduled_date)
+        .eq("start_time", challengeFull.scheduled_time)
+        .eq("booked_by_user_id", userId)
+        .eq("payment_status", "pending");
+
+      if (releaseError) {
+        console.error("Error releasing court slot:", releaseError);
+        // Non-fatal: continue with cancellation
+      } else {
+        console.log("Released court slot for cancelled challenge:", challengeId);
+      }
+    }
+
     const { error: challengeUpdateError } = await supabaseAdmin
       .from("quick_challenges")
       .update({ status: "cancelled" })
