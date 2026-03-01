@@ -1,37 +1,50 @@
 
+Implementation plan to fix Invite Friends flow end-to-end (no real payment needed for verification):
 
-## Problem Root Cause
+1) Repair signup trigger wiring (root fix)
+- Create a migration that:
+  - Keeps `public.handle_new_user()` as `SECURITY DEFINER`.
+  - Normalizes referral code from metadata (`upper(trim(...))`).
+  - Inserts profile.
+  - Inserts role from metadata (`role`) with fallback to `player` (not always hardcoded player).
+  - Inserts referral as `pending` when code resolves to a valid referrer and referrer != new user.
+- Add missing trigger on `auth.users`:
+  - `AFTER INSERT FOR EACH ROW EXECUTE FUNCTION public.handle_new_user()`.
+  - Use defensive `DROP TRIGGER IF EXISTS ... ON auth.users` then `CREATE TRIGGER ...` to guarantee it is attached.
 
-The referral record is **never created** in the database. Here's why:
+2) Add idempotency guard for referrals
+- Add a unique index on `referrals(referred_user_id)` to enforce one referral relationship per invited user.
+- Update trigger insert logic to be conflict-safe (`ON CONFLICT DO NOTHING`).
 
-1. After signup, `Auth.tsx` tries to insert a `referrals` row **client-side**
-2. The RLS policy on `referrals` INSERT requires `auth.uid() = referred_user_id`
-3. But at the point of insertion, the user session may not be fully established (email confirmation pending, session race condition)
-4. The insert **silently fails** — no referral row exists
-5. When `process_referral_credit` runs after payment, it finds no pending referral, so no credits are awarded
+3) Close referral-credit gaps in credits-only payment paths
+- Update `supabase/functions/create-payment/index.ts`:
+  - In the non-deferred “credits cover full amount” branch, call `process_referral_credit` after marking payment completed.
+- Update `supabase/functions/create-quick-challenge-payment/index.ts`:
+  - In credits-payment success branch, call `process_referral_credit` after payment snapshot write.
+- Keep webhook as authoritative for card flows (unchanged).
 
-## Fix Plan
+4) Backfill missing referrals caused by the broken period
+- Run a one-time data repair script:
+  - Insert missing pending referrals for users that already have `raw_user_meta_data.referral_code` but no row in `referrals`.
+  - Include targeted repair for the reported pair (`1idreamzjsm@gmail.com` invited `5idreamzjsm@gmail.com`) since that signup lacks metadata.
+- Then run a one-time completion pass:
+  - For repaired referrals where referred users already have completed payment records, invoke `process_referral_credit` so they move to `completed` and award credits.
 
-### Step 1: Pass referral code as signup metadata
-In `Auth.tsx`, when calling `signUp()`, pass the stored referral code in the user metadata so it's available server-side during user creation.
+5) Improve referral stats freshness in profile UI
+- In `ReferralSection` query config, reduce staleness and enable periodic refresh (short interval) so Pending/Completed updates appear promptly without waiting several minutes.
+- In credits balance query, shorten stale window / refresh behavior so awarded bonus appears quickly on profile.
 
-### Step 2: Update `handle_new_user` trigger to create referral
-Modify the `handle_new_user()` database trigger function (runs as SECURITY DEFINER, bypasses RLS) to:
-- Check if `raw_user_meta_data` contains a `referral_code`
-- Look up the referrer profile by that code
-- Insert the `referrals` row with status `pending`
+6) Verify with mock-style backend checks (no new real Stripe payment)
+- Validation script checks:
+  - Referral row is created as `pending` immediately after signup metadata path.
+  - `process_referral_credit` transitions `pending -> completed`.
+  - `credit_transactions` gets referral bonus row for referrer.
+  - Profile stats query returns correct Pending/Completed/Earned counts for referrer.
+- Also verify reported account outcomes:
+  - `1idreamzjsm@gmail.com` sees repaired referrals.
+  - `5idreamzjsm@gmail.com` referral shows completed + bonus credited after repair.
 
-This is the most reliable approach because the trigger runs in the same transaction as user creation, with elevated privileges.
-
-### Step 3: Pass referral code through auth context
-Update `signUp()` in `auth-context.tsx` to accept an optional `referralCode` parameter and include it in `options.data`.
-
-### Step 4: Clean up client-side referral code
-Remove the now-redundant client-side referral insert logic from `Auth.tsx` (lines 168-193), keeping only the `localStorage` read to pass the code to `signUp()`.
-
-### Technical Details
-- The `handle_new_user` trigger is `SECURITY DEFINER` with `search_path = 'public'`, so it can insert into `referrals` without RLS restrictions
-- The referral code is passed via `raw_user_meta_data.referral_code` which is set during `supabase.auth.signUp()`
-- The `process_referral_credit` RPC (already called in stripe-webhook and create-payment) will then find the pending referral and award credits correctly
-- No new edge function needed — leverages existing infrastructure
-
+Technical details to apply:
+- SQL migration: trigger attachment + function hardening + unique index.
+- Backend functions: only add referral RPC calls in credits-only branches.
+- Data repair: executed as controlled backend data operation (not schema migration), idempotent predicates (`NOT EXISTS`) to avoid duplicates.
