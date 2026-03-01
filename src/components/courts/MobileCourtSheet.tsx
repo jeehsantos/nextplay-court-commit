@@ -103,7 +103,7 @@ export function MobileCourtSheet({ courts, loading, highlightedCourtId, onHighli
               touchAction: "pan-y",
             }}
           >
-            <div className="p-4 pb-36 space-y-4">
+            <div className="p-4 pb-72 space-y-4">
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="animate-pulse">
