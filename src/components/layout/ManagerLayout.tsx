@@ -13,8 +13,8 @@ import {
   Menu,
   X,
   Settings,
-  Package
-} from "lucide-react";
+  Package } from
+"lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -23,26 +23,26 @@ interface ManagerLayoutProps {
 }
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/manager" },
-  { icon: Building2, label: "Venues", path: "/manager/courts" },
-  { icon: Calendar, label: "Availability", path: "/manager/availability" },
-  { icon: Package, label: "Equipment", path: "/manager/equipment" },
-  { icon: CreditCard, label: "Bookings", path: "/manager/bookings" },
-  { icon: Settings, label: "Settings", path: "/manager/settings" },
-];
+{ icon: LayoutDashboard, label: "Dashboard", path: "/manager" },
+{ icon: Building2, label: "Venues", path: "/manager/courts" },
+{ icon: Calendar, label: "Availability", path: "/manager/availability" },
+{ icon: Package, label: "Equipment", path: "/manager/equipment" },
+{ icon: CreditCard, label: "Bookings", path: "/manager/bookings" },
+{ icon: Settings, label: "Settings", path: "/manager/settings" }];
+
 
 interface MobileNavItem {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{className?: string;}>;
   label: string;
   path: string;
 }
 
 const mobileNavItems: MobileNavItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/manager" },
-  { icon: Building2, label: "Venues", path: "/manager/courts" },
-  { icon: CreditCard, label: "Bookings", path: "/manager/bookings" },
-  { icon: Settings, label: "Settings", path: "/manager/settings" },
-];
+{ icon: LayoutDashboard, label: "Dashboard", path: "/manager" },
+{ icon: Building2, label: "Venues", path: "/manager/courts" },
+{ icon: CreditCard, label: "Bookings", path: "/manager/bookings" },
+{ icon: Settings, label: "Settings", path: "/manager/settings" }];
+
 
 export function ManagerLayout({ children }: ManagerLayoutProps) {
   const location = useLocation();
@@ -55,7 +55,7 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
     // Only redirect after loading is complete
     if (!isLoading) {
       setHasCheckedAuth(true);
-      
+
       if (!user) {
         navigate("/auth", { replace: true });
       } else if (userRole && userRole !== "court_manager") {
@@ -69,12 +69,12 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>);
+
   }
 
   // Don't render if not authenticated or not a court manager
-  if (!user || (userRole && userRole !== "court_manager")) {
+  if (!user || userRole && userRole !== "court_manager") {
     return null;
   }
 
@@ -92,16 +92,16 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
             <img
               src="/sportarena-logo.png"
               alt="Sport Arena logo"
-              className="h-10 w-auto mix-blend-screen"
-            />
+              className="h-10 w-auto mix-blend-screen" />
+
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle variant="ghost" size="icon" />
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
+              onClick={() => setSidebarOpen(!sidebarOpen)}>
+
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
@@ -109,12 +109,12 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
       </header>
 
       {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen &&
+      <div
+        className="lg:hidden fixed inset-0 bg-black/50 z-40"
+        onClick={() => setSidebarOpen(false)} />
+
+      }
 
       {/* Sidebar */}
       <aside className={cn(
@@ -128,8 +128,8 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
               <img
                 src="/sportarena-logo.png"
                 alt="Sport Arena logo"
-                className="h-10 w-auto mix-blend-screen"
-              />
+                className="h-26 w-auto mix-blend-screen" />
+
               <div>
                 <span className="text-xs text-muted-foreground block">Court Manager</span>
               </div>
@@ -139,8 +139,8 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
             {navItems.map(({ icon: Icon, label, path }) => {
-              const isActive = location.pathname === path || 
-                (path !== "/manager" && location.pathname.startsWith(path));
+              const isActive = location.pathname === path ||
+              path !== "/manager" && location.pathname.startsWith(path);
               return (
                 <Link
                   key={path}
@@ -148,15 +148,15 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
+                    isActive ?
+                    "bg-primary text-primary-foreground" :
+                    "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}>
+
                   <Icon className="h-5 w-5" />
                   <span className="font-medium">{label}</span>
-                </Link>
-              );
+                </Link>);
+
             })}
           </nav>
 
@@ -166,11 +166,11 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
               <span className="text-sm text-muted-foreground">Theme</span>
               <ThemeToggle variant="outline" size="icon" />
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="w-full justify-start gap-3 text-muted-foreground"
-              onClick={handleSignOut}
-            >
+              onClick={handleSignOut}>
+
               <LogOut className="h-5 w-5" />
               Sign Out
             </Button>
@@ -187,40 +187,40 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
       <nav className="fixed bottom-0 left-0 right-0 z-[100] bg-background border-t lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
           {mobileNavItems.map(({ icon: Icon, label, path }) => {
-            const isActive = location.pathname === path || 
-              (path !== "/manager" && location.pathname.startsWith(path));
-            
+            const isActive = location.pathname === path ||
+            path !== "/manager" && location.pathname.startsWith(path);
+
             return (
               <Link
                 key={path}
                 to={path}
                 className={cn(
                   "relative flex flex-col items-center justify-center gap-1 w-16 h-full transition-colors",
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
+                  isActive ?
+                  "text-primary" :
+                  "text-muted-foreground hover:text-foreground"
+                )}>
+
                 <span
                   className={cn(
                     "absolute top-0 h-1 w-10 rounded-full bg-primary transition-opacity duration-200",
                     isActive ? "opacity-100" : "opacity-0"
-                  )}
-                />
+                  )} />
+
                 <span
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200",
                     isActive && "bg-primary/10"
-                  )}
-                >
+                  )}>
+
                   <Icon className={cn("h-5 w-5", isActive && "stroke-[2.5]")} />
                 </span>
                 <span className="text-[10px] font-medium">{label}</span>
-              </Link>
-            );
+              </Link>);
+
           })}
         </div>
       </nav>
-    </div>
-  );
+    </div>);
+
 }
