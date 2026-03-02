@@ -229,16 +229,13 @@ serve(async (req) => {
 
     // --- STRIPE PAYMENT FLOW ---
     // Use shared gross-up calculator with dynamic Stripe config
-    const {
-      estimatedStripeFeeCents,
-      serviceFeeCents,
-      totalChargeCents,
-    } = calculateGrossUp({
+    const grossUp = calculateGrossUp({
       courtAmountCents: courtShareCents,
       platformFeeCents: playerFeeCents,
       stripePercent,
       stripeFixedCents,
     });
+    const { serviceFeeTotalCents, stripeFeeCoverageCents, totalChargeCents, grossTotalCents } = grossUp;
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2024-12-18.acacia",
@@ -276,7 +273,7 @@ serve(async (req) => {
     ];
 
     // Add service fee as separate line item (only if > 0)
-    if (serviceFeeCents > 0) {
+    if (serviceFeeTotalCents > 0) {
       lineItems.push({
         price_data: {
           currency: "nzd",
@@ -284,7 +281,7 @@ serve(async (req) => {
             name: "Service Fee",
             description: "Service fee",
           },
-          unit_amount: serviceFeeCents,
+          unit_amount: serviceFeeTotalCents,
         },
         quantity: 1,
       });
@@ -299,20 +296,20 @@ serve(async (req) => {
       metadata: {
         challenge_id: challengeId,
         user_id: user.id,
-        court_amount: courtShareCents.toString(),
-        platform_fee_target: playerFeeCents.toString(),
-        stripe_fee_estimated: estimatedStripeFeeCents.toString(),
-        service_fee_total: serviceFeeCents.toString(),
-        total_charge: totalChargeCents.toString(),
+        recipient_cents: courtShareCents.toString(),
+        platform_fee_cents: playerFeeCents.toString(),
         stripe_percent: stripePercent.toString(),
         stripe_fixed_cents: stripeFixedCents.toString(),
+        gross_total_cents: grossTotalCents.toString(),
+        service_fee_total_cents: serviceFeeTotalCents.toString(),
+        stripe_fee_coverage_cents: stripeFeeCoverageCents.toString(),
         type: "quick_challenge",
         player_record_id: playerRecord.id,
         venue_stripe_account_id: venue?.stripe_account_id || "",
       },
     };
 
-    console.log(`Quick challenge checkout: court=${courtShareCents}c, serviceFee=${serviceFeeCents}c, total=${totalChargeCents}c`);
+    console.log(`Quick challenge checkout: court=${courtShareCents}c, serviceFee=${serviceFeeTotalCents}c, total=${totalChargeCents}c`);
 
     const normalizedAttempt = Number.isFinite(Number(attempt)) && Number(attempt) > 0
       ? Math.trunc(Number(attempt))
@@ -336,9 +333,9 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       url: checkoutSession.url,
       checkoutSessionId: checkoutSession.id,
-      serviceFee: serviceFeeCents / 100,
-      courtShare: pricePerPlayer,
-      total: totalChargeCents / 100,
+      court_amount: courtShareCents / 100,
+      service_fee_total: serviceFeeTotalCents / 100,
+      total_charge: totalChargeCents / 100,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

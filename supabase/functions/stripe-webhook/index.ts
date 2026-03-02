@@ -219,11 +219,11 @@ async function handleSessionPayment(
     return true;
   }
 
-  // Read snapshot values from metadata (accept both legacy + new keys)
-  const serviceFeeCents = parseFloat(metadata.service_fee_total ?? metadata.service_fee ?? "0");
-  const platformProfitCents = parseFloat(metadata.platform_fee_target ?? metadata.platform_fee ?? "0");
-  const courtAmountCents = parseFloat(metadata.court_amount ?? metadata.court_share ?? "0");
-  const totalChargeCents = parseFloat(metadata.total_charge ?? metadata.total ?? "0");
+  // Read snapshot values from metadata (accept new keys first, then legacy fallbacks)
+  const serviceFeeCents = parseFloat(metadata.service_fee_total_cents ?? metadata.service_fee_total ?? metadata.service_fee ?? "0");
+  const platformProfitCents = parseFloat(metadata.platform_fee_cents ?? metadata.platform_fee_target ?? metadata.platform_fee ?? "0");
+  const courtAmountCents = parseFloat(metadata.recipient_cents ?? metadata.court_amount ?? metadata.court_share ?? "0");
+  const totalChargeCents = parseFloat(metadata.gross_total_cents ?? metadata.total_charge ?? metadata.total ?? "0");
 
   const courtAmountSnapshot = courtAmountCents / 100;
   const serviceFeeSnapshot = serviceFeeCents / 100;
@@ -537,11 +537,11 @@ async function handleDeferredSessionPayment(
     if (eqError) console.error("Equipment insert error (non-fatal):", eqError);
   }
 
-  // Create payment record with Stripe snapshots
-  const serviceFeeCents = parseFloat(metadata.service_fee_total || "0");
-  const platformProfitCents = parseFloat(metadata.platform_fee_target || "0");
-  const courtAmountCents = parseFloat(metadata.court_amount || "0");
-  const totalChargeCents = parseFloat(metadata.total_charge || "0");
+  // Create payment record with Stripe snapshots (accept new keys first, then legacy)
+  const serviceFeeCents = parseFloat(metadata.service_fee_total_cents || metadata.service_fee_total || "0");
+  const platformProfitCents = parseFloat(metadata.platform_fee_cents || metadata.platform_fee_target || "0");
+  const courtAmountCents = parseFloat(metadata.recipient_cents || metadata.court_amount || "0");
+  const totalChargeCents = parseFloat(metadata.gross_total_cents || metadata.total_charge || "0");
   const creditsApplied = parseFloat(metadata.credits_applied || "0");
 
   let stripeFeeActual: number | null = null;
@@ -664,9 +664,9 @@ async function handleQuickChallengePayment(
     .single();
 
   const paidAt = new Date().toISOString();
-  const courtAmountCents = Number(metadata.court_amount || 0);
-  const platformProfitTargetCents = Number(metadata.platform_fee_target || metadata.platform_fee || 0);
-  const serviceFeeTotalCents = Number(metadata.service_fee_total || metadata.service_fee || 0);
+  const courtAmountCents = Number(metadata.recipient_cents || metadata.court_amount || 0);
+  const platformProfitTargetCents = Number(metadata.platform_fee_cents || metadata.platform_fee_target || metadata.platform_fee || 0);
+  const serviceFeeTotalCents = Number(metadata.service_fee_total_cents || metadata.service_fee_total || metadata.service_fee || 0);
 
   let stripeFeeActualCents: number | null = null;
   if (paymentIntentId) {
