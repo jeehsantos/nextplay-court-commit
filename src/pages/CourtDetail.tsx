@@ -2130,7 +2130,7 @@ export default function CourtDetail() {
             open={showCreditsModal}
             onOpenChange={setShowCreditsModal}
             userCredits={credits}
-            sessionCost={court.hourly_rate + selectedEquipment.reduce((sum, item) => sum + item.quantity * item.pricePerUnit, 0)}
+            sessionCost={(court.hourly_rate * (getTotalDuration() / 60)) + selectedEquipment.reduce((sum, item) => sum + item.quantity * item.pricePerUnit, 0)}
             onSelectPaymentMethod={handleSelectPaymentMethod}
             isLoading={booking}
           />
