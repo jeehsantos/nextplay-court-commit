@@ -721,6 +721,7 @@ export type Database = {
           city: string | null
           created_at: string
           full_name: string | null
+          gender: string | null
           id: string
           nationality_code: string | null
           phone: string | null
@@ -734,6 +735,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           full_name?: string | null
+          gender?: string | null
           id?: string
           nationality_code?: string | null
           phone?: string | null
@@ -747,6 +749,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           full_name?: string | null
+          gender?: string | null
           id?: string
           nationality_code?: string | null
           phone?: string | null
@@ -898,6 +901,7 @@ export type Database = {
           created_at: string
           created_by: string
           game_mode: string
+          gender_preference: string
           id: string
           payment_type: string
           price_per_player: number
@@ -914,6 +918,7 @@ export type Database = {
           created_at?: string
           created_by: string
           game_mode: string
+          gender_preference?: string
           id?: string
           payment_type?: string
           price_per_player?: number
@@ -930,6 +935,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           game_mode?: string
+          gender_preference?: string
           id?: string
           payment_type?: string
           price_per_player?: number
