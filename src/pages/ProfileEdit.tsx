@@ -32,6 +32,7 @@ interface ProfileData {
   city: string;
   nationality_code: string;
   preferred_sports: string[];
+  gender: string;
 }
 
 export default function ProfileEdit() {
@@ -48,6 +49,7 @@ export default function ProfileEdit() {
     city: "",
     nationality_code: "",
     preferred_sports: [],
+    gender: "",
   });
   
   // Fetch sports from database - NO FALLBACKS
@@ -86,6 +88,7 @@ export default function ProfileEdit() {
           city: data.city || "",
           nationality_code: data.nationality_code || "",
           preferred_sports: (data.preferred_sports as string[]) || [],
+          gender: (data as any).gender || "",
         });
       } else {
         setProfileExists(false);
@@ -112,7 +115,8 @@ export default function ProfileEdit() {
             city: profileData.city,
             nationality_code: profileData.nationality_code || null,
             preferred_sports: profileData.preferred_sports,
-          })
+            gender: profileData.gender || null,
+          } as any)
           .eq("user_id", user.id);
 
         if (error) throw error;
@@ -127,7 +131,8 @@ export default function ProfileEdit() {
             city: profileData.city,
             nationality_code: profileData.nationality_code || null,
             preferred_sports: profileData.preferred_sports,
-          });
+            gender: profileData.gender || null,
+          } as any);
 
         if (error) throw error;
       }
