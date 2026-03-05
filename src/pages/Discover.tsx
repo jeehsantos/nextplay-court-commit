@@ -55,7 +55,7 @@ export default function Discover() {
   
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { preferredSports } = useUserProfile();
+  const { preferredSports, profile } = useUserProfile();
   const [activeTab, setActiveTab] = useState<string>(
     searchParams.get("tab") === "quickgames" ? "quickgames" : "rescue"
   );
@@ -437,13 +437,22 @@ export default function Discover() {
     });
   }, [rescueGames, selectedSport, selectedCourtType, selectedCity, searchQuery, normalizedPreferredSports]);
 
-  // Filter quick challenges based on search, preferred sports, and exclude joined
+  // Filter quick challenges based on search, preferred sports, gender, and exclude joined
   const filteredChallenges = useMemo(() => {
+    const userGender = (profile as any)?.gender as string | null;
+
     let filtered = quickChallenges.filter((challenge) => {
       // Hide challenges the user has already joined
       if (user && challenge.quick_challenge_players?.some((p) => p.user_id === user.id)) {
         return false;
       }
+
+      // Gender filter: if challenge has a gender preference (male/female), hide from users whose gender doesn't match
+      const genderPref = (challenge as any).gender_preference as string | undefined;
+      if (genderPref && genderPref !== "mixed" && userGender && userGender !== genderPref) {
+        return false;
+      }
+
       return true;
     });
     
@@ -472,7 +481,7 @@ export default function Discover() {
              venueName.includes(searchQuery.toLowerCase()) ||
              city.includes(searchQuery.toLowerCase());
     });
-  }, [quickChallenges, searchQuery, selectedSport, selectedCourtType, selectedCity, normalizedPreferredSports]);
+  }, [quickChallenges, searchQuery, selectedSport, selectedCourtType, selectedCity, normalizedPreferredSports, profile]);
 
   if (isLoading) {
     return (

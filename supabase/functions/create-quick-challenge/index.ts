@@ -60,6 +60,7 @@ serve(async (req) => {
       totalPlayers,
       paymentType,
       equipment = [],
+      genderPreference = "mixed",
     } = await req.json();
 
     if (!sportCategoryId || !gameMode || !venueId || !courtId || !scheduledDate || !scheduledTime || !durationMinutes || !totalPlayers || !paymentType) {
@@ -128,6 +129,7 @@ serve(async (req) => {
         status: initialStatus,
         payment_type: effectivePaymentType,
         created_by: user.id,
+        gender_preference: genderPreference,
       })
       .select("id")
       .single();

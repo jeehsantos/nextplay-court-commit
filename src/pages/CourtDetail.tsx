@@ -147,6 +147,7 @@ export default function CourtDetail() {
     sportLabel: string;
     gameMode: string;
     totalPlayers: number;
+    genderPreference?: string;
   } | null>(null);
   
   // Load quick game config from sessionStorage when in quick game mode
@@ -897,6 +898,7 @@ export default function CourtDetail() {
           totalPlayers: quickGameConfig.totalPlayers,
           paymentType,
           equipment,
+          genderPreference: quickGameConfig.genderPreference || "mixed",
         },
       });
 
