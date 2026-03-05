@@ -280,6 +280,27 @@ export default function ProfileEdit() {
                   Your flag will be shown to other players
                 </p>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select
+                  value={profileData.gender}
+                  onValueChange={(value) =>
+                    setProfileData((prev) => ({ ...prev, gender: value }))
+                  }
+                >
+                  <SelectTrigger id="gender" className="w-full">
+                    <SelectValue placeholder="Select your gender" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-50">
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Used for gender-specific game sessions
+                </p>
+              </div>
             </CardContent>
           </Card>
 
