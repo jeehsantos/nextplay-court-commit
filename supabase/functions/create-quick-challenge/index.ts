@@ -70,7 +70,7 @@ serve(async (req) => {
     const [courtResult, platformResult] = await Promise.all([
       supabaseAdmin
         .from("courts")
-        .select("id, hourly_rate, payment_timing")
+        .select("id, hourly_rate, payment_timing, payment_hours_before")
         .eq("id", courtId)
         .single(),
       supabaseAdmin
@@ -108,12 +108,22 @@ serve(async (req) => {
     const courtAmountWithEquipment = courtAmount + equipmentTotal;
     const serviceFee = Number(platformResult.data?.player_fee ?? 0);
 
+    let effectivePaymentTiming = courtResult.data.payment_timing ?? "at_booking";
+    if (effectivePaymentTiming === "before_session") {
+      const sessionStart = new Date(`${scheduledDate}T${scheduledTime}`);
+      const hoursBeforeSession = courtResult.data.payment_hours_before ?? 24;
+      const deadline = new Date(sessionStart.getTime() - hoursBeforeSession * 60 * 60 * 1000);
+      if (new Date() >= deadline) {
+        effectivePaymentTiming = "at_booking";
+      }
+    }
+
     const splitPricePerPlayer = Math.ceil((courtAmountWithEquipment / totalPlayers) * 100) / 100;
-    const effectivePaymentType = courtResult.data.payment_timing === "at_booking" ? "single" : paymentType;
+    const effectivePaymentType = effectivePaymentTiming === "at_booking" ? "single" : paymentType;
     const pricePerPlayer = effectivePaymentType === "split"
       ? splitPricePerPlayer + serviceFee
       : courtAmountWithEquipment;
-    const initialStatus = courtResult.data.payment_timing === "at_booking" ? "pending_payment" : "open";
+    const initialStatus = effectivePaymentTiming === "at_booking" ? "pending_payment" : "open";
 
     const { data: challenge, error: challengeError } = await supabaseAdmin
       .from("quick_challenges")
