@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Clock, CalendarDays } from "lucide-react";
+import { MapPin, Clock, CalendarDays, Phone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, parseISO } from "date-fns";
 import type { UpcomingBookingInfo } from "@/hooks/useManagerDashboard";
@@ -78,7 +78,19 @@ export function UpcomingBookings({ bookings, loading, onRefresh }: UpcomingBooki
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{booking.bookerName}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium text-sm truncate">{booking.bookerName}</p>
+                            {booking.bookerPhone && (
+                              <a
+                                href={`tel:${booking.bookerPhone}`}
+                                className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-colors shrink-0"
+                                title={booking.bookerPhone}
+                              >
+                                <Phone className="h-2.5 w-2.5" />
+                                <span className="hidden sm:inline">{booking.bookerPhone}</span>
+                              </a>
+                            )}
+                          </div>
                           <p className="text-[10px] text-muted-foreground">{booking.bookingRef}</p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
