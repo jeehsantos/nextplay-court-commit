@@ -1,11 +1,12 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MapPin, ArrowRight, ArrowLeft } from "lucide-react";
 
 export default function VenueDirectory() {
   const { data: venues, isLoading } = useQuery({
