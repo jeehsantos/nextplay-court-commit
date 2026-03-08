@@ -305,6 +305,9 @@ export default function Auth() {
       ) : (
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
+            <Link to="/" className="self-start text-sm text-muted-foreground hover:text-foreground transition-colors mb-2">
+              ← Back to home
+            </Link>
             <img src="/sportarena-logo.png" alt="Sport Arena logo" className="h-16 w-auto mx-auto mb-2" />
             <CardTitle className="font-display">Welcome</CardTitle>
             <CardDescription>
