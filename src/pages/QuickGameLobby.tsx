@@ -758,7 +758,7 @@ export default function QuickGameLobby() {
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <p>Are you sure you want to leave this quick game?</p>
-                {players.find((p) => p.isMe)?.paymentStatus === "paid" &&
+                {players.find((p) => p.isMe)?.paymentStatus === "paid" && challenge?.payment_type === "split" &&
                 <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-foreground">
                     <p className="font-semibold flex items-center gap-2">
                       <CreditCard className="h-4 w-4 text-primary" />
@@ -766,6 +766,13 @@ export default function QuickGameLobby() {
                     </p>
                     <p className="text-xs mt-1 text-muted-foreground">
                       Your court payment of <span className="font-bold text-primary">${challenge?.price_per_player?.toFixed(2) || "0.00"}</span> will be refunded as platform credits. Service fee is non-refundable.
+                    </p>
+                  </div>
+                }
+                {challenge?.payment_type === "single" &&
+                <div className="rounded-lg border border-muted/30 bg-muted/5 p-3 text-foreground">
+                    <p className="text-xs text-muted-foreground">
+                      This session was covered by the organizer. You can leave without any charges.
                     </p>
                   </div>
                 }
