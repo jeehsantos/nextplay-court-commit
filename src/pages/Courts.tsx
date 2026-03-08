@@ -504,7 +504,7 @@ export default function Courts() {
           {/* Quick Game Banner for mobile */}
           {isQuickGameMode && quickGameConfig && (
             <div className="absolute top-20 left-4 right-4 z-[500] pointer-events-auto">
-              <QuickGameBanner />
+              {quickGameBannerJsx}
             </div>
           )}
 
@@ -588,7 +588,7 @@ export default function Courts() {
         >
           <div className="p-4 lg:p-6 space-y-4">
             {/* Quick Game Banner */}
-            <QuickGameBanner />
+            {quickGameBannerJsx}
             
             {/* Header */}
             <div id="browse-courts" className="scroll-mt-24 flex items-center justify-between">
@@ -602,13 +602,13 @@ export default function Courts() {
               </div>
             </div>
 
-            <FilterBar />
+            {filterBarJsx}
 
             {/* Courts Grid */}
             {loading ? (
-              <LoadingSkeleton />
+              loadingSkeletonJsx
             ) : filteredCourts.length === 0 ? (
-              <EmptyState />
+              emptyStateJsx
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
