@@ -80,6 +80,19 @@ export default function JoinGroup() {
 
       if (existingMember) {
         setAlreadyMember(true);
+        return;
+      }
+
+      // Check if user is banned
+      const { data: banRecord } = await supabase
+        .from("group_bans")
+        .select("id")
+        .eq("group_id", groupData.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (banRecord) {
+        setIsBanned(true);
       }
     } catch (err) {
       console.error("Error validating invite:", err);
