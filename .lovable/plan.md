@@ -1,61 +1,41 @@
 
-Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-What I found (already verified):
-1) Data inconsistency exists now:
-   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
-   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
-2) `ManagerCourtFormNew` root causes:
-   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
-   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
-   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
-3) Backend side effect confirmed:
-   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
+# End-to-End Test Plan: Booking + Split Payments + Session Confirmation
 
-Implementation plan (execute in this order):
-1. Database integrity hardening + backfill (migration)
-   - Backfill: set `is_multi_court=true` for any court that already has children.
-   - Add DB validation trigger(s) on `courts` to enforce:
-     - child cannot reference itself
-     - child parent must be in same venue
-     - parent cannot be set `is_multi_court=false` while children exist
-     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
-   - This guarantees the bug cannot recur from any client path.
+## Strategy
 
-2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
-   - Remove direct `window.history.replaceState` usage.
-   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
-   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
-   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
+Use the **"before_session" court** (Batalha society, $50/hr) which creates DB records immediately without requiring Stripe checkout. Then simulate split payments by seeding users and inserting completed payment records directly via the service role, and finally call `recalculate_and_maybe_confirm_session` to verify the session gets confirmed.
 
-3. Multi-court UI behavior safeguards
-   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
-   - Disable/harden turning off multi-court when children exist (with clear message).
-   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
+This avoids Stripe redirects entirely while testing the real confirmation logic.
 
-4. Availability resilience (backend function)
-   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
-   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
+## Steps
 
-5. Verification I will perform (not asking you to test manually)
-   - DB checks:
-     - verify parent `57e11168...` becomes `is_multi_court=true`
-     - verify child links remain unchanged
-     - verify no rows exist with `children > 0 AND is_multi_court=false`
-   - Functional checks:
-     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
-   - UI checks:
-     - exercise add-sub-court flow and confirm:
-       - main court remains main
-       - child appears as child tab
-       - subsequent saves update correct court record
-       - no panel collapse/desync
+### 1. Create a test edge function `seed-test-session`
+A temporary edge function that:
+- Creates 6 test users via `supabase.auth.admin.createUser()` (with auto-confirm)
+- Creates a group owned by user #1
+- Adds all 6 users as group members
+- Calls `create-booking` internally to book a `before_session` court (Batalha society, court `6b1acfdb`, venue `af6ac3c7`)
+- Adds all 6 users as `session_players`
+- For each user, inserts a `payments` row with `status: 'completed'`, `court_amount` = court_price / min_players, `service_fee` = 0 (credit-simulated), `paid_at` = now
+- Calls `recalculate_and_maybe_confirm_session` RPC
+- Returns the full result: session_id, confirmation status, player count, funding totals
 
-Technical details:
-- Files to update:
-  - `supabase/migrations/<new>.sql`
-  - `src/pages/manager/ManagerCourtFormNew.tsx`
-  - `supabase/functions/get-availability/index.ts`
-- No money/payment logic touched.
-- No auth model changes.
-- Existing routing and form schema preserved; this is a consistency + state synchronization fix.
+### 2. Test flow
+- Call the edge function via `curl_edge_functions`
+- Verify the response shows `session_confirmed: true`
+- Query the DB to confirm all records are correct
+
+### 3. Cleanup
+- Delete the test edge function after verification
+
+## Technical Details
+
+- **Court**: Batalha society (`6b1acfdb`), $50/hr, `before_session` timing, capacity 10, venue has Stripe connected (`acct_1T6S8mL3YxoLOnSY`)
+- **Session config**: 1 hour, `split` payment type, `min_players: 6`, sport: futsal (`bedd1e9d`)
+- **Per-player share**: $50 / 6 = $8.34 (ceil to cents = 834 cents)
+- **Platform settings**: player_fee=$0.11, stripe_percent=4.2%, stripe_fixed=$0.30
+- **Confirmation condition** (from RPC): `confirmed_players >= min_players AND total_funded_court_amount >= court_price`
+
+The edge function uses `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS for all inserts, simulating what the webhook would do in production.
+
