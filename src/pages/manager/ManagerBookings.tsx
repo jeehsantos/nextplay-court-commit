@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { ManagerLayout } from "@/components/layout/ManagerLayout";
+import { RescheduleBookingDialog } from "@/components/manager/RescheduleBookingDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -264,7 +265,7 @@ export default function ManagerBookings() {
 
   // Filter bookings based on status, venue, court, and date range
   const filteredBookings = useMemo(() => {
-    return bookings.filter(booking => {
+    const filtered = bookings.filter(booking => {
       // Status filter
       const isSessionCancelled = booking.session?.is_cancelled;
       const isPast = new Date(`${booking.available_date}T${booking.end_time}`) < new Date();
@@ -293,25 +294,27 @@ export default function ManagerBookings() {
       let matchesDateRange = true;
       if (dateRange?.from) {
         const bookingDate = new Date(booking.available_date);
-        bookingDate.setHours(0, 0, 0, 0); // Normalize to start of day
+        bookingDate.setHours(0, 0, 0, 0);
         
         if (dateRange.to) {
           const startDate = new Date(dateRange.from);
           startDate.setHours(0, 0, 0, 0);
-          
           const endDate = new Date(dateRange.to);
-          endDate.setHours(23, 59, 59, 999); // Include the entire end day
-          
-          matchesDateRange = isWithinInterval(bookingDate, {
-            start: startDate,
-            end: endDate
-          });
+          endDate.setHours(23, 59, 59, 999);
+          matchesDateRange = isWithinInterval(bookingDate, { start: startDate, end: endDate });
         } else {
           matchesDateRange = format(bookingDate, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd");
         }
       }
 
       return matchesStatus && matchesVenue && matchesCourt && matchesDateRange;
+    });
+
+    // Sort by closest date first (ascending), then by start_time
+    return filtered.sort((a, b) => {
+      const dateCompare = a.available_date.localeCompare(b.available_date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.start_time.localeCompare(b.start_time);
     });
   }, [bookings, activeTab, selectedVenue, selectedCourt, dateRange]);
 
@@ -381,9 +384,14 @@ export default function ManagerBookings() {
     return "Unknown";
   };
 
+  const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
+
   const BookingCard = ({ booking }: { booking: Booking }) => {
     const courtData = booking.court;
     const venueData = courtData?.venue;
+    const isPast = new Date(`${booking.available_date}T${booking.end_time}`) < new Date();
+    const isCancelled = booking.session?.is_cancelled;
+    const canReschedule = !isPast && !isCancelled;
 
     return (
       <Card className="overflow-hidden">
@@ -392,7 +400,20 @@ export default function ManagerBookings() {
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-semibold truncate">{getBookerName(booking)}</h3>
-                {getStatusBadge(booking)}
+                <div className="flex items-center gap-2 shrink-0">
+                  {getStatusBadge(booking)}
+                  {canReschedule && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => setRescheduleBooking(booking)}
+                    >
+                      <CalendarDays className="h-3 w-3 mr-1" />
+                      Reschedule
+                    </Button>
+                  )}
+                </div>
               </div>
               
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
