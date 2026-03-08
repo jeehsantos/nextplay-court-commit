@@ -99,7 +99,11 @@ serve(async (req) => {
 
     const venue = challenge.venues;
     const pricePerPlayer = challenge.price_per_player || 0;
-    const courtShareCents = Math.round(pricePerPlayer * 100);
+    // For "single" payment type, organizer pays the full court amount
+    const courtShareDollars = challenge.payment_type === "single"
+      ? pricePerPlayer * challenge.total_slots
+      : pricePerPlayer;
+    const courtShareCents = Math.round(courtShareDollars * 100);
 
     if (courtShareCents <= 0) {
       // Free challenge - mark as paid immediately (no platform fee)
