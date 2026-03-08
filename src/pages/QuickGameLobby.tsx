@@ -78,7 +78,7 @@ interface PlayerSlotProps {
   onKick?: (player: LobbyPlayer) => void;
 }
 
-function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoining }: PlayerSlotProps) {
+function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoining, isOrganizer: isOrganizerProp, onKick }: PlayerSlotProps) {
   const isLeft = side === "left";
   const isEmpty = !player;
   const isMe = isCurrentUser || player?.isMe;
