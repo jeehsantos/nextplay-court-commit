@@ -6,14 +6,15 @@ import type { DailyPerformance } from "@/hooks/useManagerDashboard";
 interface WeeklyPerformanceProps {
   data: DailyPerformance[];
   loading: boolean;
+  periodLabel?: string;
 }
 
-export function WeeklyPerformance({ data, loading }: WeeklyPerformanceProps) {
+export function WeeklyPerformance({ data, loading, periodLabel = "Weekly" }: WeeklyPerformanceProps) {
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Weekly Performance</CardTitle>
+          <CardTitle className="text-lg">{periodLabel} Performance</CardTitle>
         </CardHeader>
         <CardContent>
           <Skeleton className="h-64 w-full rounded-lg" />
@@ -28,7 +29,7 @@ export function WeeklyPerformance({ data, loading }: WeeklyPerformanceProps) {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Weekly Performance</CardTitle>
+          <CardTitle className="text-lg">{periodLabel} Performance</CardTitle>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-sm bg-primary" />
@@ -44,7 +45,7 @@ export function WeeklyPerformance({ data, loading }: WeeklyPerformanceProps) {
       <CardContent>
         {!hasData ? (
           <div className="h-52 flex items-center justify-center text-sm text-muted-foreground">
-            No performance data for this week yet.
+            No performance data for this period yet.
           </div>
         ) : (
           <div className="h-52 sm:h-64">

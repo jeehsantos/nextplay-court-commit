@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, subDays, eachDayOfInterval, getDay } from "date-fns";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, eachDayOfInterval, eachWeekOfInterval, getDay } from "date-fns";
 
 export type DashboardPeriod = "daily" | "weekly" | "monthly";
 
@@ -264,19 +264,16 @@ export function useManagerDashboard(period: DashboardPeriod) {
   }, [courts, allCourtIds]);
 
   // Step 4: Fetch weekly performance
-  const fetchWeeklyPerformance = useCallback(async () => {
+  const fetchPerformanceChart = useCallback(async () => {
     if (allCourtIds.length === 0) return;
 
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
-    const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+    const startStr = format(dateRange.start, "yyyy-MM-dd");
+    const endStr = format(dateRange.end, "yyyy-MM-dd");
 
-    const startStr = format(weekStart, "yyyy-MM-dd");
-    const endStr = format(weekEnd, "yyyy-MM-dd");
-
-    const { data: weekBookings } = await supabase
+    // For "daily" we show hourly buckets, for "weekly" daily buckets, for "monthly" weekly buckets
+    const { data: bookingsData } = await supabase
       .from("court_availability")
-      .select("available_date, booked_by_session_id, payment_status")
+      .select("available_date, start_time, booked_by_session_id, payment_status")
       .in("court_id", allCourtIds)
       .eq("is_booked", true)
       .gte("available_date", startStr)
@@ -284,7 +281,7 @@ export function useManagerDashboard(period: DashboardPeriod) {
 
     // Get revenue per session
     const sessionIds = [...new Set(
-      (weekBookings || [])
+      (bookingsData || [])
         .filter((b) => b.booked_by_session_id && b.payment_status === "completed")
         .map((b) => b.booked_by_session_id as string)
     )];
@@ -303,36 +300,67 @@ export function useManagerDashboard(period: DashboardPeriod) {
       });
     }
 
-    // Map booking dates to sessions for revenue lookup
-    const bookingsByDate: Record<string, { count: number; sessionIds: Set<string> }> = {};
-    (weekBookings || []).forEach((b) => {
-      if (!bookingsByDate[b.available_date]) {
-        bookingsByDate[b.available_date] = { count: 0, sessionIds: new Set() };
-      }
-      bookingsByDate[b.available_date].count++;
-      if (b.booked_by_session_id) {
-        bookingsByDate[b.available_date].sessionIds.add(b.booked_by_session_id);
-      }
-    });
+    if (period === "daily") {
+      // Hourly buckets for today
+      const hourBuckets: Record<number, { count: number; sessionIds: Set<string> }> = {};
+      (bookingsData || []).forEach((b) => {
+        const hour = parseInt(b.start_time.split(":")[0]);
+        if (!hourBuckets[hour]) hourBuckets[hour] = { count: 0, sessionIds: new Set() };
+        hourBuckets[hour].count++;
+        if (b.booked_by_session_id) hourBuckets[hour].sessionIds.add(b.booked_by_session_id);
+      });
 
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const perf: DailyPerformance[] = days.map((d) => {
-      const dateStr = format(d, "yyyy-MM-dd");
-      const dayData = bookingsByDate[dateStr];
-      const dayRevenue = dayData
-        ? [...dayData.sessionIds].reduce((sum, sid) => sum + (sessionRevenue[sid] || 0), 0)
-        : 0;
+      const perf: DailyPerformance[] = Array.from({ length: 24 }, (_, h) => {
+        const bucket = hourBuckets[h];
+        const rev = bucket ? [...bucket.sessionIds].reduce((s, sid) => s + (sessionRevenue[sid] || 0), 0) : 0;
+        const ampm = h >= 12 ? "PM" : "AM";
+        const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+        return { day: `${displayH}${ampm}`, dayShort: `${displayH}${ampm}`, revenue: rev, bookings: bucket?.count || 0 };
+      }).filter((_, h) => h >= 6 && h <= 23); // Only show 6AM-11PM
 
-      return {
-        day: format(d, "EEE"),
-        dayShort: dayNames[getDay(d)],
-        revenue: dayRevenue,
-        bookings: dayData?.count || 0,
-      };
-    });
+      setWeeklyPerformance(perf);
+    } else if (period === "weekly") {
+      // Daily buckets for this week
+      const days = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
+      const bookingsByDate: Record<string, { count: number; sessionIds: Set<string> }> = {};
+      (bookingsData || []).forEach((b) => {
+        if (!bookingsByDate[b.available_date]) bookingsByDate[b.available_date] = { count: 0, sessionIds: new Set() };
+        bookingsByDate[b.available_date].count++;
+        if (b.booked_by_session_id) bookingsByDate[b.available_date].sessionIds.add(b.booked_by_session_id);
+      });
 
-    setWeeklyPerformance(perf);
-  }, [allCourtIds]);
+      const perf: DailyPerformance[] = days.map((d) => {
+        const dateStr = format(d, "yyyy-MM-dd");
+        const dayData = bookingsByDate[dateStr];
+        const rev = dayData ? [...dayData.sessionIds].reduce((s, sid) => s + (sessionRevenue[sid] || 0), 0) : 0;
+        return { day: format(d, "EEE"), dayShort: format(d, "EEE"), revenue: rev, bookings: dayData?.count || 0 };
+      });
+
+      setWeeklyPerformance(perf);
+    } else {
+      // Weekly buckets for this month
+      const weeks = eachWeekOfInterval({ start: dateRange.start, end: dateRange.end }, { weekStartsOn: 1 });
+      const perf: DailyPerformance[] = weeks.map((weekStart, i) => {
+        const wEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+        const clampedEnd = wEnd > dateRange.end ? dateRange.end : wEnd;
+        const wStartStr = format(weekStart < dateRange.start ? dateRange.start : weekStart, "yyyy-MM-dd");
+        const wEndStr = format(clampedEnd, "yyyy-MM-dd");
+
+        let count = 0;
+        const sids = new Set<string>();
+        (bookingsData || []).forEach((b) => {
+          if (b.available_date >= wStartStr && b.available_date <= wEndStr) {
+            count++;
+            if (b.booked_by_session_id) sids.add(b.booked_by_session_id);
+          }
+        });
+        const rev = [...sids].reduce((s, sid) => s + (sessionRevenue[sid] || 0), 0);
+        return { day: `Week ${i + 1}`, dayShort: `W${i + 1}`, revenue: rev, bookings: count };
+      });
+
+      setWeeklyPerformance(perf);
+    }
+  }, [allCourtIds, dateRange, period]);
 
   // Step 5: Fetch upcoming bookings
   const fetchUpcomingBookings = useCallback(async () => {
@@ -407,9 +435,9 @@ export function useManagerDashboard(period: DashboardPeriod) {
   useEffect(() => {
     if (allCourtIds.length === 0 && courts.length === 0) return;
     setLoading(true);
-    Promise.all([fetchStats(), fetchLiveCourts(), fetchWeeklyPerformance(), fetchUpcomingBookings()])
+    Promise.all([fetchStats(), fetchLiveCourts(), fetchPerformanceChart(), fetchUpcomingBookings()])
       .finally(() => setLoading(false));
-  }, [fetchStats, fetchLiveCourts, fetchWeeklyPerformance, fetchUpcomingBookings]);
+  }, [fetchStats, fetchLiveCourts, fetchPerformanceChart, fetchUpcomingBookings]);
 
   return { stats, liveCourts, weeklyPerformance, upcomingBookings, loading, courts };
 }

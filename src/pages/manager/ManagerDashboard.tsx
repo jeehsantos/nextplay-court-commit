@@ -64,7 +64,7 @@ export default function ManagerDashboard() {
 
         {/* Charts + Upcoming */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <WeeklyPerformance data={weeklyPerformance} loading={loading} />
+          <WeeklyPerformance data={weeklyPerformance} loading={loading} periodLabel={periodLabels[period]} />
           <UpcomingBookings bookings={upcomingBookings} loading={loading} />
         </div>
 
