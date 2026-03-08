@@ -52,7 +52,6 @@ export function MobileLayout({
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/", { replace: true });
   };
 
   const isLoggedIn = !!user;
