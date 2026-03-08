@@ -299,19 +299,32 @@ export default function ManagerBookings() {
         };
       });
 
-      // For cancelled tab, filter client-side (session cancellation isn't a DB column on court_availability)
+      // Client-side filtering for precise active/completed split on today's bookings
+      const now = new Date();
       let finalBookings = enriched;
       let finalCount = count;
+
       if (activeTab === "cancelled") {
         finalBookings = enriched.filter((b) => b.isSessionCancelled);
         finalCount = finalBookings.length;
       } else if (activeTab === "active") {
-        // Exclude cancelled sessions from active
-        finalBookings = enriched.filter((b) => !b.isSessionCancelled);
+        // Exclude cancelled sessions AND already-ended bookings
+        finalBookings = enriched.filter((b) => {
+          if (b.isSessionCancelled) return false;
+          const endDt = new Date(`${b.available_date}T${b.end_time}`);
+          return endDt > now;
+        });
+      } else if (activeTab === "completed") {
+        // Only show bookings that have actually ended
+        finalBookings = enriched.filter((b) => {
+          if (b.isSessionCancelled) return false;
+          const endDt = new Date(`${b.available_date}T${b.end_time}`);
+          return endDt <= now;
+        });
       }
 
       setBookings(finalBookings);
-      setTotalCount(activeTab === "cancelled" ? finalCount : count);
+      setTotalCount(activeTab === "cancelled" || activeTab === "active" || activeTab === "completed" ? finalBookings.length : count);
     } catch (error) {
       console.error("Error fetching bookings:", error);
     } finally {
