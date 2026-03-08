@@ -110,10 +110,9 @@ export default function ManagerSettings() {
   }, [user]);
 
   useEffect(() => {
-    if (selectedVenueId) {
-      checkConnectStatus();
-    }
-  }, [selectedVenueId]);
+    // Check Stripe status: use venue if available, otherwise user-level check
+    checkConnectStatus();
+  }, [selectedVenueId, user]);
 
   useEffect(() => {
     // Handle return from Stripe onboarding
@@ -122,9 +121,7 @@ export default function ManagerSettings() {
         title: "Stripe Connected!",
         description: "Your account has been connected successfully.",
       });
-      if (selectedVenueId) {
-        checkConnectStatus();
-      }
+      checkConnectStatus();
     }
     if (searchParams.get("refresh") === "true") {
       toast({
@@ -181,11 +178,9 @@ export default function ManagerSettings() {
   };
 
   const checkConnectStatus = async () => {
-    if (!selectedVenueId) return;
-
     try {
       const { data, error } = await supabase.functions.invoke("stripe-connect-status", {
-        body: { venueId: selectedVenueId },
+        body: { venueId: selectedVenueId || null },
       });
 
       if (error) throw error;
@@ -197,13 +192,12 @@ export default function ManagerSettings() {
   };
 
   const handleConnectStripe = async () => {
-    if (!selectedVenueId) return;
 
     setActionLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("stripe-connect-onboard", {
         body: { 
-          venueId: selectedVenueId,
+          venueId: selectedVenueId || null,
           origin: window.location.origin,
         },
       });

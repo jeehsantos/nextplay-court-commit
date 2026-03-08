@@ -94,32 +94,40 @@ export function useManagerStripeReady() {
         .eq("owner_id", user.id);
 
       if (error) throw error;
-      if (!venues || venues.length === 0) {
-        return { isReady: false, hasVenues: false, venues: [] };
-      }
 
-      // Check stripe status for venues that have a stripe_account_id
-      const venuesWithStripe = venues.filter(v => v.stripe_account_id);
-      
-      if (venuesWithStripe.length === 0) {
-        return { isReady: false, hasVenues: true, venues };
-      }
+      const hasVenues = !!venues && venues.length > 0;
 
-      // Check the first connected venue's status
-      for (const venue of venuesWithStripe) {
-        try {
-          const { data } = await supabase.functions.invoke("stripe-connect-status", {
-            body: { venueId: venue.id },
-          });
-          if (data?.details_submitted) {
-            return { isReady: true, hasVenues: true, venues };
+      // Check venues with stripe accounts first
+      if (hasVenues) {
+        const venuesWithStripe = venues.filter(v => v.stripe_account_id);
+        
+        for (const venue of venuesWithStripe) {
+          try {
+            const { data } = await supabase.functions.invoke("stripe-connect-status", {
+              body: { venueId: venue.id },
+            });
+            if (data?.details_submitted) {
+              return { isReady: true, hasVenues: true, venues };
+            }
+          } catch {
+            // Continue checking other venues
           }
-        } catch {
-          // Continue checking other venues
         }
       }
 
-      return { isReady: false, hasVenues: true, venues };
+      // Fallback: check user-level Stripe account (no venue needed)
+      try {
+        const { data } = await supabase.functions.invoke("stripe-connect-status", {
+          body: { venueId: null },
+        });
+        if (data?.details_submitted) {
+          return { isReady: true, hasVenues, venues: venues || [] };
+        }
+      } catch {
+        // ignore
+      }
+
+      return { isReady: false, hasVenues, venues: venues || [] };
     },
     enabled: !!user,
     staleTime: 2 * 60 * 1000,
