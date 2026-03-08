@@ -162,14 +162,15 @@ export default function Auth() {
         if (!result.allowed) {
           setIsSubmitting(false);
           const lockedUntil = new Date(result.locked_until as string);
-        setLockoutUntil(lockedUntil);
-        setRemainingAttempts(0);
-        toast({
-          variant: "destructive",
-          title: "Account temporarily locked",
-          description: "Too many failed login attempts. Please try again later.",
-        });
-        return;
+          setLockoutUntil(lockedUntil);
+          setRemainingAttempts(0);
+          toast({
+            variant: "destructive",
+            title: "Account temporarily locked",
+            description: "Too many failed login attempts. Please try again later.",
+          });
+          return;
+        }
       }
     } catch (e) {
       console.error("Login check error:", e);
