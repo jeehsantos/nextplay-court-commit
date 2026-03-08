@@ -24,6 +24,7 @@ export function Footer() {
   const footerLinks = {
     product: [
       { label: t("footer.browseCourts"), href: "/courts#browse-courts" },
+      { label: "Venues", href: "/venue" },
       { label: t("footer.forPlayers"), href: "/auth?tab=signup&role=player" },
       { label: t("footer.forCourtManagers"), href: "/auth?tab=signup&role=court_manager" },
     ],

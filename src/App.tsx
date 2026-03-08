@@ -44,6 +44,7 @@ import AdminPlatformFees from "./pages/admin/AdminPlatformFees";
 import AdminFinance from "./pages/admin/AdminFinance";
 import AdminVenueSlugs from "./pages/admin/AdminVenueSlugs";
 import VenueLanding from "./pages/VenueLanding";
+import VenueDirectory from "./pages/VenueDirectory";
 import ArchivedSessions from "./pages/ArchivedSessions";
 
 const queryClient = new QueryClient({});
