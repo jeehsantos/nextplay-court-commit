@@ -56,11 +56,21 @@ export default function VenueLanding() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("venues")
-        .select("*")
+        .select("*, profiles!venues_owner_id_fkey(full_name, phone)")
         .eq("slug", slug!)
         .eq("is_active", true)
         .single();
-      if (error) throw error;
+      if (error) {
+        // Fallback without join if FK not found
+        const { data: fallback, error: err2 } = await supabase
+          .from("venues")
+          .select("*")
+          .eq("slug", slug!)
+          .eq("is_active", true)
+          .single();
+        if (err2) throw err2;
+        return { ...fallback, profiles: null };
+      }
       return data;
     },
     enabled: !!slug,
