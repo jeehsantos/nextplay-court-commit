@@ -50,6 +50,7 @@ function VenueMap({ lat, lng, name }: { lat: number; lng: number; name: string }
 export default function VenueLanding() {
   const { slug } = useParams<{ slug: string }>();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
   const { data: venue, isLoading: venueLoading } = useQuery({
