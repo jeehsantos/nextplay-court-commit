@@ -886,6 +886,7 @@ export default function QuickGameLobby() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         teamSize={teamSize}
