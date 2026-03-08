@@ -206,7 +206,19 @@ function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoinin
         }
       </div>
 
+      {/* Kick button for organizer */}
+      {isOrganizerProp && !isEmpty && !isMe && player && onKick && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onKick(player); }}
+          className="absolute top-1 right-1 z-20 p-1 rounded-full bg-destructive/10 hover:bg-destructive/20 transition-colors"
+          title="Kick player"
+        >
+          <X size={10} className="text-destructive" />
+        </button>
+      )}
+
     </div>);
+
 
 }
 
