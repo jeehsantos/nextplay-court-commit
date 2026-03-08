@@ -208,6 +208,21 @@ serve(async (req) => {
 
       await checkAndUpdateChallengeStatus(supabaseAdmin, challengeId);
 
+      // Mark court slot as booked for credits payment (no webhook will fire)
+      if (challenge.court_id && challenge.scheduled_date && challenge.scheduled_time) {
+        const { error: courtUpdateError } = await supabaseAdmin
+          .from("court_availability")
+          .update({ is_booked: true, payment_status: "completed" })
+          .eq("court_id", challenge.court_id)
+          .eq("available_date", challenge.scheduled_date)
+          .eq("start_time", challenge.scheduled_time)
+          .eq("booked_by_user_id", user.id);
+
+        if (courtUpdateError) {
+          console.error("Failed to mark court slot as booked after credits payment:", courtUpdateError);
+        }
+      }
+
       // Process referral credit for credits-only payment
       try {
         await supabaseAdmin.rpc("process_referral_credit", { p_referred_user_id: user.id });
@@ -307,6 +322,9 @@ serve(async (req) => {
         player_record_id: playerRecord.id,
         venue_stripe_account_id: venue?.stripe_account_id || "",
         destination_charge: venue?.stripe_account_id ? "true" : "false",
+        court_id: challenge.court_id || "",
+        scheduled_date: challenge.scheduled_date || "",
+        scheduled_time: challenge.scheduled_time || "",
       },
     };
 
