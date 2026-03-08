@@ -386,7 +386,6 @@ export default function ManagerBookings() {
     return "Unknown";
   };
 
-  const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
 
   const BookingCard = ({ booking }: { booking: Booking }) => {
     const courtData = booking.court;
