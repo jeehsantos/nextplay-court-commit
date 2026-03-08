@@ -133,9 +133,9 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
                 className="h-26 w-auto mix-blend-screen" />
 
               <div>
-                <span className="text-xs text-muted-foreground block">
-                  {profile?.full_name || "Court Manager"}
-                </span>
+                
+
+                
               </div>
             </Link>
           </div>
@@ -166,9 +166,9 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
 
           {/* Theme Toggle & Sign Out */}
           <div className="p-4 border-t border-border space-y-2 pb-20 lg:pb-4">
-            {profile?.full_name && (
-              <p className="px-3 text-sm font-medium truncate">{profile.full_name}</p>
-            )}
+            {profile?.full_name &&
+            <p className="px-3 text-sm font-medium truncate">{profile.full_name}</p>
+            }
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-muted-foreground"
