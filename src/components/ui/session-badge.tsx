@@ -33,7 +33,7 @@ const stateIcons = {
 const stateLabels = {
   protected: "Booked",
   pending: "Pending",
-  rescue: "Rescue Mode",
+  rescue: "Featured",
   released: "Released",
 };
 
