@@ -177,12 +177,23 @@ export default function ManagerBookings() {
         .eq("is_booked", true);
 
       // Apply tab-specific date filters to push filtering to DB
+      // For active: future dates only (today handled client-side by end_time check)
+      // For completed: past dates only (today handled client-side by end_time check)
+      // We include today in both queries and do the time-based split client-side
       if (activeTab === "active") {
-        countQuery = countQuery.gte("available_date", today);
-        dataQuery = dataQuery.gte("available_date", today);
+        // Fetch today and future — we'll filter out already-ended today slots client-side
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = format(yesterday, "yyyy-MM-dd");
+        countQuery = countQuery.gt("available_date", yesterdayStr);
+        dataQuery = dataQuery.gt("available_date", yesterdayStr);
       } else if (activeTab === "completed") {
-        countQuery = countQuery.lte("available_date", today);
-        dataQuery = dataQuery.lte("available_date", today);
+        // Fetch today and past — we'll filter out not-yet-ended today slots client-side
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = format(tomorrow, "yyyy-MM-dd");
+        countQuery = countQuery.lt("available_date", tomorrowStr);
+        dataQuery = dataQuery.lt("available_date", tomorrowStr);
       }
       // "cancelled" tab needs session join — we fetch all and filter after
 
@@ -288,19 +299,32 @@ export default function ManagerBookings() {
         };
       });
 
-      // For cancelled tab, filter client-side (session cancellation isn't a DB column on court_availability)
+      // Client-side filtering for precise active/completed split on today's bookings
+      const now = new Date();
       let finalBookings = enriched;
       let finalCount = count;
+
       if (activeTab === "cancelled") {
         finalBookings = enriched.filter((b) => b.isSessionCancelled);
         finalCount = finalBookings.length;
       } else if (activeTab === "active") {
-        // Exclude cancelled sessions from active
-        finalBookings = enriched.filter((b) => !b.isSessionCancelled);
+        // Exclude cancelled sessions AND already-ended bookings
+        finalBookings = enriched.filter((b) => {
+          if (b.isSessionCancelled) return false;
+          const endDt = new Date(`${b.available_date}T${b.end_time}`);
+          return endDt > now;
+        });
+      } else if (activeTab === "completed") {
+        // Only show bookings that have actually ended
+        finalBookings = enriched.filter((b) => {
+          if (b.isSessionCancelled) return false;
+          const endDt = new Date(`${b.available_date}T${b.end_time}`);
+          return endDt <= now;
+        });
       }
 
       setBookings(finalBookings);
-      setTotalCount(activeTab === "cancelled" ? finalCount : count);
+      setTotalCount(activeTab === "cancelled" || activeTab === "active" || activeTab === "completed" ? finalBookings.length : count);
     } catch (error) {
       console.error("Error fetching bookings:", error);
     } finally {
