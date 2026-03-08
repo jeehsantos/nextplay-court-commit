@@ -1059,6 +1059,11 @@ export default function QuickGameLobby() {
                     isJoining={isJoiningThis}
                     isOrganizer={isOrganizer}
                     onKick={(p) => setKickTarget(p)} />);
+
+
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Central Panel */}
