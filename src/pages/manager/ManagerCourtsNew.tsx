@@ -48,8 +48,11 @@ interface Court {
 
 export default function ManagerCourtsNew() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [courts, setCourts] = useState<Court[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<Court | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
