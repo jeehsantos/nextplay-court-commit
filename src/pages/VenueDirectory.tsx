@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, ArrowRight, ArrowLeft } from "lucide-react";
 
 export default function VenueDirectory() {
+  const navigate = useNavigate();
   const { data: venues, isLoading } = useQuery({
     queryKey: ["venue-directory"],
     queryFn: async () => {
@@ -26,6 +27,10 @@ export default function VenueDirectory() {
   return (
     <PublicLayout>
       <div className="max-w-5xl mx-auto px-4 py-10">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5 text-muted-foreground bg-transparent hover:bg-transparent hover:font-semibold hover:text-foreground mb-4">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
         <div className="mb-8">
           <h1 className="font-display text-3xl md:text-4xl font-bold">Venues</h1>
           <p className="text-muted-foreground mt-2">
