@@ -61,7 +61,7 @@ export function Footer() {
               <img
                 src="/sportarena-logo.png"
                 alt="Sport Arena logo"
-                className="h-12 w-auto mix-blend-screen"
+                className="h-24 w-auto mix-blend-screen"
               />
             </Link>
             <p className="text-muted-foreground mb-6 max-w-sm">
