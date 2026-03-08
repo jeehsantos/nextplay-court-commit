@@ -364,15 +364,15 @@ export default function Profile() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-border">
               <div className="text-center">
-                <p className="font-display font-bold text-xl">12</p>
+                <p className="font-display font-bold text-xl">{gamesPlayed}</p>
                 <p className="text-xs text-muted-foreground">Games Played</p>
               </div>
               <div className="text-center">
-                <p className="font-display font-bold text-xl">3</p>
+                <p className="font-display font-bold text-xl">{groupCount}</p>
                 <p className="text-xs text-muted-foreground">Groups</p>
               </div>
               <div className="text-center">
-                <p className="font-display font-bold text-xl">100%</p>
+                <p className="font-display font-bold text-xl">{showRate}%</p>
                 <p className="text-xs text-muted-foreground">Show Rate</p>
               </div>
             </div>
