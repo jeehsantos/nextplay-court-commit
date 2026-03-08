@@ -3,44 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Check, Lightbulb, Sprout, Trophy } from "lucide-react";
 import { GuestNavbar } from "@/components/layout/GuestNavbar";
 import { Footer } from "@/components/layout/Footer";
-
-const journeyCards = [
-  {
-    icon: Sprout,
-    title: "The Evolution",
-    description:
-      "We noticed that the passion for sport was often hindered by complex logistics. We saw a future where organizing a game was as simple as playing one.",
-    iconClass: "bg-orange-50 text-orange-500",
-  },
-  {
-    icon: Lightbulb,
-    title: "The Innovation",
-    description:
-      "By introducing upfront commitments and automated scheduling, we removed the uncertainty of no-shows and last-minute cancellations.",
-    iconClass: "bg-blue-50 text-blue-500",
-  },
-  {
-    icon: Trophy,
-    title: "The Impact",
-    description:
-      "Today, Sport Arena is a thriving ecosystem where venues stay busy and players stay active. A community built on reliability and play.",
-    iconClass: "bg-emerald-50 text-emerald-500",
-  },
-];
-
-const playerHighlights = [
-  "Guaranteed spots with upfront payments",
-  "Faster group coordination and smart reminders",
-  "Automatic rescue mode for unexpected cancellations",
-];
-
-const managerHighlights = [
-  "Predictable revenue and significantly fewer no-shows",
-  "Centralized venue availability and easy controls",
-  "Smart visibility to fill courts during off-peak hours",
-];
+import { useTranslation } from "react-i18next";
 
 export default function About() {
+  const { t } = useTranslation("about");
+
+  const journeyCards = [
+    { icon: Sprout, title: t("journey.evolutionTitle"), description: t("journey.evolutionDesc"), iconClass: "bg-orange-50 text-orange-500" },
+    { icon: Lightbulb, title: t("journey.innovationTitle"), description: t("journey.innovationDesc"), iconClass: "bg-blue-50 text-blue-500" },
+    { icon: Trophy, title: t("journey.impactTitle"), description: t("journey.impactDesc"), iconClass: "bg-emerald-50 text-emerald-500" },
+  ];
+
+  const playerHighlights: string[] = t("builtFor.playerHighlights", { returnObjects: true }) as string[];
+  const managerHighlights: string[] = t("builtFor.managerHighlights", { returnObjects: true }) as string[];
+
   return (
     <div className="min-h-screen bg-[#fcfdfe] text-slate-900 antialiased">
       <GuestNavbar />
@@ -50,18 +26,12 @@ export default function About() {
           <div className="pointer-events-none absolute -left-24 -top-24 h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(14,165,233,0.16)_0%,rgba(255,255,255,0)_70%)] blur-3xl" />
           <div className="mx-auto max-w-7xl">
             <div className="max-w-3xl">
-              <span className="mb-6 inline-flex rounded-full bg-blue-50 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
-                Our Journey
-              </span>
+              <span className="mb-6 inline-flex rounded-full bg-blue-50 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-blue-600">{t("badge")}</span>
               <h1 className="mb-8 text-4xl font-extrabold leading-tight text-slate-900 sm:text-5xl md:text-6xl">
-                Sport Arena is built for{" "}
-                <span className="bg-gradient-to-br from-sky-500 to-blue-700 bg-clip-text text-transparent">
-                  real players.
-                </span>
+                {t("title")}{" "}
+                <span className="bg-gradient-to-br from-sky-500 to-blue-700 bg-clip-text text-transparent">{t("titleHighlight")}</span>
               </h1>
-              <p className="text-lg leading-relaxed text-slate-600 sm:text-xl">
-                We&apos;ve transformed the way local sports are organized. By replacing manual coordination with seamless automation, we let you focus on what actually matters: the game.
-              </p>
+              <p className="text-lg leading-relaxed text-slate-600 sm:text-xl">{t("subtitle")}</p>
             </div>
           </div>
         </header>
@@ -83,10 +53,8 @@ export default function About() {
         <section className="px-4 py-24 sm:px-6">
           <div className="mx-auto max-w-7xl">
             <div className="mb-16 text-center">
-              <h2 className="mb-4 text-3xl font-bold md:text-4xl">Built for players and venues</h2>
-              <p className="mx-auto max-w-2xl text-slate-500">
-                Everyone wins when bookings are clear and commitments are honored.
-              </p>
+              <h2 className="mb-4 text-3xl font-bold md:text-4xl">{t("builtFor.title")}</h2>
+              <p className="mx-auto max-w-2xl text-slate-500">{t("builtFor.subtitle")}</p>
             </div>
 
             <div className="grid gap-8 md:grid-cols-2 md:gap-12">
@@ -94,7 +62,7 @@ export default function About() {
                 <div className="absolute -right-8 -top-8 h-32 w-32 rounded-bl-full bg-blue-50/60 transition-all group-hover:scale-110" />
                 <h3 className="mb-6 flex items-center gap-3 text-2xl font-bold">
                   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm text-white">1</span>
-                  Players &amp; Organizers
+                  {t("builtFor.playersTitle")}
                 </h3>
                 <ul className="space-y-4">
                   {playerHighlights.map((item) => (
@@ -110,7 +78,7 @@ export default function About() {
                 <div className="absolute -right-8 -top-8 h-32 w-32 rounded-bl-full bg-white/5 transition-all group-hover:scale-110" />
                 <h3 className="mb-6 flex items-center gap-3 text-2xl font-bold">
                   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm text-white">2</span>
-                  Court Managers
+                  {t("builtFor.managersTitle")}
                 </h3>
                 <ul className="space-y-4">
                   {managerHighlights.map((item) => (
@@ -129,16 +97,11 @@ export default function About() {
           <div className="mx-auto max-w-7xl rounded-[2.5rem] bg-slate-900 p-8 text-white sm:p-12 lg:p-16">
             <div className="grid items-center gap-10 lg:grid-cols-[1.2fr_0.8fr]">
               <div>
-                <span className="mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-blue-400">Our Heritage</span>
-                <h2 className="mb-6 text-4xl font-bold md:text-5xl">Born in Aotearoa.</h2>
-                <p className="mb-5 text-lg leading-relaxed text-slate-300">
-                  Sport Arena was founded on the sidelines of local parks and community courts right here in New Zealand.
-                </p>
-                <p className="text-slate-400">
-                  We started with a simple goal: to make playing sports as accessible as possible for our local communities. While our vision is global, our roots remain firmly planted in the values of Kiwi sportsmanship—fairness, commitment, and the belief that everyone should have a chance to get on the court.
-                </p>
+                <span className="mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-blue-400">{t("heritage.label")}</span>
+                <h2 className="mb-6 text-4xl font-bold md:text-5xl">{t("heritage.title")}</h2>
+                <p className="mb-5 text-lg leading-relaxed text-slate-300">{t("heritage.paragraph1")}</p>
+                <p className="text-slate-400">{t("heritage.paragraph2")}</p>
               </div>
-
               <div className="mx-auto w-full max-w-[280px] sm:max-w-[320px]">
                 <svg viewBox="0 0 400 500" className="h-full w-full drop-shadow-[0_0_25px_rgba(59,130,246,0.3)]" xmlns="http://www.w3.org/2000/svg">
                   <defs>
@@ -162,20 +125,14 @@ export default function About() {
 
         <section className="px-4 py-20 text-center sm:px-6">
           <div className="mx-auto max-w-3xl">
-            <h2 className="mb-6 text-4xl font-extrabold md:text-5xl">Ready to Get Started?</h2>
-            <p className="mb-10 text-lg leading-relaxed text-slate-500">
-              Join the movement towards guaranteed, hassle-free sports bookings. Whether you&apos;re a player or a venue, we&apos;ve got you covered.
-            </p>
+            <h2 className="mb-6 text-4xl font-extrabold md:text-5xl">{t("ctaTitle")}</h2>
+            <p className="mb-10 text-lg leading-relaxed text-slate-500">{t("ctaSubtitle")}</p>
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link to="/auth?tab=signup" className="w-full sm:w-auto">
-                <Button className="w-full rounded-2xl bg-blue-600 px-8 py-6 font-bold text-white shadow-xl shadow-blue-200 hover:bg-blue-700">
-                  Create Free Account
-                </Button>
+                <Button className="w-full rounded-2xl bg-blue-600 px-8 py-6 font-bold text-white shadow-xl shadow-blue-200 hover:bg-blue-700">{t("createAccount")}</Button>
               </Link>
               <Link to="/contact" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full rounded-2xl border-slate-200 px-8 py-6 font-bold text-white hover:bg-slate-50 hover:text-slate-700">
-                  Contact Our Team
-                </Button>
+                <Button variant="outline" className="w-full rounded-2xl border-slate-200 px-8 py-6 font-bold text-white hover:bg-slate-50 hover:text-slate-700">{t("contactTeam")}</Button>
               </Link>
             </div>
           </div>
