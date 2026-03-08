@@ -1,96 +1,61 @@
 
+Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-# Theme Consistency Audit and Fix Plan
+What I found (already verified):
+1) Data inconsistency exists now:
+   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
+   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
+2) `ManagerCourtFormNew` root causes:
+   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
+   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
+   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
+3) Backend side effect confirmed:
+   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
 
-## Problem Summary
+Implementation plan (execute in this order):
+1. Database integrity hardening + backfill (migration)
+   - Backfill: set `is_multi_court=true` for any court that already has children.
+   - Add DB validation trigger(s) on `courts` to enforce:
+     - child cannot reference itself
+     - child parent must be in same venue
+     - parent cannot be set `is_multi_court=false` while children exist
+     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
+   - This guarantees the bug cannot recur from any client path.
 
-Multiple pages and components use **hardcoded colors** (`bg-white`, `text-slate-*`, `bg-slate-*`, `text-gray-*`, `bg-[#hex]`, `border-slate-*`) instead of CSS variable-based Tailwind classes (`bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`, `border-border`). These elements will not respond to dark mode toggling.
+2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
+   - Remove direct `window.history.replaceState` usage.
+   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
+   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
+   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
 
-## Affected Files (by severity)
+3. Multi-court UI behavior safeguards
+   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
+   - Disable/harden turning off multi-court when children exist (with clear message).
+   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
 
-### Critical - Entire pages broken in dark mode
+4. Availability resilience (backend function)
+   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
+   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
 
-1. **`src/pages/Landing.tsx`** (~50+ hardcoded colors)
-   - Root: `bg-white text-slate-900` -- should be `bg-background text-foreground`
-   - Hero section: `from-[#f0f9ff] to-[#e0f2fe]` -- needs `dark:` variants
-   - Buttons: `bg-white`, `text-slate-800`, `border-slate-300`, `hover:bg-slate-50`
-   - Stats: `text-slate-500`, `border-slate-200`
-   - Cards: `bg-white`, `border-slate-100`, `text-slate-500`
-   - CTA section: hardcoded blue hex values (acceptable as brand colors, but surrounding bg/text needs dark variants)
-   - Inline footer: `bg-white`, `border-slate-100`, `text-slate-400/500/600` -- all hardcoded
-   - Hero image overlay card: `bg-white`, `border-slate-100`
+5. Verification I will perform (not asking you to test manually)
+   - DB checks:
+     - verify parent `57e11168...` becomes `is_multi_court=true`
+     - verify child links remain unchanged
+     - verify no rows exist with `children > 0 AND is_multi_court=false`
+   - Functional checks:
+     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
+   - UI checks:
+     - exercise add-sub-court flow and confirm:
+       - main court remains main
+       - child appears as child tab
+       - subsequent saves update correct court record
+       - no panel collapse/desync
 
-2. **`src/pages/About.tsx`** (~30+ hardcoded colors)
-   - Root: `bg-[#fcfdfe] text-slate-900`
-   - Cards: `bg-white/80`, `border-slate-200/70`, `text-slate-600`
-   - "For Players" card: `border-slate-100 bg-white`
-   - CTA button: `text-white` on `border-slate-200` (already broken in light mode too)
-   - Heritage section: `bg-slate-900` (intentional dark section, OK)
-
-3. **`src/components/layout/GuestNavbar.tsx`** (~10 hardcoded colors)
-   - Root: `border-slate-200/70 bg-white/75` -- should use `border-border/70 bg-background/75`
-   - Nav text: `text-slate-600`, `text-slate-700`
-   - CTA button: `bg-blue-600` (brand color, acceptable but shadow `shadow-blue-200` breaks in dark)
-   - Mobile menu links: `text-slate-700`, `border-slate-200`
-
-### Moderate - Specific elements broken
-
-4. **`src/pages/CourtDetail.tsx`** (~15 hardcoded colors)
-   - Glassmorphism section labels: `text-gray-400` -- should be `text-muted-foreground`
-   - Gallery nav buttons: `bg-white/90`, `text-gray-800`
-   - Image dots: `bg-white` / `bg-white/50` (overlay context -- acceptable)
-
-5. **`src/components/courts/CourtCard.tsx`**
-   - Image dots: `bg-white` / `bg-white/50` (overlay on images -- acceptable)
-
-6. **`src/components/layout/Header.tsx`** and **`src/components/layout/MobileLayout.tsx`** and **`src/components/layout/Footer.tsx`**
-   - Logo uses `mix-blend-screen` -- this makes the logo invisible on white/light backgrounds; needs conditional class based on theme
-
-## Implementation Plan
-
-### Step 1: Fix Landing Page (`Landing.tsx`)
-Replace all hardcoded `bg-white`, `text-slate-*`, `bg-slate-*`, `border-slate-*` with theme-aware equivalents:
-- `bg-white` → `bg-background` or `bg-card`
-- `text-slate-900` → `text-foreground`
-- `text-slate-500/600/700` → `text-muted-foreground`
-- `border-slate-100/200` → `border-border`
-- `bg-slate-50` → `bg-muted`
-- Hero gradient: add `dark:from-[dark-variant] dark:to-[dark-variant]`
-- Cards in "How it Works": `bg-card border-border`
-- Landing footer section: same pattern as above
-
-### Step 2: Fix About Page (`About.tsx`)
-Same pattern as Landing. Replace hardcoded colors with theme tokens.
-- Root `bg-[#fcfdfe]` → `bg-background`
-- Journey cards: `bg-card` + `border-border`
-- "For Players" card: `bg-card border-border`
-- CTA button fix: `text-foreground` instead of `text-white` on outline
-
-### Step 3: Fix GuestNavbar (`GuestNavbar.tsx`)
-- Header: `border-border/70 bg-background/75`
-- Nav links: `text-muted-foreground`
-- Sign in button: `text-foreground`
-- Mobile menu links: `text-foreground`, `border-border`
-- CTA button shadow: `shadow-primary/20` instead of `shadow-blue-200`
-
-### Step 4: Fix CourtDetail (`CourtDetail.tsx`)
-- Labels `text-gray-400` → `text-muted-foreground`
-- Gallery buttons: `bg-background/90 hover:bg-background` with `text-foreground`
-
-### Step 5: Fix Logo `mix-blend-screen`
-In `Header.tsx`, `MobileLayout.tsx`, and `Footer.tsx`:
-- Remove `mix-blend-screen` -- it makes the logo invisible on light backgrounds
-- Use `dark:brightness-0 dark:invert` or simply remove the blend mode if the logo has a transparent background
-
-### Step 6: Verify remaining authenticated pages
-The authenticated pages (Games, Profile, Courts, Groups, etc.) already use theme tokens (`bg-background`, `text-foreground`, `bg-card`, etc.) correctly. Manager layout and admin layout also use proper tokens. No changes needed for these.
-
-## Files to Edit (7 total)
-1. `src/pages/Landing.tsx`
-2. `src/pages/About.tsx`
-3. `src/components/layout/GuestNavbar.tsx`
-4. `src/pages/CourtDetail.tsx`
-5. `src/components/layout/Header.tsx`
-6. `src/components/layout/MobileLayout.tsx`
-7. `src/components/layout/Footer.tsx`
-
+Technical details:
+- Files to update:
+  - `supabase/migrations/<new>.sql`
+  - `src/pages/manager/ManagerCourtFormNew.tsx`
+  - `supabase/functions/get-availability/index.ts`
+- No money/payment logic touched.
+- No auth model changes.
+- Existing routing and form schema preserved; this is a consistency + state synchronization fix.
