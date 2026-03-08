@@ -794,6 +794,7 @@ export default function GroupDetail() {
                               </TooltipProvider>
                             </div>
                           )}
+                        </div>
                       ))}
                     </div>
                   </CardContent>
