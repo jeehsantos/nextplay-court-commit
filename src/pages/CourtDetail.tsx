@@ -1515,7 +1515,7 @@ export default function CourtDetail() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Court Selector - Responsive Glassmorphism styled dropdown */}
                 <div className="relative group bg-[#111a27]/60 backdrop-blur-2xl border border-[#00f2ea]/20 p-3 sm:p-4 rounded-2xl shadow-2xl transition-all hover:border-[#00f2ea]/50 col-span-3 sm:col-span-1">
-                  <label className="block text-[10px] uppercase text-gray-400 font-bold tracking-widest mb-1 opacity-70">
+                  <label className="block text-[10px] uppercase text-muted-foreground font-bold tracking-widest mb-1 opacity-70">
                     Select Court
                   </label>
                   <div className="flex items-center justify-between min-w-0">
@@ -1543,7 +1543,7 @@ export default function CourtDetail() {
                       <span className="text-[#00f2ea] font-bold sm:font-extrabold text-sm sm:text-lg truncate">{court.name}</span>
                     )}
                   </div>
-                  <div className="text-[10px] uppercase text-gray-400 font-bold tracking-widest">court name</div>
+                  <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">court name</div>
                 </div>
                 
                 {/* Price - Dynamic based on selected court */}
@@ -1552,7 +1552,7 @@ export default function CourtDetail() {
                   <div className="font-extrabold text-lg text-white">
                     ${getSelectedCourt()?.hourly_rate || court.hourly_rate}
                   </div>
-                  <div className="text-[10px] uppercase text-gray-400 font-bold tracking-widest">per hour</div>
+                  <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">per hour</div>
                 </div>
                 
                 {/* Surface - Dynamic based on selected court */}
@@ -1563,7 +1563,7 @@ export default function CourtDetail() {
                   <div className="font-extrabold text-lg text-white capitalize">
                     {getSelectedCourt()?.ground_type || court.ground_type || "turf"}
                   </div>
-                  <div className="text-[10px] uppercase text-gray-400 font-bold tracking-widest">surface</div>
+                  <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">surface</div>
                 </div>
               </div>
             </div>
@@ -1994,15 +1994,15 @@ export default function CourtDetail() {
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-lg"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/90 hover:bg-background flex items-center justify-center shadow-lg"
                   >
-                    <ChevronLeft className="h-6 w-6 text-gray-800" />
+                    <ChevronLeft className="h-6 w-6 text-foreground" />
                   </button>
                   <button
                     onClick={nextImage}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-lg"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/90 hover:bg-background flex items-center justify-center shadow-lg"
                   >
-                    <ChevronRight className="h-6 w-6 text-gray-800" />
+                    <ChevronRight className="h-6 w-6 text-foreground" />
                   </button>
                 </>
               )}
