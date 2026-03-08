@@ -159,7 +159,41 @@ export default function Profile() {
     }
   };
 
-  const handleSave = async () => {
+  // Fetch profile stats
+  useEffect(() => {
+    if (!user) return;
+    const fetchStats = async () => {
+      const [sessionsResult, groupsResult, confirmedResult] = await Promise.all([
+        supabase
+          .from("session_players")
+          .select("id, sessions!inner(session_date, is_cancelled)", { count: "exact" })
+          .eq("user_id", user.id)
+          .eq("sessions.is_cancelled", false)
+          .lte("sessions.session_date", new Date().toISOString().split("T")[0]),
+        supabase
+          .from("group_members")
+          .select("id", { count: "exact" })
+          .eq("user_id", user.id),
+        supabase
+          .from("session_players")
+          .select("id, sessions!inner(session_date, is_cancelled)", { count: "exact" })
+          .eq("user_id", user.id)
+          .eq("sessions.is_cancelled", false)
+          .lte("sessions.session_date", new Date().toISOString().split("T")[0])
+          .eq("is_confirmed", true),
+      ]);
+
+      const totalPast = sessionsResult.count ?? 0;
+      const confirmedPast = confirmedResult.count ?? 0;
+
+      setGamesPlayed(totalPast);
+      setGroupCount(groupsResult.count ?? 0);
+      setShowRate(totalPast > 0 ? Math.round((confirmedPast / totalPast) * 100) : 100);
+    };
+    fetchStats();
+  }, [user]);
+
+
     if (!user) return;
 
     setSaving(true);
