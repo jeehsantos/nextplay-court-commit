@@ -203,6 +203,19 @@ export default function JoinGroup() {
               </Button>
             </CardContent>
           </Card>
+        ) : isBanned ? (
+          <Card className="border-destructive/50">
+            <CardContent className="p-6 text-center">
+              <XCircle className="h-16 w-16 mx-auto mb-4 text-destructive" />
+              <h2 className="text-xl font-semibold mb-2">You have been banned</h2>
+              <p className="text-muted-foreground mb-6">
+                You are not allowed to join <strong>{group?.name}</strong>. Contact the group organizer if you think this is a mistake.
+              </p>
+              <Button onClick={() => navigate("/groups")} className="w-full">
+                Back to Groups
+              </Button>
+            </CardContent>
+          </Card>
         ) : group ? (
           <Card>
             <CardHeader className="text-center pb-4">
