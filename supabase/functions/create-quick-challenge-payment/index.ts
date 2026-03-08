@@ -99,7 +99,11 @@ serve(async (req) => {
 
     const venue = challenge.venues;
     const pricePerPlayer = challenge.price_per_player || 0;
-    const courtShareCents = Math.round(pricePerPlayer * 100);
+    // For "single" payment type, organizer pays the full court amount
+    const courtShareDollars = challenge.payment_type === "single"
+      ? pricePerPlayer * challenge.total_slots
+      : pricePerPlayer;
+    const courtShareCents = Math.round(courtShareDollars * 100);
 
     if (courtShareCents <= 0) {
       // Free challenge - mark as paid immediately (no platform fee)
@@ -137,7 +141,7 @@ serve(async (req) => {
 
       const balance = Number(creditBalance) || 0;
 
-      if (balance < pricePerPlayer) {
+      if (balance < courtShareDollars) {
         throw new Error("Insufficient credits");
       }
 
@@ -145,7 +149,7 @@ serve(async (req) => {
       const { data: useResult, error: useError } = await supabaseAdmin
         .rpc("use_user_credits", {
           p_user_id: user.id,
-          p_amount: pricePerPlayer,
+          p_amount: courtShareDollars,
           p_reason: `Quick Match payment: ${challenge.game_mode}`,
           p_session_id: null,
         });
