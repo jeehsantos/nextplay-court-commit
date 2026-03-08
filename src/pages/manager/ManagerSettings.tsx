@@ -107,10 +107,25 @@ export default function ManagerSettings() {
 
   useEffect(() => {
     if (user) {
-      fetchVenues();
       fetchProfile();
     }
   }, [user]);
+
+  // Sync shared hook venues into local state
+  useEffect(() => {
+    if (!venuesLoading) {
+      const mapped = managerVenues.map(v => ({
+        id: v.id,
+        name: v.name,
+        stripe_account_id: v.stripe_account_id,
+      }));
+      setVenues(mapped);
+      if (mapped.length > 0 && !selectedVenueId) {
+        setSelectedVenueId(mapped[0].id);
+      }
+      setLoading(false);
+    }
+  }, [managerVenues, venuesLoading]);
 
   useEffect(() => {
     // Check Stripe status: use venue if available, otherwise user-level check
@@ -157,28 +172,7 @@ export default function ManagerSettings() {
     }
   };
 
-  const fetchVenues = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("venues")
-        .select("id, name, stripe_account_id")
-        .eq("owner_id", user!.id);
-
-      if (error) throw error;
-
-      // Type assertion since we know the structure
-      const venueData = data as unknown as Venue[];
-      setVenues(venueData || []);
-      
-      if (venueData && venueData.length > 0) {
-        setSelectedVenueId(venueData[0].id);
-      }
-    } catch (error) {
-      console.error("Error fetching venues:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // fetchVenues removed — now using useManagerVenues hook
 
   const checkConnectStatus = async () => {
     try {
