@@ -451,13 +451,17 @@ export function useManagerDashboard(period: DashboardPeriod) {
     setUpcomingBookings(mapped);
   }, [allCourtIds, courts]);
 
-  // Run all fetches when courts are loaded
-  useEffect(() => {
+  const refreshAll = useCallback(() => {
     if (allCourtIds.length === 0 && courts.length === 0) return;
     setLoading(true);
     Promise.all([fetchStats(), fetchLiveCourts(), fetchPerformanceChart(), fetchUpcomingBookings()])
       .finally(() => setLoading(false));
-  }, [fetchStats, fetchLiveCourts, fetchPerformanceChart, fetchUpcomingBookings]);
+  }, [fetchStats, fetchLiveCourts, fetchPerformanceChart, fetchUpcomingBookings, allCourtIds, courts]);
 
-  return { stats, liveCourts, weeklyPerformance, upcomingBookings, loading, courts };
+  // Run all fetches when courts are loaded
+  useEffect(() => {
+    refreshAll();
+  }, [refreshAll]);
+
+  return { stats, liveCourts, weeklyPerformance, upcomingBookings, loading, courts, refreshAll };
 }

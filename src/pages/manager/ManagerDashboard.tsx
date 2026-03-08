@@ -21,7 +21,7 @@ const periodLabels: Record<DashboardPeriod, string> = {
 export default function ManagerDashboard() {
   const { user } = useAuth();
   const [period, setPeriod] = useState<DashboardPeriod>("monthly");
-  const { stats, liveCourts, weeklyPerformance, upcomingBookings, loading } = useManagerDashboard(period);
+  const { stats, liveCourts, weeklyPerformance, upcomingBookings, loading, refreshAll } = useManagerDashboard(period);
 
   const today = format(new Date(), "EEEE, MMMM d");
 
@@ -65,7 +65,7 @@ export default function ManagerDashboard() {
         {/* Charts + Upcoming */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <WeeklyPerformance data={weeklyPerformance} loading={loading} periodLabel={periodLabels[period]} />
-          <UpcomingBookings bookings={upcomingBookings} loading={loading} />
+          <UpcomingBookings bookings={upcomingBookings} loading={loading} onRefresh={refreshAll} />
         </div>
 
         {/* Quick action FAB for mobile */}
