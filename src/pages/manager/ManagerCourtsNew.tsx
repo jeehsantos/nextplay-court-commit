@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 import { 
   Building2, 
   Plus,
@@ -24,7 +25,9 @@ import {
   Loader2,
   Users,
   Trash2,
-  Pencil
+  Pencil,
+  Check,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -62,6 +65,48 @@ export default function ManagerCourtsNew() {
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Court | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
+  const [editingVenueName, setEditingVenueName] = useState("");
+  const [savingVenueName, setSavingVenueName] = useState(false);
+
+  const startEditingVenue = (venue: Venue) => {
+    setEditingVenueId(venue.id);
+    setEditingVenueName(venue.name);
+  };
+
+  const cancelEditingVenue = () => {
+    setEditingVenueId(null);
+    setEditingVenueName("");
+  };
+
+  const saveVenueName = async (venueId: string) => {
+    const trimmed = editingVenueName.trim();
+    if (!trimmed) {
+      toast({ title: "Venue name cannot be empty", variant: "destructive" });
+      return;
+    }
+    setSavingVenueName(true);
+    try {
+      const { error } = await supabase
+        .from("venues")
+        .update({ name: trimmed })
+        .eq("id", venueId);
+      if (error) throw error;
+      setVenueGroups(prev =>
+        prev.map(g =>
+          g.venue.id === venueId
+            ? { ...g, venue: { ...g.venue, name: trimmed } }
+            : g
+        )
+      );
+      toast({ title: "Venue name updated" });
+      setEditingVenueId(null);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingVenueName(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -200,12 +245,55 @@ export default function ManagerCourtsNew() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <h2 className="text-lg md:text-xl font-bold">{venue.name}</h2>
-                        <Link to={`/manager/venues/${venue.id}/edit`}>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <Pencil className="h-3.5 w-3.5 text-primary" />
-                          </Button>
-                        </Link>
+                        {editingVenueId === venue.id ? (
+                          <>
+                            <Input
+                              value={editingVenueName}
+                              onChange={(e) => setEditingVenueName(e.target.value)}
+                              className="h-8 text-lg font-bold max-w-[240px]"
+                              autoFocus
+                              disabled={savingVenueName}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveVenueName(venue.id);
+                                if (e.key === "Escape") cancelEditingVenue();
+                              }}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={savingVenueName}
+                              onClick={() => saveVenueName(venue.id)}
+                            >
+                              {savingVenueName ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5 text-green-500" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={savingVenueName}
+                              onClick={cancelEditingVenue}
+                            >
+                              <X className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <h2 className="text-lg md:text-xl font-bold">{venue.name}</h2>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => startEditingVenue(venue)}
+                            >
+                              <Pencil className="h-3.5 w-3.5 text-primary" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <MapPin className="h-3.5 w-3.5" />
