@@ -22,7 +22,8 @@ const periodLabels: Record<DashboardPeriod, string> = {
 export default function ManagerDashboard() {
   const { user } = useAuth();
   const { profile } = useUserProfile();
-  const firstName = profile?.full_name?.split(" ")[0] || "";
+  const rawFirstName = profile?.full_name?.split(" ")[0] || "";
+  const firstName = rawFirstName.charAt(0).toUpperCase() + rawFirstName.slice(1).toLowerCase();
   const [period, setPeriod] = useState<DashboardPeriod>("monthly");
   const { stats, liveCourts, weeklyPerformance, upcomingBookings, loading, refreshAll } = useManagerDashboard(period);
 
