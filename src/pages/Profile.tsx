@@ -76,6 +76,11 @@ export default function Profile() {
   
   // Fetch user credits
   const { balance: credits, loading: loadingCredits } = useUserCredits();
+
+  // Profile stats
+  const [gamesPlayed, setGamesPlayed] = useState<number>(0);
+  const [groupCount, setGroupCount] = useState<number>(0);
+  const [showRate, setShowRate] = useState<number>(100);
   
   // Password change state
   const [passwordData, setPasswordData] = useState({
@@ -153,6 +158,40 @@ export default function Profile() {
       setProfileLoading(false);
     }
   };
+
+  // Fetch profile stats
+  useEffect(() => {
+    if (!user) return;
+    const fetchStats = async () => {
+      const [sessionsResult, groupsResult, confirmedResult] = await Promise.all([
+        supabase
+          .from("session_players")
+          .select("id, sessions!inner(session_date, is_cancelled)", { count: "exact" })
+          .eq("user_id", user.id)
+          .eq("sessions.is_cancelled", false)
+          .lte("sessions.session_date", new Date().toISOString().split("T")[0]),
+        supabase
+          .from("group_members")
+          .select("id", { count: "exact" })
+          .eq("user_id", user.id),
+        supabase
+          .from("session_players")
+          .select("id, sessions!inner(session_date, is_cancelled)", { count: "exact" })
+          .eq("user_id", user.id)
+          .eq("sessions.is_cancelled", false)
+          .lte("sessions.session_date", new Date().toISOString().split("T")[0])
+          .eq("is_confirmed", true),
+      ]);
+
+      const totalPast = sessionsResult.count ?? 0;
+      const confirmedPast = confirmedResult.count ?? 0;
+
+      setGamesPlayed(totalPast);
+      setGroupCount(groupsResult.count ?? 0);
+      setShowRate(totalPast > 0 ? Math.round((confirmedPast / totalPast) * 100) : 100);
+    };
+    fetchStats();
+  }, [user]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -325,15 +364,15 @@ export default function Profile() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-border">
               <div className="text-center">
-                <p className="font-display font-bold text-xl">12</p>
+                <p className="font-display font-bold text-xl">{gamesPlayed}</p>
                 <p className="text-xs text-muted-foreground">Games Played</p>
               </div>
               <div className="text-center">
-                <p className="font-display font-bold text-xl">3</p>
+                <p className="font-display font-bold text-xl">{groupCount}</p>
                 <p className="text-xs text-muted-foreground">Groups</p>
               </div>
               <div className="text-center">
-                <p className="font-display font-bold text-xl">100%</p>
+                <p className="font-display font-bold text-xl">{showRate}%</p>
                 <p className="text-xs text-muted-foreground">Show Rate</p>
               </div>
             </div>
