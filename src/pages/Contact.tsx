@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { GuestNavbar } from "@/components/layout/GuestNavbar";
+import { Footer } from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -315,24 +316,7 @@ export default function Contact() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-4 border-t border-border">
-        <div className="container mx-auto max-w-4xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center">
-            <img
-              src="/sportarena-logo.png"
-              alt="Sport Arena logo"
-              className="h-8 w-auto mix-blend-screen"
-            />
-          </div>
-          <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
-            <Link to="/about" className="hover:text-foreground transition-colors">About</Link>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Sport Arena
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
