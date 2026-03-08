@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -230,18 +230,6 @@ export default function Auth() {
   return (
     <PublicLayout showBack={false} showFooter={false}>
       <div className="relative min-h-screen flex flex-col items-center justify-center p-4 -mt-12">
-      {/* Back Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate(-1)}
-        className="self-start mb-4 gap-2 text-muted-foreground hover:text-foreground"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m15 18-6-6 6-6"/>
-        </svg>
-        Back
-      </Button>
 
       <div className="flex flex-col items-center gap-3 mb-8">
         <img
@@ -317,6 +305,9 @@ export default function Auth() {
       ) : (
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
+            <Link to="/" className="self-start text-sm text-muted-foreground hover:text-foreground transition-colors mb-2">
+              ← Back to home
+            </Link>
             <img src="/sportarena-logo.png" alt="Sport Arena logo" className="h-16 w-auto mx-auto mb-2" />
             <CardTitle className="font-display">Welcome</CardTitle>
             <CardDescription>
