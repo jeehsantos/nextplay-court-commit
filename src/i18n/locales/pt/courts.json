@@ -1,0 +1,22 @@
+{
+  "searchPlaceholder": "Buscar quadras, espaços ou cidades...",
+  "filter": "Filtrar",
+  "filters": "Filtros",
+  "clearAll": "Limpar Tudo",
+  "surfaceType": "Tipo de Piso",
+  "allSurfaces": "Todos os Pisos",
+  "indoorOutdoor": "Coberto / Aberto",
+  "all": "Todos",
+  "indoor": "Coberto",
+  "outdoor": "Aberto",
+  "sport": "Esporte",
+  "allSports": "Todos os Esportes",
+  "city": "Cidade",
+  "allCities": "Todas as Cidades",
+  "noCourtsFound": "Nenhuma quadra encontrada",
+  "noCourtsFoundDesc": "Tente ajustar seus filtros ou busca",
+  "quickChallengeMode": "Modo Desafio Rápido",
+  "selectCourtForChallenge": "Selecione uma quadra e horário pra criar seu desafio rápido",
+  "hourlyRate": "por hora",
+  "perHour": "/h"
+}
