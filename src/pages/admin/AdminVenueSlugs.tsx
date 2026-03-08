@@ -174,7 +174,7 @@ function AdminVenueSlugsContent() {
                                 onClick={() => handleCopy(venue.slug!, venue.id)}
                               >
                                 {copiedId === venue.id ? (
-                                  <Check className="h-3 w-3 text-green-500" />
+                                  <Check className="h-3 w-3 text-primary" />
                                 ) : (
                                   <Copy className="h-3 w-3" />
                                 )}
