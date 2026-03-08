@@ -74,9 +74,11 @@ interface PlayerSlotProps {
   onJoin?: () => void;
   onPay?: () => void;
   isJoining?: boolean;
+  isOrganizer?: boolean;
+  onKick?: (player: LobbyPlayer) => void;
 }
 
-function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoining }: PlayerSlotProps) {
+function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoining, isOrganizer: isOrganizerProp, onKick }: PlayerSlotProps) {
   const isLeft = side === "left";
   const isEmpty = !player;
   const isMe = isCurrentUser || player?.isMe;
@@ -204,7 +206,19 @@ function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoinin
         }
       </div>
 
+      {/* Kick button for organizer */}
+      {isOrganizerProp && !isEmpty && !isMe && player && onKick && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onKick(player); }}
+          className="absolute top-1 right-1 z-20 p-1 rounded-full bg-destructive/10 hover:bg-destructive/20 transition-colors"
+          title="Kick player"
+        >
+          <X size={10} className="text-destructive" />
+        </button>
+      )}
+
     </div>);
+
 
 }
 
@@ -367,6 +381,8 @@ export default function QuickGameLobby() {
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [isCourtImageOpen, setIsCourtImageOpen] = useState(false);
   const [isConfirmingPresence, setIsConfirmingPresence] = useState(false);
+  const [kickTarget, setKickTarget] = useState<LobbyPlayer | null>(null);
+  const [isKicking, setIsKicking] = useState(false);
 
   // Find the challenge
   const challenge = useMemo(
@@ -568,6 +584,43 @@ export default function QuickGameLobby() {
   const handleFormatChange = (newFormat: string) => {
     if (!id || !isOrganizer) return;
     updateFormat.mutate({ challengeId: id, gameMode: newFormat });
+  };
+
+  const confirmKickPlayer = async () => {
+    if (!id || !kickTarget || !challenge) return;
+    setIsKicking(true);
+    try {
+      // Find the user_id from the challenge players
+      const targetPlayer = (challenge as any).quick_challenge_players?.find(
+        (p: any) => p.id === kickTarget.id
+      );
+
+      if (!targetPlayer) throw new Error("Player not found");
+
+      const { data: kickData, error: kickError } = await supabase.functions.invoke("kick-challenge-player", {
+        body: {
+          challengeId: id,
+          targetUserId: targetPlayer.user_id,
+        },
+      });
+
+      if (kickError) throw kickError;
+      if (kickData?.error) throw new Error(kickData.error);
+
+      toast({
+        title: "Player kicked",
+        description: kickData?.message || `${kickTarget.name} has been removed from the lobby.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Failed to kick player",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsKicking(false);
+      setKickTarget(null);
+    }
   };
 
   // Auth redirect — store lobby path so user returns here after login/signup
@@ -801,6 +854,38 @@ export default function QuickGameLobby() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Kick Player Confirmation Dialog */}
+      <AlertDialog open={!!kickTarget} onOpenChange={(open) => !open && setKickTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Kick {kickTarget?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This player will be removed from the lobby and banned from rejoining.
+              {kickTarget?.paymentStatus === "paid" && challenge?.payment_type === "split" && (
+                " Their payment will be converted to platform credits."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isKicking}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmKickPlayer}
+              disabled={isKicking}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isKicking ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Kicking...</>
+              ) : (
+                "Kick Player"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -937,7 +1022,9 @@ export default function QuickGameLobby() {
                     isCurrentUser={player?.isMe}
                     onJoin={() => handleJoinSlot("left", i)}
                     onPay={handlePayment}
-                    isJoining={isJoiningThis} />);
+                    isJoining={isJoiningThis}
+                    isOrganizer={isOrganizer}
+                    onKick={(p) => setKickTarget(p)} />);
 
 
               })}
@@ -969,7 +1056,9 @@ export default function QuickGameLobby() {
                     isCurrentUser={player?.isMe}
                     onJoin={() => handleJoinSlot("right", i)}
                     onPay={handlePayment}
-                    isJoining={isJoiningThis} />);
+                    isJoining={isJoiningThis}
+                    isOrganizer={isOrganizer}
+                    onKick={(p) => setKickTarget(p)} />);
 
 
               })}
@@ -1166,7 +1255,9 @@ export default function QuickGameLobby() {
                   isCurrentUser={player?.isMe}
                   onJoin={() => handleJoinSlot("right", i)}
                   onPay={handlePayment}
-                  isJoining={isJoiningThis} />);
+                  isJoining={isJoiningThis}
+                  isOrganizer={isOrganizer}
+                  onKick={(p) => setKickTarget(p)} />);
 
 
             })}

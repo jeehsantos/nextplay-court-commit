@@ -25,6 +25,7 @@ export default function JoinGroup() {
   const [error, setError] = useState<string | null>(null);
   const [alreadyMember, setAlreadyMember] = useState(false);
   const [joined, setJoined] = useState(false);
+  const [isBanned, setIsBanned] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -79,6 +80,19 @@ export default function JoinGroup() {
 
       if (existingMember) {
         setAlreadyMember(true);
+        return;
+      }
+
+      // Check if user is banned
+      const { data: banRecord } = await supabase
+        .from("group_bans")
+        .select("id")
+        .eq("group_id", groupData.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (banRecord) {
+        setIsBanned(true);
       }
     } catch (err) {
       console.error("Error validating invite:", err);
@@ -186,6 +200,19 @@ export default function JoinGroup() {
               </p>
               <Button onClick={() => navigate(`/groups/${group?.id}`)} className="w-full">
                 {t("viewGroup")}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : isBanned ? (
+          <Card className="border-destructive/50">
+            <CardContent className="p-6 text-center">
+              <XCircle className="h-16 w-16 mx-auto mb-4 text-destructive" />
+              <h2 className="text-xl font-semibold mb-2">You have been banned</h2>
+              <p className="text-muted-foreground mb-6">
+                You are not allowed to join <strong>{group?.name}</strong>. Contact the group organizer if you think this is a mistake.
+              </p>
+              <Button onClick={() => navigate("/groups")} className="w-full">
+                Back to Groups
               </Button>
             </CardContent>
           </Card>

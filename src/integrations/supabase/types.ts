@@ -370,6 +370,41 @@ export type Database = {
           },
         ]
       }
+      group_bans: {
+        Row: {
+          banned_by: string
+          created_at: string
+          group_id: string
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          banned_by: string
+          created_at?: string
+          group_id: string
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          banned_by?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_bans_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_invitations: {
         Row: {
           created_at: string
@@ -819,6 +854,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      quick_challenge_bans: {
+        Row: {
+          banned_by: string
+          challenge_id: string
+          created_at: string
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          banned_by: string
+          challenge_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          banned_by?: string
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_challenge_bans_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "quick_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quick_challenge_messages: {
         Row: {
@@ -1571,11 +1641,23 @@ export type Database = {
         Args: { _challenge_id: string; _user_id: string }
         Returns: boolean
       }
+      is_group_ban_manager: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_group_member: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
       is_staff_of_owner: { Args: { check_user_id: string }; Returns: boolean }
+      is_user_banned_from_challenge: {
+        Args: { _challenge_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_user_banned_from_group: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_venue_staff: {
         Args: { check_user_id: string; check_venue_id: string }
         Returns: boolean

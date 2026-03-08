@@ -14,6 +14,16 @@ import { Label } from "@/components/ui/label";
 import { EditGroupSchedule } from "@/components/group/EditGroupSchedule";
 import { EditGroupLocation } from "@/components/group/EditGroupLocation";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Loader2, 
   ArrowLeft, 
@@ -27,7 +37,9 @@ import {
   CalendarDays,
   Copy,
   Link as LinkIcon,
-  Settings
+  Settings,
+  UserMinus,
+  Ban,
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,6 +76,13 @@ export default function GroupDetail() {
   const [isMember, setIsMember] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [generatingLink, setGeneratingLink] = useState(false);
+  const [memberAction, setMemberAction] = useState<{
+    memberId: string;
+    userId: string;
+    name: string;
+    action: "remove" | "ban";
+  } | null>(null);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -313,6 +332,45 @@ export default function GroupDetail() {
     }
   };
 
+  const handleMemberAction = async () => {
+    if (!memberAction || !group) return;
+
+    setIsProcessingAction(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ban-group-member", {
+        body: {
+          groupId: group.id,
+          targetUserId: memberAction.userId,
+          action: memberAction.action,
+          reason: null,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Remove from local state
+      setMembers((prev) => prev.filter((m) => m.user_id !== memberAction.userId));
+
+      toast({
+        title: memberAction.action === "ban" ? "Member banned" : "Member removed",
+        description:
+          memberAction.action === "ban"
+            ? `${memberAction.name} has been banned from the group`
+            : `${memberAction.name} has been removed from the group`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Action failed",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingAction(false);
+      setMemberAction(null);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -338,8 +396,46 @@ export default function GroupDetail() {
   const admins = members.filter(m => m.is_admin && m.user_id !== group.organizer_id);
   const regularMembers = members.filter(m => !m.is_admin && m.user_id !== group.organizer_id);
 
+  const isAdmin = members.some(m => m.user_id === user.id && m.is_admin) || isOrganizer;
+
   return (
     <MobileLayout showHeader={false} showBottomNav={false}>
+      {/* Member Action Confirmation Dialog */}
+      <AlertDialog open={!!memberAction} onOpenChange={(open) => !open && setMemberAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {memberAction?.action === "ban" ? (
+                <><Ban className="h-5 w-5 text-destructive" />Ban {memberAction.name}?</>
+              ) : (
+                <><UserMinus className="h-5 w-5 text-destructive" />Remove {memberAction?.name}?</>
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {memberAction?.action === "ban"
+                ? `${memberAction.name} will be removed from the group and permanently banned. They will not be able to rejoin or view group sessions.`
+                : `${memberAction?.name} will be removed from the group. They can rejoin later if invited.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessingAction}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMemberAction}
+              disabled={isProcessingAction}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isProcessingAction ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</>
+              ) : memberAction?.action === "ban" ? (
+                "Ban Member"
+              ) : (
+                "Remove Member"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="min-h-screen bg-background">
         {/* Header Image */}
         <div className="relative h-48 lg:h-64 bg-gradient-to-br from-primary/30 to-primary/10">
@@ -654,6 +750,50 @@ export default function GroupDetail() {
                               Joined {format(new Date(member.joined_at), "MMM yyyy")}
                             </p>
                           </div>
+                          {isOrganizer && (
+                            <div className="flex gap-1">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                                      onClick={() => setMemberAction({
+                                        memberId: member.id,
+                                        userId: member.user_id,
+                                        name: member.profile?.full_name || "Member",
+                                        action: "remove",
+                                      })}
+                                    >
+                                      <UserMinus className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Remove from group</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                                      onClick={() => setMemberAction({
+                                        memberId: member.id,
+                                        userId: member.user_id,
+                                        name: member.profile?.full_name || "Member",
+                                        action: "ban",
+                                      })}
+                                    >
+                                      <Ban className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Ban from group</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -691,22 +831,66 @@ export default function GroupDetail() {
                               Joined {format(new Date(member.joined_at), "MMM yyyy")}
                             </p>
                           </div>
-                          {isOrganizer && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-8 px-2"
-                                    onClick={() => promoteMember(member.id, member.user_id)}
-                                  >
-                                    <Crown className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Promote to admin</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                          {isAdmin && (
+                            <div className="flex gap-1">
+                              {isOrganizer && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-8 px-2"
+                                        onClick={() => promoteMember(member.id, member.user_id)}
+                                      >
+                                        <Crown className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Promote to admin</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                                      onClick={() => setMemberAction({
+                                        memberId: member.id,
+                                        userId: member.user_id,
+                                        name: member.profile?.full_name || "Member",
+                                        action: "remove",
+                                      })}
+                                    >
+                                      <UserMinus className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Remove from group</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                                      onClick={() => setMemberAction({
+                                        memberId: member.id,
+                                        userId: member.user_id,
+                                        name: member.profile?.full_name || "Member",
+                                        action: "ban",
+                                      })}
+                                    >
+                                      <Ban className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Ban from group</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
                           )}
                         </div>
                       ))}

@@ -1,89 +1,61 @@
 
+Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-# Ban/Remove Members from Groups and Quick Games
+What I found (already verified):
+1) Data inconsistency exists now:
+   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
+   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
+2) `ManagerCourtFormNew` root causes:
+   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
+   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
+   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
+3) Backend side effect confirmed:
+   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
 
-## Overview
-Add ability for organizers and co-organizers to remove or ban members from groups and quick game lobbies. Banned users cannot rejoin, view sessions, or participate.
+Implementation plan (execute in this order):
+1. Database integrity hardening + backfill (migration)
+   - Backfill: set `is_multi_court=true` for any court that already has children.
+   - Add DB validation trigger(s) on `courts` to enforce:
+     - child cannot reference itself
+     - child parent must be in same venue
+     - parent cannot be set `is_multi_court=false` while children exist
+     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
+   - This guarantees the bug cannot recur from any client path.
 
-## Database Changes
+2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
+   - Remove direct `window.history.replaceState` usage.
+   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
+   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
+   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
 
-### New table: `group_bans`
-```sql
-CREATE TABLE public.group_bans (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  group_id uuid NOT NULL REFERENCES public.groups(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL,
-  banned_by uuid NOT NULL,
-  reason text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(group_id, user_id)
-);
-ALTER TABLE public.group_bans ENABLE ROW LEVEL SECURITY;
-```
+3. Multi-court UI behavior safeguards
+   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
+   - Disable/harden turning off multi-court when children exist (with clear message).
+   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
 
-RLS: Organizers and co-organizers can insert/view/delete bans. Banned users can view their own ban (to show feedback).
+4. Availability resilience (backend function)
+   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
+   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
 
-### New table: `quick_challenge_bans`
-```sql
-CREATE TABLE public.quick_challenge_bans (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  challenge_id uuid NOT NULL REFERENCES public.quick_challenges(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL,
-  banned_by uuid NOT NULL,
-  reason text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(challenge_id, user_id)
-);
-ALTER TABLE public.quick_challenge_bans ENABLE ROW LEVEL SECURITY;
-```
+5. Verification I will perform (not asking you to test manually)
+   - DB checks:
+     - verify parent `57e11168...` becomes `is_multi_court=true`
+     - verify child links remain unchanged
+     - verify no rows exist with `children > 0 AND is_multi_court=false`
+   - Functional checks:
+     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
+   - UI checks:
+     - exercise add-sub-court flow and confirm:
+       - main court remains main
+       - child appears as child tab
+       - subsequent saves update correct court record
+       - no panel collapse/desync
 
-### Security definer functions
-- `is_group_ban_manager(group_id, user_id)` -- returns true if user is organizer or co-organizer (is_admin in group_members)
-- `is_user_banned_from_group(group_id, user_id)` -- for RLS on sessions/groups visibility
-
-### RLS policy updates
-- **groups SELECT**: Add check that user is not banned
-- **sessions SELECT**: Add check that user is not banned from the group
-- **group_members INSERT**: Prevent banned users from joining
-- **quick_challenge_players INSERT**: Prevent banned users from joining
-
-## Backend Edge Function: `ban-group-member`
-Handles:
-1. Verify caller is organizer or co-organizer
-2. Insert ban record
-3. Remove from `group_members`
-4. Remove from any active `session_players` for this group's sessions
-5. Return success
-
-## Backend Edge Function: `kick-challenge-player`
-Handles:
-1. Verify caller is challenge organizer
-2. Insert ban record in `quick_challenge_bans`
-3. Delete player from `quick_challenge_players`
-4. If player had paid, convert court_amount to credits (reuse leave logic)
-5. Return success
-
-## Frontend Changes
-
-### `src/pages/GroupDetail.tsx`
-- Add "Remove" and "Ban" buttons next to each regular member and co-organizer (visible to organizer + co-organizers)
-- Confirmation dialog before ban/remove
-- Call `ban-group-member` edge function
-- Remove member from local state on success
-
-### `src/pages/QuickGameLobby.tsx`
-- Add kick/ban option for organizer on each player slot (small icon button)
-- Confirmation dialog
-- Call `kick-challenge-player` edge function
-
-### `src/pages/JoinGroup.tsx`
-- Check if user is banned before allowing join; show "You have been banned" message
-
-## Files to Create/Edit
-1. **Migration SQL** -- create `group_bans`, `quick_challenge_bans` tables, RLS policies, security definer functions, update existing RLS on `group_members` and `quick_challenge_players`
-2. **`supabase/functions/ban-group-member/index.ts`** -- new edge function
-3. **`supabase/functions/kick-challenge-player/index.ts`** -- new edge function
-4. **`src/pages/GroupDetail.tsx`** -- add remove/ban UI + confirmation dialogs
-5. **`src/pages/QuickGameLobby.tsx`** -- add kick UI for organizer
-6. **`src/pages/JoinGroup.tsx`** -- ban check on join attempt
-
+Technical details:
+- Files to update:
+  - `supabase/migrations/<new>.sql`
+  - `src/pages/manager/ManagerCourtFormNew.tsx`
+  - `supabase/functions/get-availability/index.ts`
+- No money/payment logic touched.
+- No auth model changes.
+- Existing routing and form schema preserved; this is a consistency + state synchronization fix.
