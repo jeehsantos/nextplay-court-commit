@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Search, AlertTriangle, Zap, Filter } from "lucide-react";
+import { Loader2, Search, AlertTriangle, Zap, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSportCategories } from "@/hooks/useSportCategories";
 import { useSurfaceTypes } from "@/hooks/useSurfaceTypes";
@@ -71,6 +71,10 @@ export default function Discover() {
   const [selectedQuickChallengeId, setSelectedQuickChallengeId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [citySearchQuery, setCitySearchQuery] = useState("");
+  const [showAllCities, setShowAllCities] = useState(false);
+  const [rescuePage, setRescuePage] = useState(1);
+  const [challengePage, setChallengePage] = useState(1);
+  const ITEMS_PER_PAGE = 18;
   const [showAllCities, setShowAllCities] = useState(false);
 
   // Fetch dynamic categories from database - NO FALLBACKS
