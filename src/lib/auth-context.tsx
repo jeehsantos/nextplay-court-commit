@@ -183,16 +183,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     setIsSigningOut(true);
     
-    // Brief delay for fade-out animation to play
-    await new Promise(resolve => setTimeout(resolve, 400));
+    // Reset state and sign out in parallel with a short animation delay
+    await Promise.all([
+      new Promise(resolve => setTimeout(resolve, 200)),
+      supabase.auth.signOut(),
+    ]);
     
-    // Reset state
     setUser(null);
     setSession(null);
     setUserRole(null);
     setRoleLoaded(true);
-    
-    await supabase.auth.signOut();
     
     window.location.href = '/';
   };
