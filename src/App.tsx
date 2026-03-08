@@ -44,6 +44,7 @@ import AdminPlatformFees from "./pages/admin/AdminPlatformFees";
 import AdminFinance from "./pages/admin/AdminFinance";
 import AdminVenueSlugs from "./pages/admin/AdminVenueSlugs";
 import VenueLanding from "./pages/VenueLanding";
+import VenueDirectory from "./pages/VenueDirectory";
 import ArchivedSessions from "./pages/ArchivedSessions";
 
 const queryClient = new QueryClient({});
@@ -99,7 +100,8 @@ const App = () => (
               <Route path="/admin/finance" element={<AdminFinance />} />
               <Route path="/admin/venues" element={<AdminVenueSlugs />} />
               <Route path="/admin/*" element={<AdminDashboard />} />
-              {/* Public venue landing page */}
+              {/* Public venue pages */}
+              <Route path="/venue" element={<VenueDirectory />} />
               <Route path="/venue/:slug" element={<VenueLanding />} />
               {/* User Routes */}
               <Route path="/archived-sessions" element={<ArchivedSessions />} />
