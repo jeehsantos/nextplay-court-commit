@@ -58,6 +58,7 @@ export default function Auth() {
   const getDefaultPathForRole = (role: string | null) => {
     if (role === "admin") return "/admin";
     if (role === "court_manager") return "/manager";
+    if (role === "venue_staff") return "/manager/availability";
     return "/games";
   };
 
