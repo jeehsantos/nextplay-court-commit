@@ -182,12 +182,13 @@ export default function Auth() {
     if (error) {
       // Record the failed attempt
       try {
-        const { data: failResult } = await supabase.rpc("record_failed_login", {
+        const { data: failResultRaw } = await supabase.rpc("record_failed_login", {
           p_email: data.email,
         });
+        const failResult = failResultRaw as Record<string, unknown> | null;
         
         if (failResult?.locked) {
-          const lockedUntil = new Date(failResult.locked_until);
+          const lockedUntil = new Date(failResult.locked_until as string);
           setLockoutUntil(lockedUntil);
           setRemainingAttempts(0);
           toast({
@@ -197,7 +198,7 @@ export default function Auth() {
           });
           return;
         } else {
-          setRemainingAttempts(failResult?.remaining_attempts ?? null);
+          setRemainingAttempts((failResult?.remaining_attempts as number) ?? null);
         }
       } catch (e) {
         console.error("Failed to record login attempt:", e);
