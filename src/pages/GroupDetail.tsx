@@ -76,6 +76,13 @@ export default function GroupDetail() {
   const [isMember, setIsMember] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [generatingLink, setGeneratingLink] = useState(false);
+  const [memberAction, setMemberAction] = useState<{
+    memberId: string;
+    userId: string;
+    name: string;
+    action: "remove" | "ban";
+  } | null>(null);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
