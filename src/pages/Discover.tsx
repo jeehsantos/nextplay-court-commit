@@ -75,7 +75,6 @@ export default function Discover() {
   const [rescuePage, setRescuePage] = useState(1);
   const [challengePage, setChallengePage] = useState(1);
   const ITEMS_PER_PAGE = 18;
-  const [showAllCities, setShowAllCities] = useState(false);
 
   // Fetch dynamic categories from database - NO FALLBACKS
   const { data: sportCategories = [] } = useSportCategories();
