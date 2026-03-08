@@ -578,6 +578,33 @@ export type Database = {
           },
         ]
       }
+      login_attempts: {
+        Row: {
+          attempt_count: number
+          created_at: string | null
+          email: string
+          id: string
+          last_attempt_at: string | null
+          locked_until: string | null
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string | null
+          email: string
+          id?: string
+          last_attempt_at?: string | null
+          locked_until?: string | null
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string | null
+          email?: string
+          id?: string
+          last_attempt_at?: string | null
+          locked_until?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1479,6 +1506,8 @@ export type Database = {
         Args: { session_id: string }
         Returns: boolean
       }
+      check_login_attempt: { Args: { p_email: string }; Returns: Json }
+      clear_login_attempts: { Args: { p_email: string }; Returns: undefined }
       convert_hold_to_booking: { Args: { p_hold_id: string }; Returns: Json }
       create_booking_hold: {
         Args: {
@@ -1515,6 +1544,7 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: Json
       }
+      record_failed_login: { Args: { p_email: string }; Returns: Json }
       release_booking_hold: {
         Args: { p_hold_id: string; p_user_id: string }
         Returns: boolean
