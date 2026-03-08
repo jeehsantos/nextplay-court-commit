@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -33,8 +33,8 @@ const venueSchema = z.object({
 type VenueFormData = z.infer<typeof venueSchema>;
 
 export default function ManagerVenueForm() {
-  const { id } = useParams<{ id: string }>();
-  const isEditing = id !== "new";
+  const { venueId } = useParams<{ venueId: string }>();
+  const isEditing = !!venueId;
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -43,18 +43,20 @@ export default function ManagerVenueForm() {
   const [loading, setLoading] = useState(isEditing);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [venueSlug, setVenueSlug] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<VenueFormData>({
     resolver: zodResolver(venueSchema),
     defaultValues: { is_active: true },
   });
 
-  useEffect(() => { if (isEditing && id) fetchVenue(); }, [id, isEditing]);
+  useEffect(() => { if (isEditing && venueId) fetchVenue(); }, [venueId, isEditing]);
 
   const fetchVenue = async () => {
     try {
-      const { data, error } = await supabase.from("venues").select("*").eq("id", id).eq("owner_id", user?.id).single();
+      const { data, error } = await supabase.from("venues").select("*").eq("id", venueId).eq("owner_id", user?.id).single();
       if (error) throw error;
+      setVenueSlug(data.slug || null);
       reset({ name: data.name, address: data.address, city: data.city, description: data.description || "", phone: data.phone || "", email: data.email || "", photo_url: data.photo_url || "", is_active: data.is_active ?? true });
     } catch (error) { console.error("Error fetching venue:", error); navigate("/manager/venues"); } finally { setLoading(false); }
   };
@@ -64,7 +66,7 @@ export default function ManagerVenueForm() {
     setSubmitting(true);
     try {
       if (isEditing) {
-        const { error } = await supabase.from("venues").update({ name: data.name, address: data.address, city: data.city, description: data.description || null, phone: data.phone || null, email: data.email || null, photo_url: data.photo_url || null, is_active: data.is_active }).eq("id", id).eq("owner_id", user.id);
+        const { error } = await supabase.from("venues").update({ name: data.name, address: data.address, city: data.city, description: data.description || null, phone: data.phone || null, email: data.email || null, photo_url: data.photo_url || null, is_active: data.is_active }).eq("id", venueId).eq("owner_id", user.id);
         if (error) throw error;
         toast({ title: t("venueForm.venueUpdated") });
       } else {
@@ -81,7 +83,7 @@ export default function ManagerVenueForm() {
     if (!confirm(t("venueForm.deleteConfirm"))) return;
     setDeleting(true);
     try {
-      const { error } = await supabase.from("venues").delete().eq("id", id).eq("owner_id", user?.id);
+      const { error } = await supabase.from("venues").delete().eq("id", venueId).eq("owner_id", user?.id);
       if (error) throw error;
       toast({ title: t("venueForm.venueDeleted") });
       navigate("/manager/venues");
@@ -135,6 +137,20 @@ export default function ManagerVenueForm() {
               </div>
             </CardContent>
           </Card>
+          {isEditing && venueSlug && (
+            <Card>
+              <CardHeader><CardTitle>Public Page</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <code className="text-sm bg-muted px-2 py-1 rounded flex-1 truncate">{window.location.origin}/venue/{venueSlug}</code>
+                  <a href={`/venue/${venueSlug}`} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                    <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                  </a>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">This URL is managed by the platform admin.</p>
+              </CardContent>
+            </Card>
+          )}
           <div className="flex gap-4">
             <Button type="submit" disabled={submitting} className="flex-1">
               {submitting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("venueForm.saving")}</>) : (isEditing ? t("venueForm.updateVenue") : t("venueForm.createVenue"))}
