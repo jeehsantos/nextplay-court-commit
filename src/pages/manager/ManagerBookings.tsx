@@ -99,6 +99,7 @@ export default function ManagerBookings() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<BookingStatus>("active");
   const [currentPage, setCurrentPage] = useState(1);
+  const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
   const itemsPerPage = 20;
 
   useEffect(() => {
