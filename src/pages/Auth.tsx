@@ -237,7 +237,7 @@ export default function Auth() {
           alt="Sport Arena logo"
           className="h-16 w-auto mix-blend-screen"
         />
-        <p className="text-sm text-muted-foreground">Discover. Book. Play.</p>
+        
       </div>
 
       {showForgotPassword ? (
