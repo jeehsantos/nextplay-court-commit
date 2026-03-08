@@ -74,6 +74,8 @@ interface PlayerSlotProps {
   onJoin?: () => void;
   onPay?: () => void;
   isJoining?: boolean;
+  isOrganizer?: boolean;
+  onKick?: (player: LobbyPlayer) => void;
 }
 
 function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoining }: PlayerSlotProps) {
