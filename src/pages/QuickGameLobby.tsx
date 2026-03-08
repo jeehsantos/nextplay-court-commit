@@ -381,6 +381,8 @@ export default function QuickGameLobby() {
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [isCourtImageOpen, setIsCourtImageOpen] = useState(false);
   const [isConfirmingPresence, setIsConfirmingPresence] = useState(false);
+  const [kickTarget, setKickTarget] = useState<LobbyPlayer | null>(null);
+  const [isKicking, setIsKicking] = useState(false);
 
   // Find the challenge
   const challenge = useMemo(
