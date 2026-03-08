@@ -26,7 +26,7 @@ export function WeeklyPerformance({ data, loading, periodLabel = "Weekly" }: Wee
   const hasData = data.some((d) => d.revenue > 0 || d.bookings > 0);
 
   return (
-    <Card>
+    <Card className="flex flex-col">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">{periodLabel} Performance</CardTitle>
@@ -42,19 +42,19 @@ export function WeeklyPerformance({ data, loading, periodLabel = "Weekly" }: Wee
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 min-h-0">
         {!hasData ? (
-          <div className="h-52 flex items-center justify-center text-sm text-muted-foreground">
+          <div className="h-full min-h-[13rem] flex items-center justify-center text-sm text-muted-foreground">
             No performance data for this period yet.
           </div>
         ) : (
-          <div className="h-52 sm:h-64">
+          <div className="w-full aspect-[16/9] min-h-[13rem] max-h-[20rem]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} barCategoryGap="20%">
+              <BarChart data={data} barCategoryGap="20%" margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis yAxisId="left" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" hide />
+                <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                <YAxis yAxisId="right" orientation="right" hide />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
@@ -67,8 +67,8 @@ export function WeeklyPerformance({ data, loading, periodLabel = "Weekly" }: Wee
                     name === "revenue" ? "Revenue" : "Bookings",
                   ]}
                 />
-                <Bar yAxisId="left" dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                <Bar yAxisId="right" dataKey="bookings" fill="#34d399" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                <Bar yAxisId="left" dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Bar yAxisId="right" dataKey="bookings" fill="#34d399" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
