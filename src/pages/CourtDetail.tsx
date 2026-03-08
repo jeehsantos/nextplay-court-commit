@@ -1514,7 +1514,7 @@ export default function CourtDetail() {
             <div className="px-4 lg:px-0">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Court Selector - Responsive Glassmorphism styled dropdown */}
-                <div className="relative group bg-[#111a27]/60 backdrop-blur-2xl border border-[#00f2ea]/20 p-3 sm:p-4 rounded-2xl shadow-2xl transition-all hover:border-[#00f2ea]/50 col-span-3 sm:col-span-1">
+                <div className="relative group bg-card/80 dark:bg-[#111a27]/60 backdrop-blur-2xl border border-primary/20 p-3 sm:p-4 rounded-2xl shadow-lg transition-all hover:border-primary/50 hover:shadow-primary/10 hover:shadow-xl col-span-3 sm:col-span-1">
                   <label className="block text-[10px] uppercase text-muted-foreground font-bold tracking-widest mb-1 opacity-70">
                     Select Court
                   </label>
@@ -1525,42 +1525,41 @@ export default function CourtDetail() {
                           value={selectedCourtId || ""}
                           onChange={(e) => {
                             setSelectedCourtId(e.target.value);
-                            // Reset slots and image index when court changes
                             setSelectedSlots([]);
                             setCurrentImageIndex(0);
                           }}
-                          className="bg-transparent text-[#00f2ea] font-bold sm:font-extrabold text-sm sm:text-lg outline-none cursor-pointer w-full appearance-none pr-6 truncate min-w-0"
+                          className="bg-transparent text-primary font-bold sm:font-extrabold text-sm sm:text-lg outline-none cursor-pointer w-full appearance-none pr-6 truncate min-w-0"
                         >
                           {venueCourts.map((c) => (
-                            <option key={c.id} value={c.id} className="bg-[#0a0f18] text-white text-sm">
+                            <option key={c.id} value={c.id} className="bg-card text-foreground text-sm">
                               {c.name}
                             </option>
                           ))}
                         </select>
-                        <div className="pointer-events-none absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-[#00f2ea] text-xs sm:text-sm">▼</div>
+                        <div className="pointer-events-none absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-primary text-xs sm:text-sm">▼</div>
                       </>
                     ) : (
-                      <span className="text-[#00f2ea] font-bold sm:font-extrabold text-sm sm:text-lg truncate">{court.name}</span>
+                      <span className="text-primary font-bold sm:font-extrabold text-sm sm:text-lg truncate">{court.name}</span>
                     )}
                   </div>
                   <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">court name</div>
                 </div>
                 
                 {/* Price - Dynamic based on selected court */}
-                <div className="bg-[#111a27]/60 backdrop-blur-2xl border border-[#00f2ea]/20 rounded-2xl p-4 text-center transition-all hover:border-[#00f2ea]/50">
-                  <DollarSign className="h-5 w-5 mx-auto mb-2 text-[#00f2ea]" />
-                  <div className="font-extrabold text-lg text-white">
+                <div className="bg-card/80 dark:bg-[#111a27]/60 backdrop-blur-2xl border border-primary/20 rounded-2xl p-4 text-center transition-all hover:border-primary/50 hover:shadow-primary/10 hover:shadow-xl shadow-lg">
+                  <DollarSign className="h-5 w-5 mx-auto mb-2 text-primary" />
+                  <div className="font-extrabold text-lg text-foreground">
                     ${getSelectedCourt()?.hourly_rate || court.hourly_rate}
                   </div>
                   <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">per hour</div>
                 </div>
                 
                 {/* Surface - Dynamic based on selected court */}
-                <div className="bg-[#111a27]/60 backdrop-blur-2xl border border-[#00f2ea]/20 rounded-2xl p-4 text-center transition-all hover:border-[#00f2ea]/50">
-                  <div className="h-5 w-5 mx-auto mb-2 text-[#00f2ea] flex items-center justify-center text-lg">
+                <div className="bg-card/80 dark:bg-[#111a27]/60 backdrop-blur-2xl border border-primary/20 rounded-2xl p-4 text-center transition-all hover:border-primary/50 hover:shadow-primary/10 hover:shadow-xl shadow-lg">
+                  <div className="h-5 w-5 mx-auto mb-2 text-primary flex items-center justify-center text-lg">
                     {court.is_indoor ? "🏢" : "🌳"}
                   </div>
-                  <div className="font-extrabold text-lg text-white capitalize">
+                  <div className="font-extrabold text-lg text-foreground capitalize">
                     {getSelectedCourt()?.ground_type || court.ground_type || "turf"}
                   </div>
                   <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">surface</div>
