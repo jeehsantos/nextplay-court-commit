@@ -396,8 +396,46 @@ export default function GroupDetail() {
   const admins = members.filter(m => m.is_admin && m.user_id !== group.organizer_id);
   const regularMembers = members.filter(m => !m.is_admin && m.user_id !== group.organizer_id);
 
+  const isAdmin = members.some(m => m.user_id === user.id && m.is_admin) || isOrganizer;
+
   return (
     <MobileLayout showHeader={false} showBottomNav={false}>
+      {/* Member Action Confirmation Dialog */}
+      <AlertDialog open={!!memberAction} onOpenChange={(open) => !open && setMemberAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {memberAction?.action === "ban" ? (
+                <><Ban className="h-5 w-5 text-destructive" />Ban {memberAction.name}?</>
+              ) : (
+                <><UserMinus className="h-5 w-5 text-destructive" />Remove {memberAction?.name}?</>
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {memberAction?.action === "ban"
+                ? `${memberAction.name} will be removed from the group and permanently banned. They will not be able to rejoin or view group sessions.`
+                : `${memberAction?.name} will be removed from the group. They can rejoin later if invited.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessingAction}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMemberAction}
+              disabled={isProcessingAction}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isProcessingAction ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</>
+              ) : memberAction?.action === "ban" ? (
+                "Ban Member"
+              ) : (
+                "Remove Member"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="min-h-screen bg-background">
         {/* Header Image */}
         <div className="relative h-48 lg:h-64 bg-gradient-to-br from-primary/30 to-primary/10">
