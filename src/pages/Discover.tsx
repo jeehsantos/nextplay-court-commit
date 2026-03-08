@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Search, AlertTriangle, Zap, Filter } from "lucide-react";
+import { Loader2, Search, AlertTriangle, Zap, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSportCategories } from "@/hooks/useSportCategories";
 import { useSurfaceTypes } from "@/hooks/useSurfaceTypes";
@@ -72,6 +72,9 @@ export default function Discover() {
   const [showFilters, setShowFilters] = useState(false);
   const [citySearchQuery, setCitySearchQuery] = useState("");
   const [showAllCities, setShowAllCities] = useState(false);
+  const [rescuePage, setRescuePage] = useState(1);
+  const [challengePage, setChallengePage] = useState(1);
+  const ITEMS_PER_PAGE = 18;
 
   // Fetch dynamic categories from database - NO FALLBACKS
   const { data: sportCategories = [] } = useSportCategories();
@@ -209,7 +212,14 @@ export default function Discover() {
     setSelectedCity("all");
     setCitySearchQuery("");
     setShowAllCities(false);
+    setRescuePage(1);
+    setChallengePage(1);
   };
+
+  // Reset pages when filters/search change
+  useEffect(() => { setRescuePage(1); }, [selectedSport, selectedCourtType, selectedCity, searchQuery]);
+  useEffect(() => { setChallengePage(1); }, [selectedSport, selectedCourtType, selectedCity, searchQuery]);
+
 
   const FilterPanelBody = (
     <>
@@ -483,6 +493,12 @@ export default function Discover() {
     });
   }, [quickChallenges, searchQuery, selectedSport, selectedCourtType, selectedCity, normalizedPreferredSports, profile]);
 
+  // Paginated slices
+  const rescueTotalPages = Math.max(1, Math.ceil(filteredRescueGames.length / ITEMS_PER_PAGE));
+  const paginatedRescueGames = filteredRescueGames.slice((rescuePage - 1) * ITEMS_PER_PAGE, rescuePage * ITEMS_PER_PAGE);
+  const challengeTotalPages = Math.max(1, Math.ceil(filteredChallenges.length / ITEMS_PER_PAGE));
+  const paginatedChallenges = filteredChallenges.slice((challengePage - 1) * ITEMS_PER_PAGE, challengePage * ITEMS_PER_PAGE);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -613,11 +629,26 @@ export default function Discover() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : filteredRescueGames.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredRescueGames.map((game) => (
-                  <GameCard key={game.id} {...game} />
-                ))}
-              </div>
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {paginatedRescueGames.map((game) => (
+                    <GameCard key={game.id} {...game} />
+                  ))}
+                </div>
+                {rescueTotalPages > 1 && (
+                  <div className="flex items-center justify-center gap-3 mt-6">
+                    <Button variant="outline" size="icon" disabled={rescuePage <= 1} onClick={() => setRescuePage((p) => p - 1)}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      Page {rescuePage} of {rescueTotalPages}
+                    </span>
+                    <Button variant="outline" size="icon" disabled={rescuePage >= rescueTotalPages} onClick={() => setRescuePage((p) => p + 1)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
@@ -648,9 +679,9 @@ export default function Discover() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : filteredChallenges.length > 0 ? (
-              <div className="space-y-6">
+              <>
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {filteredChallenges.map((challenge) => (
+                  {paginatedChallenges.map((challenge) => (
                     <QuickChallengeSummaryCard
                       key={challenge.id}
                       challenge={{
@@ -673,7 +704,20 @@ export default function Discover() {
                     />
                   ))}
                 </div>
-              </div>
+                {challengeTotalPages > 1 && (
+                  <div className="flex items-center justify-center gap-3 mt-6">
+                    <Button variant="outline" size="icon" disabled={challengePage <= 1} onClick={() => setChallengePage((p) => p - 1)}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      Page {challengePage} of {challengeTotalPages}
+                    </span>
+                    <Button variant="outline" size="icon" disabled={challengePage >= challengeTotalPages} onClick={() => setChallengePage((p) => p + 1)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
