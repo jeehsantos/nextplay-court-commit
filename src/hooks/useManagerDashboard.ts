@@ -41,6 +41,7 @@ export interface UpcomingBookingInfo {
   durationMinutes: number;
   bookerName: string;
   bookerInitials: string;
+  bookerPhone: string | null;
   paymentStatus: string;
   bookingRef: string;
   courtId: string;
@@ -400,20 +401,21 @@ export function useManagerDashboard(period: DashboardPeriod) {
     }
 
     const bookerIds = [...new Set(filteredSlots.filter((s) => s.booked_by_user_id).map((s) => s.booked_by_user_id as string))];
-    let profileMap: Record<string, string> = {};
+    let profileMap: Record<string, { name: string; phone: string | null }> = {};
     if (bookerIds.length > 0) {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, full_name")
+        .select("user_id, full_name, phone")
         .in("user_id", bookerIds);
-      profileMap = Object.fromEntries((profiles || []).map((p) => [p.user_id, p.full_name || "Unknown"]));
+      profileMap = Object.fromEntries((profiles || []).map((p) => [p.user_id, { name: p.full_name || "Unknown", phone: p.phone || null }]));
     }
 
     const courtMap = Object.fromEntries(courts.map((c) => [c.id, c]));
 
     const mapped: UpcomingBookingInfo[] = filteredSlots.map((slot) => {
       const court = courtMap[slot.court_id];
-      const name = profileMap[slot.booked_by_user_id!] || "Unknown";
+      const profile = profileMap[slot.booked_by_user_id!] || { name: "Unknown", phone: null };
+      const name = profile.name;
       const initials = name
         .split(" ")
         .map((n) => n[0])
@@ -441,6 +443,7 @@ export function useManagerDashboard(period: DashboardPeriod) {
         durationMinutes: durationMin,
         bookerName: name,
         bookerInitials: initials,
+        bookerPhone: profile.phone,
         paymentStatus: slot.payment_status,
         bookingRef: `BK-${slot.id.slice(0, 4).toUpperCase()}`,
         courtId: slot.court_id,
