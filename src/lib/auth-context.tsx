@@ -182,21 +182,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setIsSigningOut(true);
-    
-    // Try global sign out first; fall back to local-only if session is already gone
-    await Promise.all([
-      new Promise(resolve => setTimeout(resolve, 200)),
-      supabase.auth.signOut({ scope: 'global' }).catch(() =>
-        supabase.auth.signOut({ scope: 'local' })
-      ),
-    ]);
-    
+
+    // Always clear local session, even if server session is already invalid/expired.
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const { error: globalError } = await supabase.auth.signOut({ scope: "global" });
+    if (globalError) {
+      console.warn("Global sign out failed, clearing local session:", globalError.message);
+    }
+
+    const { error: localError } = await supabase.auth.signOut({ scope: "local" });
+    if (localError) {
+      console.warn("Local sign out warning:", localError.message);
+    }
+
     setUser(null);
     setSession(null);
     setUserRole(null);
     setRoleLoaded(true);
-    
-    window.location.href = '/';
+
+    window.location.href = "/auth";
   };
 
   const resetPassword = async (email: string) => {
