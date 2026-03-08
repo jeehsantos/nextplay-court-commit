@@ -81,7 +81,7 @@ serve(async (req) => {
       // Check if there is a real payment snapshot for this player
       const { data: paymentSnapshot, error: paymentSnapshotError } = await supabaseAdmin
         .from("quick_challenge_payments")
-        .select("id, payment_method_type, court_amount, status, converted_to_credits_at")
+        .select("id, payment_method_type, court_amount, status")
         .eq("challenge_id", challengeId)
         .eq("user_id", userId)
         .eq("status", "completed")
