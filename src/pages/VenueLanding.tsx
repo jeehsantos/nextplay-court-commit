@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PublicLayout } from "@/components/layout/PublicLayout";
@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Copy,
   Check,
+  ArrowLeft,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +50,7 @@ function VenueMap({ lat, lng, name }: { lat: number; lng: number; name: string }
 export default function VenueLanding() {
   const { slug } = useParams<{ slug: string }>();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
   const { data: venue, isLoading: venueLoading } = useQuery({
@@ -127,6 +129,14 @@ export default function VenueLanding() {
 
   return (
     <PublicLayout>
+      {/* Back button */}
+      <div className="max-w-6xl mx-auto px-4 pt-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5 text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+      </div>
+
       {/* Hero */}
       <div className="relative">
         {venue.photo_url ? (
