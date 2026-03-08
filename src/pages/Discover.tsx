@@ -501,7 +501,7 @@ export default function Discover() {
           <div>
             <h1 className="font-display text-2xl lg:text-3xl font-bold">Find Games</h1>
             <p className="text-muted-foreground text-sm">
-              Join public games or quick challenges
+              Join community games or pick-up games
             </p>
           </div>
           <Button
@@ -509,8 +509,8 @@ export default function Discover() {
             className="shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
           >
             <Zap className="h-4 w-4" />
-            <span className="hidden sm:inline">Quick Game</span>
-            <span className="sm:hidden">Quick</span>
+            <span className="hidden sm:inline">Host pick-up</span>
+            <span className="sm:hidden">Host</span>
           </Button>
         </div>
 
@@ -519,9 +519,9 @@ export default function Discover() {
           <CardContent className="p-4 flex items-start gap-3">
             <Zap className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-sm">Quick Challenges</p>
+              <p className="font-medium text-sm">Pick-up Games</p>
               <p className="text-sm text-muted-foreground">
-                Find players for instant matches or join public games that need extra players!
+                Find players for instant matches or join community games that need extra players!
               </p>
             </div>
           </CardContent>
@@ -589,7 +589,7 @@ export default function Discover() {
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="rescue" className="relative gap-2">
               <AlertTriangle className="h-4 w-4" />
-              Public Games
+              Community Games
               {filteredRescueGames.length > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 bg-warning text-warning-foreground rounded-full text-xs font-bold">
                   {filteredRescueGames.length}
@@ -598,7 +598,7 @@ export default function Discover() {
             </TabsTrigger>
             <TabsTrigger value="quickgames" className="gap-2">
               <Zap className="h-4 w-4" />
-              Quick Challenges
+              Pick-up Games
               {filteredChallenges.length > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 bg-primary text-primary-foreground rounded-full text-xs font-bold">
                   {filteredChallenges.length}
@@ -623,7 +623,7 @@ export default function Discover() {
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
                   <AlertTriangle className="h-8 w-8 opacity-50" />
                 </div>
-                <p className="font-medium">No public games found</p>
+                <p className="font-medium">No community games found</p>
                 <p className="text-sm mt-1">
                   {selectedSport !== "all" 
                     ? `Try selecting a different sport or clear filters`
@@ -679,16 +679,16 @@ export default function Discover() {
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
                   <Zap className="h-8 w-8 opacity-50" />
                 </div>
-                <p className="font-medium">No quick challenges yet</p>
+                <p className="font-medium">No pick-up games yet</p>
                 <p className="text-sm mt-1">
-                  Be the first to create a quick challenge!
+                  Be the first to host a pick-up game!
                 </p>
                 <Button 
                   className="mt-4 gap-2"
                   onClick={() => setQuickGameModalOpen(true)}
                 >
                   <Zap className="h-4 w-4" />
-                  Create Quick Game
+                  Host pick-up
                 </Button>
               </div>
             )}
