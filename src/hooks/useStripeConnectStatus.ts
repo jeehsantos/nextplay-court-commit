@@ -78,6 +78,8 @@ export function useStripeConnectStatus(venueId?: string) {
  */
 export function useManagerStripeReady() {
   const { user } = useAuth();
+  // Import dynamically to avoid circular deps — check role from auth context
+  const isStaff = typeof window !== "undefined" && document.cookie.includes("venue_staff");
 
   return useQuery({
     queryKey: ["manager-stripe-ready", user?.id],
