@@ -157,9 +157,11 @@ export default function Auth() {
       
       if (checkError) {
         console.error("Error checking login attempts:", checkError);
-      } else if (checkResult && !checkResult.allowed) {
-        setIsSubmitting(false);
-        const lockedUntil = new Date(checkResult.locked_until);
+      } else if (checkResult) {
+        const result = checkResult as Record<string, unknown>;
+        if (!result.allowed) {
+          setIsSubmitting(false);
+          const lockedUntil = new Date(result.locked_until as string);
         setLockoutUntil(lockedUntil);
         setRemainingAttempts(0);
         toast({
