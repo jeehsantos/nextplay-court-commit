@@ -56,24 +56,28 @@ export default function VenueLanding() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("venues")
-        .select("*, profiles!venues_owner_id_fkey(full_name, phone)")
+        .select("*")
         .eq("slug", slug!)
         .eq("is_active", true)
         .single();
-      if (error) {
-        // Fallback without join if FK not found
-        const { data: fallback, error: err2 } = await supabase
-          .from("venues")
-          .select("*")
-          .eq("slug", slug!)
-          .eq("is_active", true)
-          .single();
-        if (err2) throw err2;
-        return { ...fallback, profiles: null };
-      }
+      if (error) throw error;
       return data;
     },
     enabled: !!slug,
+  });
+
+  const { data: ownerProfile } = useQuery({
+    queryKey: ["venue-owner", venue?.owner_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("user_id", venue!.owner_id)
+        .single();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!venue?.owner_id,
   });
 
   const { data: courts, isLoading: courtsLoading } = useQuery({
