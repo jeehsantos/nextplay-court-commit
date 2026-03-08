@@ -1,61 +1,74 @@
 
-Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-What I found (already verified):
-1) Data inconsistency exists now:
-   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
-   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
-2) `ManagerCourtFormNew` root causes:
-   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
-   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
-   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
-3) Backend side effect confirmed:
-   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
+## Plan: Sorting by Closest Date + Reschedule Booking Button
 
-Implementation plan (execute in this order):
-1. Database integrity hardening + backfill (migration)
-   - Backfill: set `is_multi_court=true` for any court that already has children.
-   - Add DB validation trigger(s) on `courts` to enforce:
-     - child cannot reference itself
-     - child parent must be in same venue
-     - parent cannot be set `is_multi_court=false` while children exist
-     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
-   - This guarantees the bug cannot recur from any client path.
+### 1. Sort bookings by closest date (ascending)
 
-2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
-   - Remove direct `window.history.replaceState` usage.
-   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
-   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
-   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
+**File: `src/pages/manager/ManagerBookings.tsx`**
+- Change the `filteredBookings` sort to ascending order by `available_date` then `start_time` (closest date first)
+- The DB query already fetches with `ascending: false`; we'll re-sort in the `filteredBookings` memo
 
-3. Multi-court UI behavior safeguards
-   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
-   - Disable/harden turning off multi-court when children exist (with clear message).
-   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
+### 2. Create a `RescheduleBookingDialog` component
 
-4. Availability resilience (backend function)
-   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
-   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
+**New file: `src/components/manager/RescheduleBookingDialog.tsx`**
 
-5. Verification I will perform (not asking you to test manually)
-   - DB checks:
-     - verify parent `57e11168...` becomes `is_multi_court=true`
-     - verify child links remain unchanged
-     - verify no rows exist with `children > 0 AND is_multi_court=false`
-   - Functional checks:
-     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
-   - UI checks:
-     - exercise add-sub-court flow and confirm:
-       - main court remains main
-       - child appears as child tab
-       - subsequent saves update correct court record
-       - no panel collapse/desync
+A dialog that:
+- Accepts a booking ID, court ID, venue ID, and current date/time
+- Shows a calendar date picker for selecting a new date
+- Calls the existing `get-availability` edge function to fetch available slots for the selected date and court
+- Displays available time slots using a grid (reusing `TimeSlotPicker` pattern)
+- On confirm, calls a new backend function to perform the reschedule
 
-Technical details:
-- Files to update:
-  - `supabase/migrations/<new>.sql`
-  - `src/pages/manager/ManagerCourtFormNew.tsx`
-  - `supabase/functions/get-availability/index.ts`
-- No money/payment logic touched.
-- No auth model changes.
-- Existing routing and form schema preserved; this is a consistency + state synchronization fix.
+### 3. Create a `reschedule-booking` edge function
+
+**New file: `supabase/functions/reschedule-booking/index.ts`**
+
+Backend-first logic:
+- Accepts `booking_id` (court_availability ID), `new_date`, `new_start_time`, `new_end_time`
+- Validates the manager owns the venue
+- Validates the new slot is available (no overlaps)
+- Updates `court_availability` row: changes `available_date`, `start_time`, `end_time`
+- If there's a linked session (`booked_by_session_id`), updates `sessions.session_date` and `sessions.start_time` / `duration_minutes`
+- No payment changes needed — the booking stays paid
+- Returns success/error
+
+Config addition to `supabase/config.toml`:
+```toml
+[functions.reschedule-booking]
+verify_jwt = false
+```
+
+### 4. Add "Reschedule" button to BookingCard
+
+**File: `src/pages/manager/ManagerBookings.tsx`**
+- Below the status badge in `BookingCard`, add a small "Reschedule" button (only for active, non-cancelled bookings)
+- Opens the `RescheduleBookingDialog`
+- On successful reschedule, calls `fetchData()` to refresh the list
+
+### 5. Add "Reschedule" button to Dashboard UpcomingBookings
+
+**File: `src/components/manager/dashboard/UpcomingBookings.tsx`**
+- Add the same reschedule button under each booking's badge
+- Need to pass `court_id` and `venue_id` info — extend `UpcomingBookingInfo` type with `courtId` and `venueId`
+- Update `useManagerDashboard.ts` to include these fields in the mapped data
+- On reschedule success, trigger a refresh of dashboard data
+
+### Technical Details
+
+**Reschedule edge function flow:**
+1. Authenticate manager via auth header
+2. Verify manager owns the court's venue
+3. Check new slot has no overlapping booked records in `court_availability`
+4. Check no active holds on the new slot
+5. Update the `court_availability` row (date, start_time, end_time)
+6. If session exists, update `sessions` table (session_date, start_time, duration_minutes)
+7. Return success
+
+**Dialog UX flow:**
+1. User clicks "Reschedule" → dialog opens
+2. User picks a new date from calendar
+3. System fetches availability via `get-availability` edge function
+4. User selects a time slot
+5. User confirms → calls `reschedule-booking` edge function
+6. Success toast → dialog closes → list refreshes
+
