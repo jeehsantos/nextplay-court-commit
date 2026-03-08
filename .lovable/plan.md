@@ -1,61 +1,51 @@
 
-Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-What I found (already verified):
-1) Data inconsistency exists now:
-   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
-   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
-2) `ManagerCourtFormNew` root causes:
-   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
-   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
-   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
-3) Backend side effect confirmed:
-   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
+## Problem Analysis
 
-Implementation plan (execute in this order):
-1. Database integrity hardening + backfill (migration)
-   - Backfill: set `is_multi_court=true` for any court that already has children.
-   - Add DB validation trigger(s) on `courts` to enforce:
-     - child cannot reference itself
-     - child parent must be in same venue
-     - parent cannot be set `is_multi_court=false` while children exist
-     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
-   - This guarantees the bug cannot recur from any client path.
+The `create-quick-challenge` function has a regression in how it handles `before_session` courts. Currently:
 
-2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
-   - Remove direct `window.history.replaceState` usage.
-   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
-   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
-   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
+1. Court has `payment_timing: before_session` with `payment_hours_before: 22`
+2. When the session is far enough in the future, `effectivePaymentTiming` stays `before_session`
+3. The challenge is created with `status: "open"` and the court slot is marked `is_booked: true` **immediately** — before any payment
+4. If the organizer never pays, the slot stays blocked
 
-3. Multi-court UI behavior safeguards
-   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
-   - Disable/harden turning off multi-court when children exist (with clear message).
-   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
+The `at_booking` flow correctly uses `status: "pending_payment"` and `is_booked: false`, deferring the slot reservation until payment. But `before_session` bypasses this entirely.
 
-4. Availability resilience (backend function)
-   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
-   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
+For Quick Challenges specifically, the organizer should always pay upfront (the court cost is committed at creation time), regardless of the court's `payment_timing` setting. This differs from group bookings where `before_session` makes sense because a group organizer collects from members over time.
 
-5. Verification I will perform (not asking you to test manually)
-   - DB checks:
-     - verify parent `57e11168...` becomes `is_multi_court=true`
-     - verify child links remain unchanged
-     - verify no rows exist with `children > 0 AND is_multi_court=false`
-   - Functional checks:
-     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
-   - UI checks:
-     - exercise add-sub-court flow and confirm:
-       - main court remains main
-       - child appears as child tab
-       - subsequent saves update correct court record
-       - no panel collapse/desync
+## Plan
 
-Technical details:
-- Files to update:
-  - `supabase/migrations/<new>.sql`
-  - `src/pages/manager/ManagerCourtFormNew.tsx`
-  - `supabase/functions/get-availability/index.ts`
-- No money/payment logic touched.
-- No auth model changes.
-- Existing routing and form schema preserved; this is a consistency + state synchronization fix.
+### 1. Fix `create-quick-challenge/index.ts` — Always require upfront payment
+
+For Quick Challenges, force `effectivePaymentTiming` to always be `at_booking`:
+
+- Remove the `before_session` conditional logic that lets challenges be created without payment
+- Set `initialStatus = "pending_payment"` always (when price > 0)
+- Set `is_booked: false` always — the webhook will flip to `true` on payment
+- Keep the challenge row and player row creation (they're needed for the payment flow), but the `pending_payment` status hides the challenge from public discovery
+
+### 2. Fix `stripe-webhook/index.ts` — Mark slot as booked on payment
+
+In `handleQuickChallengePayment`, after confirming payment, update the `court_availability` row:
+
+- Set `is_booked: true` and `payment_status: "completed"` on the court slot matching the challenge's court/date/time
+- This mirrors what the deferred session payment handler already does
+
+### 3. Fix `cancel-quick-challenge/index.ts` — Release slot on cancellation
+
+Verify that when a `pending_payment` challenge is cancelled (or expires), the court slot is properly released. Since `is_booked` will now be `false` until payment, no slot release is needed for unpaid challenges — but the `court_availability` row itself should be cleaned up.
+
+### Technical Details
+
+**`create-quick-challenge/index.ts`** changes:
+- Remove the `before_session` override logic (lines 111-118)
+- Always set `initialStatus = "pending_payment"` and `is_booked = false` for paid challenges
+- The `effectivePaymentType` logic for forcing `single` stays (organizer pays all for at_booking)
+
+**`stripe-webhook/index.ts`** changes in `handleQuickChallengePayment`:
+- After marking player as paid, update `court_availability` to `is_booked: true, payment_status: "completed"` using challenge metadata (court_id, date, time)
+- Add `court_id`, `scheduled_date`, `scheduled_time`, `end_time` to checkout metadata in `create-quick-challenge-payment`
+
+**`create-quick-challenge-payment/index.ts`** changes:
+- Add challenge's court/date/time details to Stripe checkout metadata so the webhook can identify the court_availability row
+
