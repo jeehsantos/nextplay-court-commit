@@ -173,7 +173,7 @@ export default function About() {
                 </Button>
               </Link>
               <Link to="/contact" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full rounded-2xl border-slate-200 px-8 py-6 font-bold text-slate-700 hover:bg-slate-50">
+                <Button variant="outline" className="w-full rounded-2xl border-slate-200 px-8 py-6 font-bold text-white hover:bg-slate-50 hover:text-slate-700">
                   Contact Our Team
                 </Button>
               </Link>
