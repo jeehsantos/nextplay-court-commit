@@ -493,7 +493,12 @@ export default function Discover() {
     });
   }, [quickChallenges, searchQuery, selectedSport, selectedCourtType, selectedCity, normalizedPreferredSports, profile]);
 
-  if (isLoading) {
+  // Paginated slices
+  const rescueTotalPages = Math.max(1, Math.ceil(filteredRescueGames.length / ITEMS_PER_PAGE));
+  const paginatedRescueGames = filteredRescueGames.slice((rescuePage - 1) * ITEMS_PER_PAGE, rescuePage * ITEMS_PER_PAGE);
+  const challengeTotalPages = Math.max(1, Math.ceil(filteredChallenges.length / ITEMS_PER_PAGE));
+  const paginatedChallenges = filteredChallenges.slice((challengePage - 1) * ITEMS_PER_PAGE, challengePage * ITEMS_PER_PAGE);
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
