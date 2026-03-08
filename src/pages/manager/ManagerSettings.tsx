@@ -148,10 +148,21 @@ export default function ManagerSettings() {
 
   const handleSaveProfile = async () => {
     if (!user) return;
+    if (!profileData.full_name.trim()) {
+      toast({ title: "Full name is required", variant: "destructive" });
+      return;
+    }
+    if (!profileData.phone.trim()) {
+      toast({ title: "Phone number is required", description: "Your phone number will be displayed on your venue's public page so players can contact you.", variant: "destructive" });
+      return;
+    }
     setSavingProfile(true);
     try {
       const { error } = await supabase.from("profiles").update({ full_name: profileData.full_name || null, phone: profileData.phone || null, city: profileData.city || null }).eq("user_id", user.id);
       if (error) throw error;
+      // Sync phone and email to all venues owned by this manager
+      const { error: venueError } = await supabase.from("venues").update({ phone: profileData.phone || null, email: user.email || null }).eq("owner_id", user.id);
+      if (venueError) console.error("Error syncing venue contact:", venueError);
       toast({ title: t("settings.profileUpdated") });
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to update profile", variant: "destructive" });
