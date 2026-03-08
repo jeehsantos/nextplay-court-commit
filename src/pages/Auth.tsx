@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, Building2 } from "lucide-react";
+import { Loader2, Users, Building2, ShieldAlert } from "lucide-react";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -48,6 +48,8 @@ export default function Auth() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
+  const [lockoutUntil, setLockoutUntil] = useState<Date | null>(null);
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
   const { user, userRole, signIn, signUp, resetPassword, isLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -123,21 +125,102 @@ export default function Auth() {
     }
   }, [user, userRole, isLoading, navigate]);
 
+  // Check lockout timer
+  useEffect(() => {
+    if (!lockoutUntil) return;
+    const interval = setInterval(() => {
+      if (new Date() >= lockoutUntil) {
+        setLockoutUntil(null);
+        setRemainingAttempts(4);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutUntil]);
+
+  const getLockoutTimeRemaining = () => {
+    if (!lockoutUntil) return "";
+    const diff = lockoutUntil.getTime() - Date.now();
+    if (diff <= 0) return "";
+    const mins = Math.floor(diff / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    return `${mins}m ${secs}s`;
+  };
+
   const handleLogin = async (data: LoginFormData) => {
     setIsSubmitting(true);
+
+    // Check if account is locked before attempting login
+    try {
+      const { data: checkResult, error: checkError } = await supabase.rpc("check_login_attempt", {
+        p_email: data.email,
+      });
+      
+      if (checkError) {
+        console.error("Error checking login attempts:", checkError);
+      } else if (checkResult && !checkResult.allowed) {
+        setIsSubmitting(false);
+        const lockedUntil = new Date(checkResult.locked_until);
+        setLockoutUntil(lockedUntil);
+        setRemainingAttempts(0);
+        toast({
+          variant: "destructive",
+          title: "Account temporarily locked",
+          description: "Too many failed login attempts. Please try again later.",
+        });
+        return;
+      }
+    } catch (e) {
+      console.error("Login check error:", e);
+    }
+
     const { error, role } = await signIn(data.email, data.password);
     setIsSubmitting(false);
 
     if (error) {
+      // Record the failed attempt
+      try {
+        const { data: failResult } = await supabase.rpc("record_failed_login", {
+          p_email: data.email,
+        });
+        
+        if (failResult?.locked) {
+          const lockedUntil = new Date(failResult.locked_until);
+          setLockoutUntil(lockedUntil);
+          setRemainingAttempts(0);
+          toast({
+            variant: "destructive",
+            title: "Account temporarily locked",
+            description: "Too many failed login attempts. Your account is locked for 30 minutes.",
+          });
+          return;
+        } else {
+          setRemainingAttempts(failResult?.remaining_attempts ?? null);
+        }
+      } catch (e) {
+        console.error("Failed to record login attempt:", e);
+      }
+
+      const attemptsMsg = remainingAttempts !== null && remainingAttempts <= 2
+        ? ` (${remainingAttempts} attempt${remainingAttempts === 1 ? '' : 's'} remaining)`
+        : "";
+
       toast({
         variant: "destructive",
         title: "Login failed",
         description: error.message === "Invalid login credentials"
-          ? "Incorrect email or password. Please try again."
+          ? `Incorrect email or password.${attemptsMsg}`
           : error.message,
       });
     } else if (role) {
-      // Check for stored redirect path from before auth
+      // Clear attempts on successful login
+      try {
+        await supabase.rpc("clear_login_attempts", { p_email: data.email });
+      } catch (e) {
+        console.error("Failed to clear login attempts:", e);
+      }
+      setRemainingAttempts(null);
+      setLockoutUntil(null);
+
       const redirectPath = localStorage.getItem('redirectAfterAuth');
       if (redirectPath) {
         localStorage.removeItem('redirectAfterAuth');
