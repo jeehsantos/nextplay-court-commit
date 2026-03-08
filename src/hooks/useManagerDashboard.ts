@@ -43,6 +43,10 @@ export interface UpcomingBookingInfo {
   bookerInitials: string;
   paymentStatus: string;
   bookingRef: string;
+  courtId: string;
+  venueId: string;
+  rawStartTime: string;
+  rawEndTime: string;
 }
 
 export interface DailyPerformance {
@@ -432,24 +436,32 @@ export function useManagerDashboard(period: DashboardPeriod) {
         date: slot.available_date,
         startTime: `${displayHour}:${sm} ${ampm}`,
         endTime: slot.end_time,
+        rawStartTime: slot.start_time,
+        rawEndTime: slot.end_time,
         durationMinutes: durationMin,
         bookerName: name,
         bookerInitials: initials,
         paymentStatus: slot.payment_status,
         bookingRef: `BK-${slot.id.slice(0, 4).toUpperCase()}`,
+        courtId: slot.court_id,
+        venueId: court?.venue_id || "",
       };
     });
 
     setUpcomingBookings(mapped);
   }, [allCourtIds, courts]);
 
-  // Run all fetches when courts are loaded
-  useEffect(() => {
+  const refreshAll = useCallback(() => {
     if (allCourtIds.length === 0 && courts.length === 0) return;
     setLoading(true);
     Promise.all([fetchStats(), fetchLiveCourts(), fetchPerformanceChart(), fetchUpcomingBookings()])
       .finally(() => setLoading(false));
-  }, [fetchStats, fetchLiveCourts, fetchPerformanceChart, fetchUpcomingBookings]);
+  }, [fetchStats, fetchLiveCourts, fetchPerformanceChart, fetchUpcomingBookings, allCourtIds, courts]);
 
-  return { stats, liveCourts, weeklyPerformance, upcomingBookings, loading, courts };
+  // Run all fetches when courts are loaded
+  useEffect(() => {
+    refreshAll();
+  }, [refreshAll]);
+
+  return { stats, liveCourts, weeklyPerformance, upcomingBookings, loading, courts, refreshAll };
 }
