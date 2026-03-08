@@ -76,6 +76,11 @@ export default function Profile() {
   
   // Fetch user credits
   const { balance: credits, loading: loadingCredits } = useUserCredits();
+
+  // Profile stats
+  const [gamesPlayed, setGamesPlayed] = useState<number>(0);
+  const [groupCount, setGroupCount] = useState<number>(0);
+  const [showRate, setShowRate] = useState<number>(100);
   
   // Password change state
   const [passwordData, setPasswordData] = useState({
