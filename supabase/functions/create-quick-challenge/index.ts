@@ -112,7 +112,9 @@ serve(async (req) => {
     // The webhook will mark the slot as booked once payment is confirmed.
     const splitPricePerPlayer = Math.ceil((courtAmountWithEquipment / totalPlayers) * 100) / 100;
     const effectivePaymentType = "single"; // organizer always pays upfront for quick challenges
-    const pricePerPlayer = splitPricePerPlayer;
+    // For "single" (organizer pays full), price_per_player = full court amount (what the organizer is charged).
+    // The per-player share is still tracked for display/redistribution if format changes later.
+    const pricePerPlayer = courtAmountWithEquipment;
     const initialStatus = courtAmountWithEquipment > 0 ? "pending_payment" : "open";
 
     const { data: challenge, error: challengeError } = await supabaseAdmin
