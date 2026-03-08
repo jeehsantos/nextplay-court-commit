@@ -122,10 +122,9 @@ serve(async (req) => {
           .from("quick_challenge_payments")
           .update({
             status: "converted_to_credits",
-            converted_to_credits_at: new Date().toISOString(),
           })
           .eq("id", paymentSnapshot.id)
-          .is("converted_to_credits_at", null);
+          .eq("status", "completed");
 
         if (markConvertedError) {
           console.error("Error marking payment as converted_to_credits:", markConvertedError);
