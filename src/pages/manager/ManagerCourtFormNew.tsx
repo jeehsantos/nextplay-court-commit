@@ -543,10 +543,10 @@ export default function ManagerCourtFormNew() {
             </Button>
             <div>
               <h1 className="font-display text-xl sm:text-2xl font-bold">
-                {isAddingNewSubCourt ? "Add Sub-Court" : isEditing ? "Edit Court" : "Add Court"}
+                {isAddingNewSubCourt ? t("courtForm.addCourt") : isEditing ? t("courtForm.editCourt") : t("courtForm.addCourt")}
               </h1>
               <p className="text-muted-foreground text-xs sm:text-sm">
-                {isAddingNewSubCourt ? "Create a new sub-court" : isEditing ? "Update court details, photos, and policies." : "Register a new sports court."}
+                {isAddingNewSubCourt ? t("courtForm.addNewCourt") : isEditing ? t("courtForm.updateCourtDetails") : t("courtForm.addNewCourt")}
               </p>
             </div>
           </div>
@@ -565,7 +565,7 @@ export default function ManagerCourtFormNew() {
               ) : (
                 <Check className="h-4 w-4" />
               )}
-              {isAddingNewSubCourt ? "Create Sub-Court" : isEditing ? "Update Court" : "Create Court"}
+              {isAddingNewSubCourt ? t("courtForm.createCourt") : isEditing ? t("courtForm.updateCourt") : t("courtForm.createCourt")}
             </Button>
           </div>
         </div>
@@ -614,14 +614,14 @@ export default function ManagerCourtFormNew() {
               <CardHeader className="pb-3 border-b border-border">
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
                   <Edit3 className="h-5 w-5 text-primary" />
-                  Basic Details
+                  {t("courtForm.courtDetails")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4 space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   {/* Court Name - Full width */}
                   <div className="sm:col-span-2 space-y-1.5">
-                    <Label htmlFor="name">Court Name *</Label>
+                    <Label htmlFor="name">{t("courtForm.courtName")}</Label>
                     <Input
                       id="name"
                       {...register("name")}
@@ -664,7 +664,7 @@ export default function ManagerCourtFormNew() {
 
                   {/* Hourly Rate */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="hourly_rate">Hourly Rate (NZD) *</Label>
+                    <Label htmlFor="hourly_rate">{t("courtForm.hourlyRate")}</Label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
