@@ -22,6 +22,7 @@ import { PaymentMethodDialog } from "@/components/payment/PaymentMethodDialog";
 import { PaymentDeadlineWarning } from "@/components/booking/PaymentDeadlineWarning";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { usePlatformSettings } from "@/hooks/usePlatformSettings";
+import { useManagerStripeReady } from "@/hooks/useStripeConnectStatus";
 import { getSportCategory } from "@/lib/sport-category-utils";
 
 import {
