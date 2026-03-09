@@ -36,10 +36,21 @@ serve(async (req) => {
 
     console.log(`Expired ${data} stale holds`);
 
+    // Purge old terminal holds (EXPIRED, CONVERTED, FAILED) older than 7 days
+    const { data: purgedCount, error: purgeError } = await supabase.rpc("purge_old_booking_holds");
+
+    if (purgeError) {
+      console.error("Error purging old holds:", purgeError);
+      // Non-fatal: log but don't throw - expiration already succeeded
+    } else {
+      console.log(`Purged ${purgedCount} old terminal holds`);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         expired_count: data,
+        purged_count: purgedCount ?? 0,
         timestamp: new Date().toISOString(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
