@@ -821,7 +821,7 @@ export default function ManagerCourtFormNew() {
 
                 {/* Payment Settings - Card style buttons */}
                 <div className="space-y-3">
-                  <Label>Payment Settings</Label>
+                  <Label>{t("payment.title")}</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <button
                       type="button"
@@ -833,10 +833,10 @@ export default function ManagerCourtFormNew() {
                       }`}
                     >
                       <div className="font-semibold text-foreground mb-1 flex items-center justify-between">
-                        At Booking
+                        {t("payment.atBooking")}
                         {paymentTiming === "at_booking" && <Check className="h-4 w-4 text-primary" />}
                       </div>
-                      <div className="text-xs text-muted-foreground">Payment required immediately when booking</div>
+                      <div className="text-xs text-muted-foreground">{t("payment.atBookingDesc")}</div>
                     </button>
                     <button
                       type="button"
@@ -848,18 +848,18 @@ export default function ManagerCourtFormNew() {
                       }`}
                     >
                       <div className="font-semibold text-foreground mb-1 flex items-center justify-between">
-                        Before Session
+                        {t("payment.beforeSession")}
                         {paymentTiming === "before_session" && <Check className="h-4 w-4 text-primary" />}
                       </div>
-                      <div className="text-xs text-muted-foreground">Payment required before the session day</div>
+                      <div className="text-xs text-muted-foreground">{t("payment.beforeSessionDesc")}</div>
                     </button>
                   </div>
 
                   {paymentTiming === "before_session" && (
                     <div className="p-4 rounded-lg bg-muted/50 border border-border flex flex-col sm:flex-row sm:items-center gap-4 animate-in fade-in slide-in-from-top-2">
                       <div className="space-y-1 flex-1">
-                        <Label htmlFor="payment_hours_before" className="text-sm font-medium">Hours Before Session</Label>
-                        <p className="text-xs text-muted-foreground">How many hours before the session should payment be completed?</p>
+                        <Label htmlFor="payment_hours_before" className="text-sm font-medium">{t("payment.hoursBefore")}</Label>
+                        <p className="text-xs text-muted-foreground">{t("payment.hoursBeforeDesc")}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Input
@@ -911,7 +911,7 @@ export default function ManagerCourtFormNew() {
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-lg font-semibold flex items-center gap-2">
                     <Camera className="h-5 w-5 text-primary" />
-                    Court Photos
+                    {t("courtForm.courtPhotos") || "Court Photos"}
                   </CardTitle>
                   <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">Max 4 photos (JPG, PNG)</span>
                 </div>
@@ -1074,12 +1074,12 @@ export default function ManagerCourtFormNew() {
                       } : handleDelete}
                       disabled={deleting}
                     >
-                      {isAddingNewSubCourt ? "Cancel Adding" : deleting ? (
+                      {isAddingNewSubCourt ? t("courts.cancel") : deleting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <>
                           <Trash2 className="h-4 w-4 mr-2" />
-                          Delete This Court
+                          {t("courts.deleteTitle")}
                         </>
                       )}
                     </Button>
