@@ -10,7 +10,8 @@ import {
   Gift,
   DollarSign,
   BarChart3,
-  Globe
+  Globe,
+  Users
 } from "lucide-react";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminLayout } from "@/components/layout/AdminLayout";
@@ -19,6 +20,12 @@ function AdminDashboardContent() {
   const navigate = useNavigate();
 
   const menuItems = [
+    {
+      title: "User Management",
+      description: "Manage users, activate accounts, and change roles",
+      icon: Users,
+      href: "/admin/users",
+    },
     {
       title: "Sport Categories",
       description: "Manage available sport types for courts and groups",

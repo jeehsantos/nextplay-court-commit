@@ -43,6 +43,7 @@ import AdminReferralSettings from "./pages/admin/AdminReferralSettings";
 import AdminPlatformFees from "./pages/admin/AdminPlatformFees";
 import AdminFinance from "./pages/admin/AdminFinance";
 import AdminVenueSlugs from "./pages/admin/AdminVenueSlugs";
+import AdminUsers from "./pages/admin/AdminUsers";
 import VenueLanding from "./pages/VenueLanding";
 import VenueDirectory from "./pages/VenueDirectory";
 import ArchivedSessions from "./pages/ArchivedSessions";
@@ -92,6 +93,7 @@ const App = () => (
               <Route path="/manager/settings" element={<ManagerSettings />} />
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/sports" element={<AdminSportCategories />} />
               <Route path="/admin/surfaces" element={<AdminSurfaceTypes />} />
               <Route path="/admin/archiving" element={<AdminArchiving />} />
