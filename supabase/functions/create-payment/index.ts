@@ -52,7 +52,7 @@ serve(async (req) => {
     // Fetch session with group and court
     const { data: session, error: sessionError } = await supabaseAdmin
       .from("sessions")
-      .select(`*, groups (*), courts (*, venues (*))`)
+      .select(`*, groups (*), courts (*, venues (id, name, owner_id))`)
       .eq("id", sessionId)
       .single();
 
@@ -65,6 +65,14 @@ serve(async (req) => {
     if (!court || !venue) {
       throw new Error("Court or venue not found");
     }
+
+    // Fetch stripe_account_id from venue_payment_settings (security fix)
+    const { data: paymentSettings } = await supabaseAdmin
+      .from("venue_payment_settings")
+      .select("stripe_account_id")
+      .eq("venue_id", venue.id)
+      .maybeSingle();
+    const venueStripeAccountId = paymentSettings?.stripe_account_id || null;
 
     // Read payment_type from session (authoritative, NOT from frontend)
     const sessionPaymentType = session.payment_type || "single";
@@ -263,17 +271,17 @@ serve(async (req) => {
         stripe_fee_coverage_cents: stripeFeeCoverageCents.toString(),
         payment_type: sessionPaymentType,
         credits_applied: creditsToApply.toString(),
-        venue_stripe_account_id: venue.stripe_account_id || "",
-        destination_charge: venue.stripe_account_id ? "true" : "false",
+        venue_stripe_account_id: venueStripeAccountId || "",
+        destination_charge: venueStripeAccountId ? "true" : "false",
       },
     };
 
     // Destination-charge split: platform keeps service fee, court receives recipient amount
-    if (venue.stripe_account_id) {
+    if (venueStripeAccountId) {
       sessionParams.payment_intent_data = {
         application_fee_amount: serviceFeeTotalCents,
         transfer_data: {
-          destination: venue.stripe_account_id,
+          destination: venueStripeAccountId,
         },
       };
     }
@@ -346,10 +354,18 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
 
   const { data: venue, error: venueErr } = await supabaseAdmin
     .from("venues")
-    .select("id, name, stripe_account_id")
+    .select("id, name")
     .eq("id", court.venue_id)
     .single();
   if (venueErr || !venue) throw new Error("Venue not found");
+
+  // Fetch stripe_account_id from venue_payment_settings (security fix)
+  const { data: venuePaymentSettings } = await supabaseAdmin
+    .from("venue_payment_settings")
+    .select("stripe_account_id")
+    .eq("venue_id", venue.id)
+    .maybeSingle();
+  const deferredVenueStripeAccountId = venuePaymentSettings?.stripe_account_id || null;
 
   // Platform settings
   const { data: platformSettings } = await supabaseAdmin
@@ -519,17 +535,17 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
       gross_total_cents: grossTotalCents.toString(),
       service_fee_total_cents: serviceFeeTotalCents.toString(),
       stripe_fee_coverage_cents: stripeFeeCoverageCents.toString(),
-      venue_stripe_account_id: venue.stripe_account_id || "",
-      destination_charge: venue.stripe_account_id ? "true" : "false",
+      venue_stripe_account_id: deferredVenueStripeAccountId || "",
+      destination_charge: deferredVenueStripeAccountId ? "true" : "false",
     },
   };
 
   // Destination-charge split for deferred flow
-  if (venue.stripe_account_id) {
+  if (deferredVenueStripeAccountId) {
     sessionParams.payment_intent_data = {
       application_fee_amount: serviceFeeTotalCents,
       transfer_data: {
-        destination: venue.stripe_account_id,
+        destination: deferredVenueStripeAccountId,
       },
     };
   }

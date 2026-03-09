@@ -70,9 +70,18 @@ export default function ManagerVenueForm() {
         if (error) throw error;
         toast({ title: t("venueForm.venueUpdated") });
       } else {
+        // Fetch user's stripe_account_id from profile
         const { data: profile } = await supabase.from("profiles").select("stripe_account_id").eq("user_id", user.id).single();
-        const { error } = await supabase.from("venues").insert({ owner_id: user.id, name: data.name, address: data.address, city: data.city, description: data.description || null, phone: data.phone || null, email: data.email || null, photo_url: data.photo_url || null, is_active: data.is_active, stripe_account_id: (profile as any)?.stripe_account_id || null });
+        const userStripeAccountId = (profile as any)?.stripe_account_id || null;
+        
+        // Create venue (without stripe_account_id - it's now in venue_payment_settings)
+        const { data: newVenue, error } = await supabase.from("venues").insert({ owner_id: user.id, name: data.name, address: data.address, city: data.city, description: data.description || null, phone: data.phone || null, email: data.email || null, photo_url: data.photo_url || null, is_active: data.is_active }).select("id").single();
         if (error) throw error;
+        
+        // Create venue_payment_settings if user has stripe account
+        if (userStripeAccountId && newVenue?.id) {
+          await supabase.from("venue_payment_settings").insert({ venue_id: newVenue.id, stripe_account_id: userStripeAccountId });
+        }
         toast({ title: t("venueForm.venueCreated") });
       }
       navigate("/manager/venues");

@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
         courts (
           *,
           venues (
-            id, name, owner_id, stripe_account_id
+            id, name, owner_id
           )
         )
       `)
@@ -113,7 +113,18 @@ Deno.serve(async (req) => {
 
     const venue = (session.courts as any)?.venues;
 
-    if (!venue?.stripe_account_id) {
+    // Fetch stripe_account_id from venue_payment_settings (security fix)
+    let venueStripeAccountId: string | null = null;
+    if (venue?.id) {
+      const { data: paymentSettings } = await supabaseAdmin
+        .from("venue_payment_settings")
+        .select("stripe_account_id")
+        .eq("venue_id", venue.id)
+        .maybeSingle();
+      venueStripeAccountId = paymentSettings?.stripe_account_id || null;
+    }
+
+    if (!venueStripeAccountId) {
       console.log("No Stripe Connect account for venue — platform retains funds");
       await supabaseAdmin
         .from("payments")
@@ -326,7 +337,7 @@ Deno.serve(async (req) => {
         {
           amount: totalTransferCents,
           currency: "nzd",
-          destination: venue.stripe_account_id,
+          destination: venueStripeAccountId,
           description: `Session payout: ${sessionId}`,
           metadata: {
             session_id: sessionId,
@@ -374,7 +385,7 @@ Deno.serve(async (req) => {
       sessionId,
       transferId: transfer.id,
       totalCents: totalTransferCents,
-      destination: venue.stripe_account_id,
+      destination: venueStripeAccountId,
       paymentCount: claimedPayments.length,
     });
 
