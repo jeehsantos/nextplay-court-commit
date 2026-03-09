@@ -352,13 +352,17 @@ export function useCancelChallenge() {
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
+      return data as { success: boolean; convertedCount: number; message: string };
     },
-    onSuccess: (_, challengeId) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["quick-challenges"] });
       queryClient.invalidateQueries({ queryKey: ["user-credits"] });
       toast({
         title: "Lobby cancelled",
-        description: "The challenge has been cancelled. Paid players will receive platform credits.",
+        description: (data?.convertedCount ?? 0) > 0
+          ? "Your court payment has been converted to platform credits."
+          : "The challenge has been cancelled.",
       });
     },
     onError: (error: Error) => {
