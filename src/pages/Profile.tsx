@@ -72,6 +72,9 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Fetch sports from database - NO FALLBACKS
   const { data: sportCategories = [], isLoading: loadingSports } = useSportCategories();
