@@ -1703,6 +1703,7 @@ export type Database = {
         Args: { p_referred_user_id: string }
         Returns: boolean
       }
+      purge_old_booking_holds: { Args: never; Returns: number }
       recalculate_and_maybe_confirm_session: {
         Args: { p_session_id: string }
         Returns: Json
