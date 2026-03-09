@@ -775,9 +775,21 @@ export default function QuickGameLobby() {
               <AlertTriangle className="h-5 w-5 text-destructive" />
               Cancel this lobby?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. All players will be removed from the lobby
-              and the booking will be cancelled. Any pending payments will not be processed.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>This action cannot be undone. All players will be removed from the lobby and the booking will be cancelled.</p>
+                {challenge?.payment_type === "single" && (challenge?.price_per_player ?? 0) > 0 && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-foreground">
+                    <p className="font-semibold flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      Payment will be converted to credits
+                    </p>
+                    <p className="text-xs mt-1 text-muted-foreground">
+                      Your court payment will be refunded as platform credits. Service fee is non-refundable.
+                    </p>
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
