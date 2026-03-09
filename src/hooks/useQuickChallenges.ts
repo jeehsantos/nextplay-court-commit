@@ -83,7 +83,6 @@ export function useQuickChallenges(filters?: {
             team,
             slot_position,
             payment_status,
-            stripe_session_id,
             joined_at,
             paid_at
           )
