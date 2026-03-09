@@ -61,8 +61,7 @@ serve(async (req) => {
         *,
         venues (
           id,
-          name,
-          stripe_account_id
+          name
         ),
         courts (
           id,
@@ -79,6 +78,17 @@ serve(async (req) => {
     if (challengeError || !challenge) {
       console.error("Challenge fetch error:", challengeError);
       throw new Error("Challenge not found");
+    }
+
+    // Fetch stripe_account_id from venue_payment_settings (security fix)
+    let venueStripeAccountId: string | null = null;
+    if (challenge.venue_id) {
+      const { data: paymentSettings } = await supabaseAdmin
+        .from("venue_payment_settings")
+        .select("stripe_account_id")
+        .eq("venue_id", challenge.venue_id)
+        .maybeSingle();
+      venueStripeAccountId = paymentSettings?.stripe_account_id || null;
     }
 
     // Verify user is a player in this challenge
@@ -324,8 +334,8 @@ serve(async (req) => {
         stripe_fee_coverage_cents: stripeFeeCoverageCents.toString(),
         type: "quick_challenge",
         player_record_id: playerRecord.id,
-        venue_stripe_account_id: venue?.stripe_account_id || "",
-        destination_charge: venue?.stripe_account_id ? "true" : "false",
+        venue_stripe_account_id: venueStripeAccountId || "",
+        destination_charge: venueStripeAccountId ? "true" : "false",
         court_id: challenge.court_id || "",
         scheduled_date: challenge.scheduled_date || "",
         scheduled_time: challenge.scheduled_time || "",
@@ -333,11 +343,11 @@ serve(async (req) => {
     };
 
     // Destination-charge split for quick challenges
-    if (venue?.stripe_account_id) {
+    if (venueStripeAccountId) {
       sessionParams.payment_intent_data = {
         application_fee_amount: serviceFeeTotalCents,
         transfer_data: {
-          destination: venue.stripe_account_id,
+          destination: venueStripeAccountId,
         },
       };
     }
