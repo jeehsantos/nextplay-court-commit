@@ -91,6 +91,25 @@ serve(async (req) => {
       throw new Error(`Payment status is ${payment.status}, expected 'completed'`);
     }
 
+    if (!isAdmin) {
+      const { data: sessionData } = await supabaseAdmin
+        .from("sessions")
+        .select("groups(organizer_id)")
+        .eq("id", payment.session_id)
+        .single();
+      
+      const organizerId = (sessionData?.groups as any)?.organizer_id;
+      
+      if (callerId !== organizerId && callerId !== payment.user_id) {
+        return new Response(JSON.stringify({ error: "Forbidden: Not authorized" }), { status: 403, headers: corsHeaders });
+      }
+    }
+      if (payment.status === "refunded" || payment.status === "cancelled") {
+        throw new Error(`Cannot transfer payment - it has been ${payment.status}`);
+      }
+      throw new Error(`Payment status is ${payment.status}, expected 'completed'`);
+    }
+
     // Check if already transferred
     if (payment.transferred_at) {
       console.log("Payment already transferred:", payment.id);
