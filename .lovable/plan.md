@@ -1,61 +1,110 @@
 
-Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
+## Root Cause Analysis
 
-What I found (already verified):
-1) Data inconsistency exists now:
-   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
-   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
-2) `ManagerCourtFormNew` root causes:
-   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
-   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
-   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
-3) Backend side effect confirmed:
-   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
+The scenario: **Organizer creates a "single" (organizer-covered) lobby, pays via Stripe, then cancels the lobby (Quit Lobby).**
 
-Implementation plan (execute in this order):
-1. Database integrity hardening + backfill (migration)
-   - Backfill: set `is_multi_court=true` for any court that already has children.
-   - Add DB validation trigger(s) on `courts` to enforce:
-     - child cannot reference itself
-     - child parent must be in same venue
-     - parent cannot be set `is_multi_court=false` while children exist
-     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
-   - This guarantees the bug cannot recur from any client path.
+### Two separate bugs found:
 
-2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
-   - Remove direct `window.history.replaceState` usage.
-   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
-   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
-   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
+---
 
-3. Multi-court UI behavior safeguards
-   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
-   - Disable/harden turning off multi-court when children exist (with clear message).
-   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
+**Bug 1 — Organizer cancellation: `useCancelChallenge` discards the edge function response (credits info never surfaces)**
 
-4. Availability resilience (backend function)
-   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
-   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
+In `useQuickChallenges.ts`, the `useCancelChallenge` mutation function returns `void`:
 
-5. Verification I will perform (not asking you to test manually)
-   - DB checks:
-     - verify parent `57e11168...` becomes `is_multi_court=true`
-     - verify child links remain unchanged
-     - verify no rows exist with `children > 0 AND is_multi_court=false`
-   - Functional checks:
-     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
-   - UI checks:
-     - exercise add-sub-court flow and confirm:
-       - main court remains main
-       - child appears as child tab
-       - subsequent saves update correct court record
-       - no panel collapse/desync
+```typescript
+mutationFn: async (challengeId: string) => {
+  const { data, error } = await supabase.functions.invoke("cancel-quick-challenge", {...});
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  // data is returned but the function returns undefined (void)
+},
+onSuccess: (_, challengeId) => {        // <-- first arg is void, not data!
+  toast({
+    description: "The challenge has been cancelled. Paid players will receive platform credits."
+    // STATIC message — never mentions how much the organizer got back
+  });
+}
+```
 
-Technical details:
-- Files to update:
-  - `supabase/migrations/<new>.sql`
-  - `src/pages/manager/ManagerCourtFormNew.tsx`
-  - `supabase/functions/get-availability/index.ts`
-- No money/payment logic touched.
-- No auth model changes.
-- Existing routing and form schema preserved; this is a consistency + state synchronization fix.
+The edge function `cancel-quick-challenge` correctly credits all `paidSnapshots` (which includes the organizer's own payment in "single" mode) and returns:
+```json
+{ "success": true, "convertedCount": 1, "message": "..." }
+```
+
+But `mutationFn` doesn't `return data`, so `onSuccess` receives `undefined` as the first argument. The toast is hardcoded and never personalised. The organizer receives credits silently with zero feedback.
+
+---
+
+**Bug 2 — Player quit dialog: "single" mode condition hides the credit warning even when a player HAS paid**
+
+In `QuickGameLobby.tsx` (line 816-833), the Player Quit dialog conditionally shows a "Payment will be converted to credits" notice:
+
+```tsx
+{players.find(p => p.isMe)?.paymentStatus === "paid" && challenge?.payment_type === "split" &&
+  <div>Payment will be converted to credits...</div>
+}
+{challenge?.payment_type === "single" &&
+  <div>This session was covered by the organizer. You can leave without any charges.</div>
+}
+```
+
+The second block shows for ALL "single" challenges — even if the current user is the organizer who actually did pay. The organizer sees "You can leave without any charges" even though they are about to lose (and get back as credits) a real payment.
+
+---
+
+## Fix Plan
+
+### Fix 1 — `src/hooks/useQuickChallenges.ts`
+
+In `useCancelChallenge.mutationFn`, return `data` from the edge function call:
+
+```typescript
+mutationFn: async (challengeId: string) => {
+  // ...
+  return data as { success: boolean; convertedCount: number; message: string };
+},
+onSuccess: (data) => {
+  // ...
+  toast({
+    title: "Lobby cancelled",
+    description: (data?.convertedCount ?? 0) > 0
+      ? `Your court payment has been converted to platform credits. All players have been notified.`
+      : "The challenge has been cancelled.",
+  });
+},
+```
+
+### Fix 2 — `src/pages/QuickGameLobby.tsx` (Organizer quit dialog)
+
+In the **organizer** quit dialog (lines 778-781), update the static description to inform the organizer that their payment will be converted to credits when they cancel a paid "single" lobby:
+
+```tsx
+<AlertDialogDescription>
+  This action cannot be undone. All players will be removed.
+  {hasOrganizerPaid && (
+    <div className="credit notice box">
+      Your court payment will be converted to platform credits.
+      Service fee is non-refundable.
+    </div>
+  )}
+</AlertDialogDescription>
+```
+
+Where `hasOrganizerPaid` = `challenge?.payment_type === "single"` AND the challenge has a court price > 0.
+
+### Fix 3 — `src/pages/QuickGameLobby.tsx` (Player quit dialog — "single" mode message)
+
+Line 827: The "covered by organizer, you can leave without charges" message should only show for **non-organizer** players. It is already inside the player quit dialog but the message is correct for that context. Keep it as-is.
+
+However, the `leave-quick-challenge` edge function has a fast-path that skips credit conversion when `payment_type === "single"` (line: `const isOrganizerPaid = challenge.payment_type === "single"`). This is correct for players in an organizer-paid session. No change needed here.
+
+---
+
+## Summary of changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/useQuickChallenges.ts` | Return `data` from `useCancelChallenge.mutationFn`; update `onSuccess` toast to show credit conversion message using `data.convertedCount` |
+| `src/pages/QuickGameLobby.tsx` | In organizer's Cancel Lobby dialog, add conditional credit-conversion notice when `payment_type === "single"` and `price_per_player > 0` |
+
+No database migrations, no edge function changes needed.
