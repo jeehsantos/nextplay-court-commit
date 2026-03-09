@@ -205,11 +205,11 @@ export default function AdminUsers() {
                           </TableCell>
                           <TableCell>
                             {user.email_confirmed_at ? (
-                              <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                              <Badge variant="default">
                                 Active
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                              <Badge variant="secondary">
                                 Unconfirmed
                               </Badge>
                             )}
@@ -228,7 +228,7 @@ export default function AdminUsers() {
                                   onClick={() => handleActivate(user.id)}
                                   title="Manually verify email"
                                 >
-                                  <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
+                                  <CheckCircle className="h-4 w-4 mr-1" />
                                   Activate
                                 </Button>
                               )}
