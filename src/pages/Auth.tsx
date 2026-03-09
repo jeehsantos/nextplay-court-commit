@@ -35,25 +35,25 @@ export default function Auth() {
 
   const loginSchema = z.object({
     email: z.string().email(t("validation.emailRequired")),
-    password: z.string().min(1, t("validation.passwordRequired")),
+    password: z.string().min(1, t("validation.passwordRequired"))
   });
 
   const signUpSchema = z.object({
     fullName: z.string().min(2, t("validation.nameMin")),
     email: z.string().email(t("validation.emailRequired")),
-    password: z.string()
-      .min(8, t("validation.passwordMin"))
-      .regex(/[A-Z]/, t("validation.passwordUppercase"))
-      .regex(/[a-z]/, t("validation.passwordLowercase"))
-      .regex(/[0-9]/, t("validation.passwordNumber"))
-      .regex(/[^A-Za-z0-9]/, t("validation.passwordSpecial")),
+    password: z.string().
+    min(8, t("validation.passwordMin")).
+    regex(/[A-Z]/, t("validation.passwordUppercase")).
+    regex(/[a-z]/, t("validation.passwordLowercase")).
+    regex(/[0-9]/, t("validation.passwordNumber")).
+    regex(/[^A-Za-z0-9]/, t("validation.passwordSpecial")),
     confirmPassword: z.string(),
     role: z.enum(["player", "court_manager"], {
-      required_error: t("validation.roleRequired"),
-    }),
+      required_error: t("validation.roleRequired")
+    })
   }).refine((data) => data.password === data.confirmPassword, {
     message: t("validation.passwordsNoMatch"),
-    path: ["confirmPassword"],
+    path: ["confirmPassword"]
   });
 
   type LoginFormData = z.infer<typeof loginSchema>;
@@ -69,7 +69,7 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: window.location.origin
     });
     if (error) {
       setIsGoogleLoading(false);
@@ -79,20 +79,20 @@ export default function Auth() {
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "" }
   });
 
   const signUpForm = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "", role: "player" },
+    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "", role: "player" }
   });
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     const roleParam = searchParams.get("role");
     const refParam = searchParams.get("ref");
-    if (tabParam === "signup") setActiveTab("signup");
-    else if (tabParam === "login") setActiveTab("login");
+    if (tabParam === "signup") setActiveTab("signup");else
+    if (tabParam === "login") setActiveTab("login");
     if (roleParam === "player" || roleParam === "court_manager") signUpForm.setValue("role", roleParam, { shouldValidate: true });
     if (refParam) localStorage.setItem("referralCode", refParam);
   }, [searchParams, signUpForm]);
@@ -100,14 +100,14 @@ export default function Auth() {
   useEffect(() => {
     if (!isLoading && user && userRole && !window.location.pathname.includes('/auth')) {
       const redirectPath = localStorage.getItem('redirectAfterAuth');
-      if (redirectPath) { localStorage.removeItem('redirectAfterAuth'); navigate(redirectPath, { replace: true }); }
-      else navigate(getDefaultPathForRole(userRole), { replace: true });
+      if (redirectPath) {localStorage.removeItem('redirectAfterAuth');navigate(redirectPath, { replace: true });} else
+      navigate(getDefaultPathForRole(userRole), { replace: true });
     }
   }, [user, userRole, isLoading, navigate]);
 
   useEffect(() => {
     if (!lockoutUntil) return;
-    const interval = setInterval(() => { if (new Date() >= lockoutUntil) { setLockoutUntil(null); setRemainingAttempts(4); } }, 1000);
+    const interval = setInterval(() => {if (new Date() >= lockoutUntil) {setLockoutUntil(null);setRemainingAttempts(4);}}, 1000);
     return () => clearInterval(interval);
   }, [lockoutUntil]);
 
@@ -116,7 +116,7 @@ export default function Auth() {
     const diff = lockoutUntil.getTime() - Date.now();
     if (diff <= 0) return "";
     const mins = Math.floor(diff / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
+    const secs = Math.floor(diff % 60000 / 1000);
     return `${mins}m ${secs}s`;
   };
 
@@ -134,7 +134,7 @@ export default function Auth() {
           return;
         }
       }
-    } catch (e) { console.error("Login check error:", e); }
+    } catch (e) {console.error("Login check error:", e);}
 
     const { error, role } = await signIn(data.email, data.password);
     setIsSubmitting(false);
@@ -149,26 +149,26 @@ export default function Auth() {
           toast({ variant: "destructive", title: t("accountLocked"), description: t("lockedFor30") });
           return;
         } else {
-          setRemainingAttempts((failResult?.remaining_attempts as number) ?? null);
+          setRemainingAttempts(failResult?.remaining_attempts as number ?? null);
         }
-      } catch (e) { console.error("Failed to record login attempt:", e); }
+      } catch (e) {console.error("Failed to record login attempt:", e);}
 
-      const attemptsMsg = remainingAttempts !== null && remainingAttempts <= 2
-        ? ` (${remainingAttempts} ${remainingAttempts === 1 ? t("attemptsLeft", { count: remainingAttempts }) : t("attemptsLeft_other", { count: remainingAttempts })})`
-        : "";
+      const attemptsMsg = remainingAttempts !== null && remainingAttempts <= 2 ?
+      ` (${remainingAttempts} ${remainingAttempts === 1 ? t("attemptsLeft", { count: remainingAttempts }) : t("attemptsLeft_other", { count: remainingAttempts })})` :
+      "";
 
       toast({
         variant: "destructive",
         title: t("loginFailed"),
-        description: error.message === "Invalid login credentials" ? `${t("incorrectCredentials")}${attemptsMsg}` : error.message === "Email not confirmed" ? t("emailNotConfirmed") : error.message,
+        description: error.message === "Invalid login credentials" ? `${t("incorrectCredentials")}${attemptsMsg}` : error.message === "Email not confirmed" ? t("emailNotConfirmed") : error.message
       });
     } else if (role) {
-      try { await supabase.rpc("clear_login_attempts", { p_email: data.email }); } catch (e) { console.error("Failed to clear login attempts:", e); }
+      try {await supabase.rpc("clear_login_attempts", { p_email: data.email });} catch (e) {console.error("Failed to clear login attempts:", e);}
       setRemainingAttempts(null);
       setLockoutUntil(null);
       const redirectPath = localStorage.getItem('redirectAfterAuth');
-      if (redirectPath) { localStorage.removeItem('redirectAfterAuth'); navigate(redirectPath, { replace: true }); }
-      else navigate(getDefaultPathForRole(role), { replace: true });
+      if (redirectPath) {localStorage.removeItem('redirectAfterAuth');navigate(redirectPath, { replace: true });} else
+      navigate(getDefaultPathForRole(role), { replace: true });
     }
   };
 
@@ -182,7 +182,7 @@ export default function Auth() {
       toast({
         variant: "destructive",
         title: t("signUpFailed"),
-        description: error.message.includes("already registered") ? t("alreadyRegistered") : error.message,
+        description: error.message.includes("already registered") ? t("alreadyRegistered") : error.message
       });
     } else if (!session) {
       if (referralCode) localStorage.removeItem("referralCode");
@@ -193,8 +193,8 @@ export default function Auth() {
       if (referralCode) localStorage.removeItem("referralCode");
       toast({ title: t("accountCreated"), description: t("welcomeMessage") });
       const redirectPath = localStorage.getItem('redirectAfterAuth');
-      if (redirectPath) { localStorage.removeItem('redirectAfterAuth'); navigate(redirectPath, { replace: true }); }
-      else navigate(getDefaultPathForRole(data.role), { replace: true });
+      if (redirectPath) {localStorage.removeItem('redirectAfterAuth');navigate(redirectPath, { replace: true });} else
+      navigate(getDefaultPathForRole(data.role), { replace: true });
     }
   };
 
@@ -206,16 +206,16 @@ export default function Auth() {
     setIsSubmitting(true);
     const { error } = await resetPassword(resetEmail);
     setIsSubmitting(false);
-    if (error) { toast({ variant: "destructive", title: t("error"), description: error.message }); }
-    else { setResetSent(true); toast({ title: t("checkEmail"), description: t("resetLinkSent") }); }
+    if (error) {toast({ variant: "destructive", title: t("error"), description: error.message });} else
+    {setResetSent(true);toast({ title: t("checkEmail"), description: t("resetLinkSent") });}
   };
 
   if (isLoading && user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -227,35 +227,35 @@ export default function Auth() {
           </Link>
         </div>
 
-        {showForgotPassword ? (
-          <Card className="w-full max-w-md">
+        {showForgotPassword ?
+        <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <CardTitle className="font-display">{t("resetPassword")}</CardTitle>
               <CardDescription>{resetSent ? t("resetSent") : t("resetDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
-              {!resetSent ? (
-                <div className="space-y-4">
+              {!resetSent ?
+            <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium">{t("email")}</label>
                     <Input type="email" placeholder="you@example.com" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} className="mt-1.5" />
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1" onClick={() => { setShowForgotPassword(false); setResetEmail(""); setResetSent(false); }}>{tc("cancel")}</Button>
+                    <Button variant="outline" className="flex-1" onClick={() => {setShowForgotPassword(false);setResetEmail("");setResetSent(false);}}>{tc("cancel")}</Button>
                     <Button className="flex-1 btn-athletic" onClick={handleForgotPassword} disabled={isSubmitting}>
                       {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("sendResetLink")}
                     </Button>
                   </div>
-                </div>
-              ) : (
-                <Button className="w-full btn-athletic" onClick={() => { setShowForgotPassword(false); setResetEmail(""); setResetSent(false); }}>{t("backToLogin")}</Button>
-              )}
+                </div> :
+
+            <Button className="w-full btn-athletic" onClick={() => {setShowForgotPassword(false);setResetEmail("");setResetSent(false);}}>{t("backToLogin")}</Button>
+            }
             </CardContent>
-          </Card>
-        ) : (
-          <Card className="w-full max-w-md">
+          </Card> :
+
+        <Card className="w-full max-w-md">
             <CardHeader className="text-center">
-              <img src="/sportarena-logo.png" alt="Sport Arena logo" className="h-14 w-auto mx-auto mb-2 object-contain" />
+              <img src="/sportarena-logo.png" alt="Sport Arena logo" className="h-8 w-auto mx-auto mb-2 object-contain" />
               <CardTitle className="font-display">{t("welcome")}</CardTitle>
               <CardDescription>{t("subtitle")}</CardDescription>
             </CardHeader>
@@ -269,35 +269,35 @@ export default function Auth() {
                 <TabsContent value="login">
                   <Form {...loginForm}>
                     <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
-                      <FormField control={loginForm.control} name="email" render={({ field }) => (
-                        <FormItem>
+                      <FormField control={loginForm.control} name="email" render={({ field }) =>
+                    <FormItem>
                           <FormLabel>{t("email")}</FormLabel>
                           <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
-                      )} />
-                      <FormField control={loginForm.control} name="password" render={({ field }) => (
-                        <FormItem>
+                    } />
+                      <FormField control={loginForm.control} name="password" render={({ field }) =>
+                    <FormItem>
                           <FormLabel>{t("password")}</FormLabel>
                           <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
-                      )} />
+                    } />
                       <div className="flex justify-end">
                         <button type="button" onClick={() => setShowForgotPassword(true)} className="text-sm text-primary hover:underline">{t("forgotPassword")}</button>
                       </div>
-                      {lockoutUntil && new Date() < lockoutUntil && (
-                        <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                      {lockoutUntil && new Date() < lockoutUntil &&
+                    <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
                           <ShieldAlert className="h-4 w-4 shrink-0" />
                           <span>{t("accountLockedTimer", { time: getLockoutTimeRemaining() })}</span>
                         </div>
-                      )}
-                      {remainingAttempts !== null && remainingAttempts > 0 && remainingAttempts <= 2 && !lockoutUntil && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                    }
+                      {remainingAttempts !== null && remainingAttempts > 0 && remainingAttempts <= 2 && !lockoutUntil &&
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
                           ⚠️ {t(remainingAttempts === 1 ? "attemptsRemaining" : "attemptsRemaining_other", { count: remainingAttempts })}
                         </p>
-                      )}
-                      <Button type="submit" className="w-full btn-athletic" disabled={isSubmitting || isGoogleLoading || (lockoutUntil !== null && new Date() < lockoutUntil)}>
+                    }
+                      <Button type="submit" className="w-full btn-athletic" disabled={isSubmitting || isGoogleLoading || lockoutUntil !== null && new Date() < lockoutUntil}>
                         {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("signInBtn")}
                       </Button>
 
@@ -307,14 +307,14 @@ export default function Auth() {
                       </div>
 
                       <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isSubmitting || isGoogleLoading}>
-                        {isGoogleLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : (
-                          <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
+                        {isGoogleLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> :
+                      <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
                             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
                             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                           </svg>
-                        )}
+                      }
                         {t("continueWithGoogle")}
                       </Button>
                     </form>
@@ -324,22 +324,22 @@ export default function Auth() {
                 <TabsContent value="signup">
                   <Form {...signUpForm}>
                     <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
-                      <FormField control={signUpForm.control} name="fullName" render={({ field }) => (
-                        <FormItem>
+                      <FormField control={signUpForm.control} name="fullName" render={({ field }) =>
+                    <FormItem>
                           <FormLabel>{t("fullName")}</FormLabel>
                           <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
-                      )} />
-                      <FormField control={signUpForm.control} name="email" render={({ field }) => (
-                        <FormItem>
+                    } />
+                      <FormField control={signUpForm.control} name="email" render={({ field }) =>
+                    <FormItem>
                           <FormLabel>{t("email")}</FormLabel>
                           <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
-                      )} />
-                      <FormField control={signUpForm.control} name="role" render={({ field }) => (
-                        <FormItem>
+                    } />
+                      <FormField control={signUpForm.control} name="role" render={({ field }) =>
+                    <FormItem>
                           <FormLabel>{t("joinAs")}</FormLabel>
                           <FormControl>
                             <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="grid grid-cols-2 gap-3 pt-2">
@@ -363,22 +363,22 @@ export default function Auth() {
                           </FormControl>
                           <FormMessage />
                         </FormItem>
-                      )} />
-                      <FormField control={signUpForm.control} name="password" render={({ field }) => (
-                        <FormItem>
+                    } />
+                      <FormField control={signUpForm.control} name="password" render={({ field }) =>
+                    <FormItem>
                           <FormLabel>{t("password")}</FormLabel>
                           <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
                           <FormMessage />
                           <p className="text-xs text-muted-foreground mt-1">{t("passwordRequirements")}</p>
                         </FormItem>
-                      )} />
-                      <FormField control={signUpForm.control} name="confirmPassword" render={({ field }) => (
-                        <FormItem>
+                    } />
+                      <FormField control={signUpForm.control} name="confirmPassword" render={({ field }) =>
+                    <FormItem>
                           <FormLabel>{t("confirmPassword")}</FormLabel>
                           <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
-                      )} />
+                    } />
                       <p className="text-xs text-muted-foreground text-center">
                         By creating an account, you agree to our{" "}
                         <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link> and{" "}
@@ -394,14 +394,14 @@ export default function Auth() {
                       </div>
 
                       <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isSubmitting || isGoogleLoading}>
-                        {isGoogleLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : (
-                          <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
+                        {isGoogleLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> :
+                      <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
                             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
                             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                           </svg>
-                        )}
+                      }
                         {t("continueWithGoogle")}
                       </Button>
                     </form>
@@ -410,8 +410,8 @@ export default function Auth() {
               </Tabs>
             </CardContent>
           </Card>
-        )}
+        }
       </div>
-    </PublicLayout>
-  );
+    </PublicLayout>);
+
 }
