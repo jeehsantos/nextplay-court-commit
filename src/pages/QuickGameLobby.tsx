@@ -76,13 +76,15 @@ interface PlayerSlotProps {
   isJoining?: boolean;
   isOrganizer?: boolean;
   onKick?: (player: LobbyPlayer) => void;
+  paymentType?: string;
 }
 
-function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoining, isOrganizer: isOrganizerProp, onKick }: PlayerSlotProps) {
+function PlayerSlot({ role, player, side, isCurrentUser, onJoin, onPay, isJoining, isOrganizer: isOrganizerProp, onKick, paymentType }: PlayerSlotProps) {
   const isLeft = side === "left";
   const isEmpty = !player;
   const isMe = isCurrentUser || player?.isMe;
   const isPaid = player?.paymentStatus === "paid";
+  const isOrganizerPaid = paymentType === "single" && isPaid;
 
   // Get flag URL
   const getFlagUrl = (code?: string | null) => {
