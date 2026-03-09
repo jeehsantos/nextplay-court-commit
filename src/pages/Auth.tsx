@@ -220,12 +220,14 @@ export default function Auth() {
 
   return (
     <PublicLayout showBack={false} showFooter={false} showNavbar={false}>
-      <div className="relative min-h-screen flex flex-col items-center justify-center p-4 -mt-12">
-        <div className="flex flex-col items-center gap-2 mb-8">
+      <div className="relative min-h-screen flex flex-col items-center p-4 pt-8 pb-8">
+        <div className="flex flex-col items-center gap-2 mb-6">
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             ← {tc("backToHome")}
           </Link>
         </div>
+
+        <div className="flex-1 flex items-center justify-center w-full">
 
         {showForgotPassword ?
         <Card className="w-full max-w-md">
