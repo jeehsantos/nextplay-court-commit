@@ -1026,7 +1026,8 @@ export default function QuickGameLobby() {
                     onPay={handlePayment}
                     isJoining={isJoiningThis}
                     isOrganizer={isOrganizer}
-                    onKick={(p) => setKickTarget(p)} />);
+                    onKick={(p) => setKickTarget(p)}
+                    paymentType={challenge.payment_type} />);
 
 
               })}
@@ -1060,7 +1061,8 @@ export default function QuickGameLobby() {
                     onPay={handlePayment}
                     isJoining={isJoiningThis}
                     isOrganizer={isOrganizer}
-                    onKick={(p) => setKickTarget(p)} />);
+                    onKick={(p) => setKickTarget(p)}
+                    paymentType={challenge.payment_type} />);
 
 
               })}
@@ -1259,7 +1261,8 @@ export default function QuickGameLobby() {
                   onPay={handlePayment}
                   isJoining={isJoiningThis}
                   isOrganizer={isOrganizer}
-                  onKick={(p) => setKickTarget(p)} />);
+                  onKick={(p) => setKickTarget(p)}
+                  paymentType={challenge.payment_type} />);
 
 
             })}
