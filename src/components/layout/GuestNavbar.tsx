@@ -60,7 +60,7 @@ export const GuestNavbar = forwardRef<HTMLElement, GuestNavbarProps>(({ classNam
             </Button>
           </Link>
           <Link to="/auth?tab=signup" className="hidden sm:block">
-            <Button className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-blue-700">
+            <Button className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90">
               {t("nav.getStarted")}
             </Button>
           </Link>
