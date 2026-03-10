@@ -65,7 +65,7 @@ export function MobileCourtSheet({ courts, loading, highlightedCourtId, onHighli
       open={true}
       modal={false}
       dismissible={false}
-      snapPoints={["180px", 0.5, 0.85]}
+      snapPoints={["180px", 0.5, 0.92]}
       activeSnapPoint={snap}
       setActiveSnapPoint={setSnap}
     >
