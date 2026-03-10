@@ -511,7 +511,9 @@ export default function Courts() {
           {/* Floating search header - above map */}
           <div className={`absolute ${isQuickGameMode ? "top-44" : "top-4"} left-4 right-4 z-[500] pointer-events-none`}>
             <div className="flex items-center gap-2 bg-background rounded-full px-4 py-3 shadow-lg border border-border pointer-events-auto">
-              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+              <button onClick={() => navigate(-1)} className="shrink-0" aria-label="Go back">
+                <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+              </button>
               <input
                 type="text"
                 placeholder="Search courts..."
