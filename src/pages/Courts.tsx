@@ -602,9 +602,10 @@ export default function Courts() {
                   <h1 className="font-display text-2xl font-bold">
                     {isQuickGameMode ? "Select a Court" : "Browse Courts"}
                   </h1>
-                <p className="text-muted-foreground text-sm">
-                  {filteredCourts.length} court{filteredCourts.length !== 1 ? "s" : ""} available
-                </p>
+                  <p className="text-muted-foreground text-sm">
+                    {filteredCourts.length} court{filteredCourts.length !== 1 ? "s" : ""} available
+                  </p>
+                </div>
               </div>
             </div>
 
