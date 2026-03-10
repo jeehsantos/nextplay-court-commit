@@ -94,8 +94,33 @@ export const GuestNavbar = forwardRef<HTMLElement, GuestNavbarProps>(({ classNam
                   </Button>
                 </Link>
                 <Link to="/auth?tab=signup" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700">{t("nav.getStarted")}</Button>
+                  <Button className="w-full bg-primary hover:bg-primary/90">{t("nav.getStarted")}</Button>
                 </Link>
+                {(canInstall || isInstalled) && (
+                  <>
+                    <hr className="my-1 border-border" />
+                    <Button
+                      variant={isInstalled ? "ghost" : "outline"}
+                      className="w-full justify-start gap-3"
+                      onClick={() => {
+                        if (canInstall) promptInstall();
+                      }}
+                      disabled={isInstalled}
+                    >
+                      {isInstalled ? (
+                        <>
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          App Installed
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-5 w-5" />
+                          Install App
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
               </div>
             </SheetContent>
           </Sheet>
