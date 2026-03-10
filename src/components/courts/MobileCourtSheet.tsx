@@ -97,6 +97,13 @@ export function MobileCourtSheet({ courts, loading, highlightedCourtId, onHighli
           <div
             ref={scrollContainerRef}
             className="flex-1 overflow-y-auto min-h-0"
+            data-vaul-no-drag
+            onPointerDownCapture={(e) => {
+              const target = e.currentTarget;
+              if (target.scrollTop > 0) {
+                e.stopPropagation();
+              }
+            }}
             style={{
               WebkitOverflowScrolling: "touch",
               overscrollBehaviorY: "contain",
