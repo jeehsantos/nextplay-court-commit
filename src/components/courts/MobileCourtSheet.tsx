@@ -65,7 +65,7 @@ export function MobileCourtSheet({ courts, loading, highlightedCourtId, onHighli
       open={true}
       modal={false}
       dismissible={false}
-      snapPoints={["180px", 0.5, 0.85]}
+      snapPoints={["180px", 0.5, 0.92]}
       activeSnapPoint={snap}
       setActiveSnapPoint={setSnap}
     >
@@ -82,7 +82,7 @@ export function MobileCourtSheet({ courts, loading, highlightedCourtId, onHighli
         >
           {/* Handle area */}
           <div
-            className="flex flex-col items-center pt-3 pb-10 cursor-grab active:cursor-grabbing shrink-0"
+            className="flex flex-col items-center pt-3 pb-4 cursor-grab active:cursor-grabbing shrink-0"
             style={{ touchAction: "none" }}
           >
             <div className="h-1.5 w-12 rounded-full bg-muted-foreground/40 mb-2" />
@@ -97,6 +97,13 @@ export function MobileCourtSheet({ courts, loading, highlightedCourtId, onHighli
           <div
             ref={scrollContainerRef}
             className="flex-1 overflow-y-auto min-h-0"
+            data-vaul-no-drag
+            onPointerDownCapture={(e) => {
+              const target = e.currentTarget;
+              if (target.scrollTop > 0) {
+                e.stopPropagation();
+              }
+            }}
             style={{
               WebkitOverflowScrolling: "touch",
               overscrollBehaviorY: "contain",
