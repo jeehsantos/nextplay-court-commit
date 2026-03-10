@@ -1,10 +1,11 @@
 import { forwardRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu } from "lucide-react";
+import { Menu, Download, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 
 interface GuestNavbarProps {
   className?: string;
@@ -14,6 +15,7 @@ export const GuestNavbar = forwardRef<HTMLElement, GuestNavbarProps>(({ classNam
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { t } = useTranslation("common");
+  const { canInstall, isInstalled, promptInstall } = useInstallPrompt();
 
   const navLinks = [
     { label: t("nav.home"), href: "/" },
@@ -58,7 +60,7 @@ export const GuestNavbar = forwardRef<HTMLElement, GuestNavbarProps>(({ classNam
             </Button>
           </Link>
           <Link to="/auth?tab=signup" className="hidden sm:block">
-            <Button className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-blue-700">
+            <Button className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90">
               {t("nav.getStarted")}
             </Button>
           </Link>
@@ -92,8 +94,33 @@ export const GuestNavbar = forwardRef<HTMLElement, GuestNavbarProps>(({ classNam
                   </Button>
                 </Link>
                 <Link to="/auth?tab=signup" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700">{t("nav.getStarted")}</Button>
+                  <Button className="w-full bg-primary hover:bg-primary/90">{t("nav.getStarted")}</Button>
                 </Link>
+                {(canInstall || isInstalled) && (
+                  <>
+                    <hr className="my-1 border-border" />
+                    <Button
+                      variant={isInstalled ? "ghost" : "outline"}
+                      className="w-full justify-start gap-3"
+                      onClick={() => {
+                        if (canInstall) promptInstall();
+                      }}
+                      disabled={isInstalled}
+                    >
+                      {isInstalled ? (
+                        <>
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          App Installed
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-5 w-5" />
+                          Install App
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
               </div>
             </SheetContent>
           </Sheet>
