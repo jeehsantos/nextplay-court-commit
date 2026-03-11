@@ -113,6 +113,9 @@ export default function GameDetail() {
   const [profileMissingFields, setProfileMissingFields] = useState<string[]>([]);
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   
+  // Pay-for-players state
+  const [selectedPlayersToPay, setSelectedPlayersToPay] = useState<string[]>([]);
+  const [payForPlayersLoading, setPayForPlayersLoading] = useState(false);
   // Fetch user credits
   const { balance: credits, loading: loadingCredits, refetch: refetchCredits } = useUserCredits();
   
