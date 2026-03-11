@@ -173,8 +173,8 @@ const Landing = forwardRef<HTMLDivElement>((_props, ref) => {
           </div>
         </section>
 
-        <section className="py-8">
-          <div className="relative overflow-hidden bg-primary px-6 py-8 text-center text-primary-foreground shadow-2xl shadow-primary/25 md:px-10 md:py-12">
+        <section className="py-8" style={{ WebkitTransform: 'translateZ(0)', transform: 'translateZ(0)' }}>
+          <div className="relative overflow-hidden bg-primary px-6 py-8 text-center text-primary-foreground shadow-2xl shadow-primary/25 md:px-10 md:py-12" style={{ WebkitTransform: 'translateZ(0)', transform: 'translateZ(0)' }}>
             <div className="relative z-10">
               <h2 className="mb-6 text-4xl font-extrabold md:text-5xl">{t("cta.title")}</h2>
               <p className="mx-auto mb-10 max-w-2xl text-lg text-primary-foreground/80">{t("cta.description")}</p>
