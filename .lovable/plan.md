@@ -1,61 +1,52 @@
 
-Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-What I found (already verified):
-1) Data inconsistency exists now:
-   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
-   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
-2) `ManagerCourtFormNew` root causes:
-   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
-   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
-   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
-3) Backend side effect confirmed:
-   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
+## Investigation Results
 
-Implementation plan (execute in this order):
-1. Database integrity hardening + backfill (migration)
-   - Backfill: set `is_multi_court=true` for any court that already has children.
-   - Add DB validation trigger(s) on `courts` to enforce:
-     - child cannot reference itself
-     - child parent must be in same venue
-     - parent cannot be set `is_multi_court=false` while children exist
-     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
-   - This guarantees the bug cannot recur from any client path.
+**Root cause found.** The session `637890f4-...` has **not been auto-cancelled** because the `cancel_expired_unpaid_sessions` RPC only targets sessions where `court_availability.payment_status = 'pending'`. However, this session's court slot has `payment_status = 'completed'` — because one of the two players (user `b8468d17`) already paid.
 
-2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
-   - Remove direct `window.history.replaceState` usage.
-   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
-   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
-   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
+### Current data state:
+- **Payment deadline**: `2026-03-12 09:00 UTC` — already passed
+- **Court availability**: `payment_status = 'completed'`, `is_booked = true`
+- **Player 1** (`b8468d17`): payment `completed`, confirmed
+- **Player 2** (`845dab0f`): payment `pending`, confirmed
+- **Session**: `is_cancelled = false`, `state = rescue`
 
-3. Multi-court UI behavior safeguards
-   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
-   - Disable/harden turning off multi-court when children exist (with clear message).
-   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
+The cron RPC filter (`ca.payment_status = 'pending' AND s.payment_deadline < now()`) skips this session entirely because the slot was marked `completed` after the first player paid.
 
-4. Availability resilience (backend function)
-   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
-   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
+### The bug
+The `cancel_expired_unpaid_sessions` function assumes that if `payment_status = 'completed'` on the court slot, everything is fine. But in **split-payment sessions**, the slot can be marked `completed` after just one player pays, even though the session is not fully funded. When the deadline passes with remaining unpaid players, nothing happens.
 
-5. Verification I will perform (not asking you to test manually)
-   - DB checks:
-     - verify parent `57e11168...` becomes `is_multi_court=true`
-     - verify child links remain unchanged
-     - verify no rows exist with `children > 0 AND is_multi_court=false`
-   - Functional checks:
-     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
-   - UI checks:
-     - exercise add-sub-court flow and confirm:
-       - main court remains main
-       - child appears as child tab
-       - subsequent saves update correct court record
-       - no panel collapse/desync
+### Fix plan
 
-Technical details:
-- Files to update:
-  - `supabase/migrations/<new>.sql`
-  - `src/pages/manager/ManagerCourtFormNew.tsx`
-  - `supabase/functions/get-availability/index.ts`
-- No money/payment logic touched.
-- No auth model changes.
-- Existing routing and form schema preserved; this is a consistency + state synchronization fix.
+**1. Update `cancel_expired_unpaid_sessions` RPC** to also handle partially-funded split sessions past deadline:
+- Add a second loop that finds sessions where `payment_deadline < now()`, `is_cancelled = false`, `payment_type = 'split'`, and where `recalculate_and_maybe_confirm_session` returns `session_confirmed = false` (i.e., not fully funded).
+- For those sessions: refund paid players via credits (court_amount), create `held_credit_liabilities`, mark payments as `refunded`, release court slot, delete session players, cancel session, notify organizer.
+
+**2. Alternatively (simpler & safer)**: Modify the RPC to remove the `ca.payment_status = 'pending'` filter and instead check all overdue sessions. Then for each, determine if the session is fully funded:
+- If fully funded → skip (session is fine)
+- If not fully funded → cancel, refund paid players as credits, release slot
+
+This approach handles both scenarios (fully unpaid AND partially paid) in one pass.
+
+### Implementation details
+
+Update the `cancel_expired_unpaid_sessions` database function to:
+
+```sql
+-- For each overdue, non-cancelled session:
+--   1. Check if session is fully funded via recalculate_and_maybe_confirm_session
+--   2. If NOT fully funded:
+--      a. For each 'completed' payment: convert court_amount to credits, 
+--         create held_credit_liability, mark payment as 'refunded'
+--      b. Release court_availability slot
+--      c. Delete session_players
+--      d. Cancel session
+--      e. Notify organizer
+```
+
+### Files to modify
+- **Database migration**: Update `cancel_expired_unpaid_sessions` function to handle partially-funded split sessions
+
+### No frontend changes needed
+The existing UI (PaymentDeadlineWarning, GameDetail) already handles cancelled sessions correctly.
+
