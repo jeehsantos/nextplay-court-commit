@@ -134,6 +134,35 @@ export default function GameDetail() {
     }
   }, [id, user]);
 
+  useEffect(() => {
+    if (!user || !gameData) {
+      if (selectedPlayersToPay.length > 0) setSelectedPlayersToPay([]);
+      return;
+    }
+
+    const isOrganizer = gameData.group.organizer_id === user.id;
+    const isSplitPayment = gameData.session.payment_type === "split";
+
+    if (!isOrganizer || !isSplitPayment) {
+      if (selectedPlayersToPay.length > 0) setSelectedPlayersToPay([]);
+      return;
+    }
+
+    const unpaidPlayerIds = new Set(
+      gameData.players
+        .filter((player) => !player.isPaid && player.user_id !== user.id)
+        .map((player) => player.user_id)
+    );
+
+    const nextSelection = selectedPlayersToPay.filter((playerId) =>
+      unpaidPlayerIds.has(playerId)
+    );
+
+    if (nextSelection.length !== selectedPlayersToPay.length) {
+      setSelectedPlayersToPay(nextSelection);
+    }
+  }, [gameData, user, selectedPlayersToPay]);
+
   const fetchGameData = async () => {
     if (!id || !user) return;
 
