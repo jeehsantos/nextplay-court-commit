@@ -134,6 +134,35 @@ export default function GameDetail() {
     }
   }, [id, user]);
 
+  useEffect(() => {
+    if (!user || !gameData) {
+      if (selectedPlayersToPay.length > 0) setSelectedPlayersToPay([]);
+      return;
+    }
+
+    const isOrganizer = gameData.group.organizer_id === user.id;
+    const isSplitPayment = gameData.session.payment_type === "split";
+
+    if (!isOrganizer || !isSplitPayment) {
+      if (selectedPlayersToPay.length > 0) setSelectedPlayersToPay([]);
+      return;
+    }
+
+    const unpaidPlayerIds = new Set(
+      gameData.players
+        .filter((player) => !player.isPaid && player.user_id !== user.id)
+        .map((player) => player.user_id)
+    );
+
+    const nextSelection = selectedPlayersToPay.filter((playerId) =>
+      unpaidPlayerIds.has(playerId)
+    );
+
+    if (nextSelection.length !== selectedPlayersToPay.length) {
+      setSelectedPlayersToPay(nextSelection);
+    }
+  }, [gameData, user, selectedPlayersToPay]);
+
   const fetchGameData = async () => {
     if (!id || !user) return;
 
@@ -175,36 +204,50 @@ export default function GameDetail() {
         sportCategory = await getSportCategory(groupData.sport_type);
       }
 
-      // Fetch players with profiles
+      // Fetch players
       const { data: playersData } = await supabase
         .from("session_players")
         .select("*")
         .eq("session_id", id)
         .order("joined_at", { ascending: true });
 
-      const playersWithProfiles = await Promise.all(
-        (playersData || []).map(async (player) => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("user_id", player.user_id)
-            .maybeSingle();
-          
-          // Check payment status
-          const { data: payment } = await supabase
-            .from("payments")
-            .select("status")
-            .eq("session_id", id)
-            .eq("user_id", player.user_id)
-            .maybeSingle();
+      const playerIds = (playersData || []).map((player) => player.user_id);
 
-          return { 
-            ...player, 
-            profile: profile || undefined, 
-            isPaid: payment?.status === "completed" || payment?.status === "transferred" 
-          };
-        })
+      const [{ data: profilesData, error: profilesError }, { data: paymentsData, error: paymentsError }] =
+        await Promise.all([
+          playerIds.length > 0
+            ? supabase.from("profiles").select("*").in("user_id", playerIds)
+            : Promise.resolve({ data: [], error: null }),
+          playerIds.length > 0
+            ? supabase
+                .from("payments")
+                .select("user_id, status")
+                .eq("session_id", id)
+                .in("user_id", playerIds)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+
+      if (profilesError) throw profilesError;
+      if (paymentsError) throw paymentsError;
+
+      const profileByUserId = new Map(
+        (profilesData || []).map((profile) => [profile.user_id, profile as Profile])
       );
+      const paidByUserId = new Map<string, boolean>();
+
+      for (const payment of paymentsData || []) {
+        if (payment.status === "completed" || payment.status === "transferred") {
+          paidByUserId.set(payment.user_id, true);
+        } else if (!paidByUserId.has(payment.user_id)) {
+          paidByUserId.set(payment.user_id, false);
+        }
+      }
+
+      const playersWithProfiles = (playersData || []).map((player) => ({
+        ...player,
+        profile: profileByUserId.get(player.user_id),
+        isPaid: paidByUserId.get(player.user_id) ?? false,
+      }));
 
       // Separate confirmed players and waiting list based on max_players
       const confirmedPlayers = playersWithProfiles.slice(0, sessionData.max_players);
@@ -682,14 +725,31 @@ export default function GameDetail() {
   // No manual frontend confirmation is allowed.
 
   const handlePayForPlayers = async () => {
-    if (!gameData || !id || !user || selectedPlayersToPay.length === 0) return;
+    if (!gameData || !id || !user) return;
+
+    const unpaidPlayerIds = new Set(
+      gameData.players
+        .filter((player) => !player.isPaid && player.user_id !== user.id)
+        .map((player) => player.user_id)
+    );
+    const validSelectedPlayerIds = selectedPlayersToPay.filter((playerId) =>
+      unpaidPlayerIds.has(playerId)
+    );
+
+    if (validSelectedPlayerIds.length === 0) {
+      toast({
+        title: "No unpaid players selected",
+        description: "Select at least one unpaid player to continue.",
+      });
+      return;
+    }
 
     setPayForPlayersLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-payment-for-players", {
         body: {
           sessionId: id,
-          playerUserIds: selectedPlayersToPay,
+          playerUserIds: validSelectedPlayerIds,
           origin: window.location.origin,
           returnUrl: `/games/${id}`,
         },
@@ -1206,32 +1266,27 @@ const getGoogleMapsUrl = (address: string): string => {
 
           {/* Pay for Players - Organizer only, split payment, unpaid players exist */}
           {isOrganizer && !isGamePast && session.payment_type === "split" && (() => {
-            const unpaidPlayers = players.filter(p => !p.isPaid && p.user_id !== user.id);
-            if (unpaidPlayers.length === 0) {
-              // Clear any stale selections
-              if (selectedPlayersToPay.length > 0) setSelectedPlayersToPay([]);
-              return null;
-            }
-            const unpaidIds = new Set(unpaidPlayers.map(p => p.user_id));
-            const validSelections = selectedPlayersToPay.filter(id => unpaidIds.has(id));
-            if (validSelections.length !== selectedPlayersToPay.length) {
-              // Prune stale selections on next tick to avoid render-time setState
-              setTimeout(() => setSelectedPlayersToPay(validSelections), 0);
-            }
+            const unpaidPlayers = players.filter((p) => !p.isPaid && p.user_id !== user.id);
+            if (unpaidPlayers.length === 0) return null;
+
+            const unpaidIds = new Set(unpaidPlayers.map((p) => p.user_id));
+            const selectedUnpaidPlayerIds = selectedPlayersToPay.filter((playerId) =>
+              unpaidIds.has(playerId)
+            );
 
             const togglePlayer = (playerId: string) => {
-              setSelectedPlayersToPay(prev =>
+              setSelectedPlayersToPay((prev) =>
                 prev.includes(playerId)
-                  ? prev.filter(id => id !== playerId)
+                  ? prev.filter((id) => id !== playerId)
                   : [...prev, playerId]
               );
             };
 
             const selectAll = () => {
-              if (selectedPlayersToPay.length === unpaidPlayers.length) {
+              if (selectedUnpaidPlayerIds.length === unpaidPlayers.length) {
                 setSelectedPlayersToPay([]);
               } else {
-                setSelectedPlayersToPay(unpaidPlayers.map(p => p.user_id));
+                setSelectedPlayersToPay(unpaidPlayers.map((p) => p.user_id));
               }
             };
 
@@ -1252,7 +1307,7 @@ const getGoogleMapsUrl = (address: string): string => {
                   <div className="flex items-center gap-2 pb-1">
                     <Checkbox
                       id="select-all-players"
-                      checked={selectedPlayersToPay.length === unpaidPlayers.length}
+                      checked={selectedUnpaidPlayerIds.length === unpaidPlayers.length}
                       onCheckedChange={selectAll}
                     />
                     <label htmlFor="select-all-players" className="text-sm font-medium cursor-pointer">
@@ -1269,7 +1324,7 @@ const getGoogleMapsUrl = (address: string): string => {
                         onClick={() => togglePlayer(player.user_id)}
                       >
                         <Checkbox
-                          checked={selectedPlayersToPay.includes(player.user_id)}
+                          checked={selectedUnpaidPlayerIds.includes(player.user_id)}
                           onCheckedChange={() => togglePlayer(player.user_id)}
                         />
                         <Avatar className="h-8 w-8">
@@ -1289,14 +1344,14 @@ const getGoogleMapsUrl = (address: string): string => {
                   </div>
 
                   {/* Summary & Pay Button */}
-                  {selectedPlayersToPay.length > 0 && (
+                  {selectedUnpaidPlayerIds.length > 0 && (
                     <div className="pt-2 border-t space-y-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">
-                          {selectedPlayersToPay.length} player{selectedPlayersToPay.length > 1 ? "s" : ""} × ${totalPerPlayer.toFixed(2)}
+                          {selectedUnpaidPlayerIds.length} player{selectedUnpaidPlayerIds.length > 1 ? "s" : ""} × ${totalPerPlayer.toFixed(2)}
                         </span>
                         <span className="font-semibold">
-                          ${(selectedPlayersToPay.length * totalPerPlayer).toFixed(2)} + fees
+                          ${(selectedUnpaidPlayerIds.length * totalPerPlayer).toFixed(2)} + fees
                         </span>
                       </div>
                       <Button
@@ -1305,7 +1360,7 @@ const getGoogleMapsUrl = (address: string): string => {
                         disabled={payForPlayersLoading}
                       >
                         {payForPlayersLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Pay for {selectedPlayersToPay.length} Player{selectedPlayersToPay.length > 1 ? "s" : ""}
+                        Pay for {selectedUnpaidPlayerIds.length} Player{selectedUnpaidPlayerIds.length > 1 ? "s" : ""}
                       </Button>
                     </div>
                   )}
