@@ -725,14 +725,31 @@ export default function GameDetail() {
   // No manual frontend confirmation is allowed.
 
   const handlePayForPlayers = async () => {
-    if (!gameData || !id || !user || selectedPlayersToPay.length === 0) return;
+    if (!gameData || !id || !user) return;
+
+    const unpaidPlayerIds = new Set(
+      gameData.players
+        .filter((player) => !player.isPaid && player.user_id !== user.id)
+        .map((player) => player.user_id)
+    );
+    const validSelectedPlayerIds = selectedPlayersToPay.filter((playerId) =>
+      unpaidPlayerIds.has(playerId)
+    );
+
+    if (validSelectedPlayerIds.length === 0) {
+      toast({
+        title: "No unpaid players selected",
+        description: "Select at least one unpaid player to continue.",
+      });
+      return;
+    }
 
     setPayForPlayersLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-payment-for-players", {
         body: {
           sessionId: id,
-          playerUserIds: selectedPlayersToPay,
+          playerUserIds: validSelectedPlayerIds,
           origin: window.location.origin,
           returnUrl: `/games/${id}`,
         },
