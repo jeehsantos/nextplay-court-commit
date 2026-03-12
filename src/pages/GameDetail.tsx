@@ -1307,7 +1307,7 @@ const getGoogleMapsUrl = (address: string): string => {
                   <div className="flex items-center gap-2 pb-1">
                     <Checkbox
                       id="select-all-players"
-                      checked={selectedPlayersToPay.length === unpaidPlayers.length}
+                      checked={selectedUnpaidPlayerIds.length === unpaidPlayers.length}
                       onCheckedChange={selectAll}
                     />
                     <label htmlFor="select-all-players" className="text-sm font-medium cursor-pointer">
@@ -1324,7 +1324,7 @@ const getGoogleMapsUrl = (address: string): string => {
                         onClick={() => togglePlayer(player.user_id)}
                       >
                         <Checkbox
-                          checked={selectedPlayersToPay.includes(player.user_id)}
+                          checked={selectedUnpaidPlayerIds.includes(player.user_id)}
                           onCheckedChange={() => togglePlayer(player.user_id)}
                         />
                         <Avatar className="h-8 w-8">
@@ -1344,14 +1344,14 @@ const getGoogleMapsUrl = (address: string): string => {
                   </div>
 
                   {/* Summary & Pay Button */}
-                  {selectedPlayersToPay.length > 0 && (
+                  {selectedUnpaidPlayerIds.length > 0 && (
                     <div className="pt-2 border-t space-y-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">
-                          {selectedPlayersToPay.length} player{selectedPlayersToPay.length > 1 ? "s" : ""} × ${totalPerPlayer.toFixed(2)}
+                          {selectedUnpaidPlayerIds.length} player{selectedUnpaidPlayerIds.length > 1 ? "s" : ""} × ${totalPerPlayer.toFixed(2)}
                         </span>
                         <span className="font-semibold">
-                          ${(selectedPlayersToPay.length * totalPerPlayer).toFixed(2)} + fees
+                          ${(selectedUnpaidPlayerIds.length * totalPerPlayer).toFixed(2)} + fees
                         </span>
                       </div>
                       <Button
@@ -1360,7 +1360,7 @@ const getGoogleMapsUrl = (address: string): string => {
                         disabled={payForPlayersLoading}
                       >
                         {payForPlayersLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Pay for {selectedPlayersToPay.length} Player{selectedPlayersToPay.length > 1 ? "s" : ""}
+                        Pay for {selectedUnpaidPlayerIds.length} Player{selectedUnpaidPlayerIds.length > 1 ? "s" : ""}
                       </Button>
                     </div>
                   )}
