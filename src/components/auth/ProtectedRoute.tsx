@@ -13,6 +13,7 @@ type AppRole = Database["public"]["Enums"]["app_role"];
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRole?: AppRole;
+  allowedRoles?: AppRole[];
   redirectTo?: string;
   requireCompleteProfile?: boolean;
 }
