@@ -126,9 +126,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (!isLoading && user && userRole && !window.location.pathname.includes('/auth')) {
-      const redirectPath = localStorage.getItem('redirectAfterAuth');
-      if (redirectPath) {localStorage.removeItem('redirectAfterAuth');navigate(redirectPath, { replace: true });} else
-      navigate(getDefaultPathForRole(userRole), { replace: true });
+      navigate(getRedirectPath(userRole), { replace: true });
     }
   }, [user, userRole, isLoading, navigate]);
 
