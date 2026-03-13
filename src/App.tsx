@@ -80,20 +80,20 @@ const App = () => (
               <Route path="/courts/:id" element={<CourtDetail />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
               {/* Manager Routes */}
-              <Route path="/manager" element={<ManagerDashboard />} />
-              <Route path="/manager/venues" element={<ManagerVenues />} />
-              <Route path="/manager/venues/new" element={<ManagerVenueForm />} />
-              <Route path="/manager/venues/:venueId/edit" element={<ManagerVenueForm />} />
-              <Route path="/manager/venues/:venueId/courts" element={<ManagerCourts />} />
-              <Route path="/manager/venues/:venueId/courts/new" element={<ManagerCourtForm />} />
-              <Route path="/manager/venues/:venueId/courts/:courtId/edit" element={<ManagerCourtForm />} />
-              <Route path="/manager/courts" element={<ManagerCourtsNew />} />
-              <Route path="/manager/courts/new" element={<ManagerCourtFormNew />} />
-              <Route path="/manager/courts/:id/edit" element={<ManagerCourtFormNew />} />
-              <Route path="/manager/availability" element={<ManagerAvailability />} />
-              <Route path="/manager/equipment" element={<ManagerEquipment />} />
-              <Route path="/manager/bookings" element={<ManagerBookings />} />
-              <Route path="/manager/settings" element={<ManagerSettings />} />
+              <Route path="/manager" element={<ProtectedRoute requiredRole="court_manager"><ManagerDashboard /></ProtectedRoute>} />
+              <Route path="/manager/venues" element={<ProtectedRoute requiredRole="court_manager"><ManagerVenues /></ProtectedRoute>} />
+              <Route path="/manager/venues/new" element={<ProtectedRoute requiredRole="court_manager"><ManagerVenueForm /></ProtectedRoute>} />
+              <Route path="/manager/venues/:venueId/edit" element={<ProtectedRoute requiredRole="court_manager"><ManagerVenueForm /></ProtectedRoute>} />
+              <Route path="/manager/venues/:venueId/courts" element={<ProtectedRoute requiredRole="court_manager"><ManagerCourts /></ProtectedRoute>} />
+              <Route path="/manager/venues/:venueId/courts/new" element={<ProtectedRoute requiredRole="court_manager"><ManagerCourtForm /></ProtectedRoute>} />
+              <Route path="/manager/venues/:venueId/courts/:courtId/edit" element={<ProtectedRoute requiredRole="court_manager"><ManagerCourtForm /></ProtectedRoute>} />
+              <Route path="/manager/courts" element={<ProtectedRoute requiredRole="court_manager"><ManagerCourtsNew /></ProtectedRoute>} />
+              <Route path="/manager/courts/new" element={<ProtectedRoute requiredRole="court_manager"><ManagerCourtFormNew /></ProtectedRoute>} />
+              <Route path="/manager/courts/:id/edit" element={<ProtectedRoute requiredRole="court_manager"><ManagerCourtFormNew /></ProtectedRoute>} />
+              <Route path="/manager/availability" element={<ProtectedRoute requiredRole="court_manager"><ManagerAvailability /></ProtectedRoute>} />
+              <Route path="/manager/equipment" element={<ProtectedRoute requiredRole="court_manager"><ManagerEquipment /></ProtectedRoute>} />
+              <Route path="/manager/bookings" element={<ProtectedRoute requiredRole="court_manager"><ManagerBookings /></ProtectedRoute>} />
+              <Route path="/manager/settings" element={<ProtectedRoute requiredRole="court_manager"><ManagerSettings /></ProtectedRoute>} />
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminUsers />} />
