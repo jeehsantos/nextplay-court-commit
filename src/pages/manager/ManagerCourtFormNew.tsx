@@ -77,6 +77,7 @@ export default function ManagerCourtFormNew() {
   const { id } = useParams<{ id: string }>();
   const isEditing = id && id !== "new";
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
