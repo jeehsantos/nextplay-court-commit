@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,7 @@ export default function ManagerCourtsNew() {
   const { t } = useTranslation("manager");
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { data: stripeStatus, isLoading: stripeLoading } = useManagerStripeReady();
   const [venueGroups, setVenueGroups] = useState<VenueWithCourts[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +74,7 @@ export default function ManagerCourtsNew() {
   const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
   const [editingVenueName, setEditingVenueName] = useState("");
   const [savingVenueName, setSavingVenueName] = useState(false);
+  const [addCourtVenue, setAddCourtVenue] = useState<{ venue: Venue; courts: Court[] } | null>(null);
 
   const startEditingVenue = (venue: Venue) => {
     setEditingVenueId(venue.id);
@@ -310,12 +312,25 @@ export default function ManagerCourtsNew() {
                         {venue.city}
                       </div>
                     </div>
-                    <Link to={`/manager/courts/new?venue_id=${venue.id}`}>
-                      <Button variant="outline" size="sm" className="gap-1.5" disabled={!stripeStatus?.isReady}>
-                        <Plus className="h-3.5 w-3.5" />
-                        {t("courts.addCourt")}
-                      </Button>
-                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={!stripeStatus?.isReady}
+                      onClick={() => {
+                        // Filter to only main courts (no parent_court_id) for parent selection
+                        const mainCourts = courts.filter(c => !c.parent_court_id);
+                        if (mainCourts.length === 0) {
+                          // No courts yet — create the first court for this venue
+                          navigate(`/manager/courts/new?venue_id=${venue.id}`);
+                        } else {
+                          setAddCourtVenue({ venue, courts: mainCourts });
+                        }
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      {t("courts.addCourt")}
+                    </Button>
                   </div>
 
                   {/* Courts Grid */}
@@ -423,6 +438,43 @@ export default function ManagerCourtsNew() {
                 {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 {t("courts.deleteTitle")}
               </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Select Parent Court Dialog */}
+        <AlertDialog open={!!addCourtVenue} onOpenChange={(open) => !open && setAddCourtVenue(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("courts.selectMainCourt", "Select Main Court")}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("courts.selectMainCourtDesc", "Choose the main court that the new sub-court will belong to. This enables multi-court configuration.")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2 py-2">
+              {addCourtVenue?.courts.map((court) => (
+                <button
+                  key={court.id}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors text-left"
+                  onClick={() => {
+                    setAddCourtVenue(null);
+                    navigate(`/manager/courts/${court.id}/edit?add_subcourt=true`);
+                  }}
+                >
+                  <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
+                    <SportIcon sport={court.allowed_sports?.[0] || "other"} size="sm" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{court.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {getSportLabel(court.allowed_sports?.[0] || "other")} · ${court.hourly_rate.toFixed(2)}/hr
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("courts.cancel")}</AlertDialogCancel>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

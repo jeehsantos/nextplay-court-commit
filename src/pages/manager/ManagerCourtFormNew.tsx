@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
@@ -77,6 +77,7 @@ export default function ManagerCourtFormNew() {
   const { id } = useParams<{ id: string }>();
   const isEditing = id && id !== "new";
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -216,6 +217,27 @@ export default function ManagerCourtFormNew() {
       setIsAddingNewSubCourt(false);
     }
   }, [isEditing, id]);
+
+  // Auto-trigger add sub-court when navigated with ?add_subcourt=true
+  const [hasTriggeredAddSubCourt, setHasTriggeredAddSubCourt] = useState(false);
+  useEffect(() => {
+    if (
+      searchParams.get("add_subcourt") === "true" &&
+      !hasTriggeredAddSubCourt &&
+      isEditing &&
+      existingVenueId &&
+      effectiveParentId &&
+      venueCourts.length > 0 &&
+      !loading
+    ) {
+      setHasTriggeredAddSubCourt(true);
+      // Remove the query param so it doesn't re-trigger
+      searchParams.delete("add_subcourt");
+      setSearchParams(searchParams, { replace: true });
+      // Trigger add sub-court
+      handleAddSubCourt();
+    }
+  }, [searchParams, hasTriggeredAddSubCourt, isEditing, existingVenueId, effectiveParentId, venueCourts, loading]);
 
   const fetchCourt = async (courtId: string) => {
     try {
