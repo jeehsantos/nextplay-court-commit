@@ -312,12 +312,25 @@ export default function ManagerCourtsNew() {
                         {venue.city}
                       </div>
                     </div>
-                    <Link to={`/manager/courts/new?venue_id=${venue.id}`}>
-                      <Button variant="outline" size="sm" className="gap-1.5" disabled={!stripeStatus?.isReady}>
-                        <Plus className="h-3.5 w-3.5" />
-                        {t("courts.addCourt")}
-                      </Button>
-                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={!stripeStatus?.isReady}
+                      onClick={() => {
+                        // Filter to only main courts (no parent_court_id) for parent selection
+                        const mainCourts = courts.filter(c => !c.parent_court_id);
+                        if (mainCourts.length === 0) {
+                          // No courts yet — create the first court for this venue
+                          navigate(`/manager/courts/new?venue_id=${venue.id}`);
+                        } else {
+                          setAddCourtVenue({ venue, courts: mainCourts });
+                        }
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      {t("courts.addCourt")}
+                    </Button>
                   </div>
 
                   {/* Courts Grid */}
