@@ -600,32 +600,45 @@ export default function ManagerCourtFormNew() {
           <StripeSetupAlert hasVenues={stripeStatus?.hasVenues ?? false} />
         )}
 
-        {/* Mobile: Preview Panel at top */}
-        <div className="lg:hidden">
-          <MobilePreviewPanel
-            isEditing={!!isEditing}
-            isMultiCourt={isMultiCourt}
-            showMultiCourtConfig={showMultiCourtConfig}
-            hasChildren={hasChildren}
-            tabCourts={tabCourts}
-            selectedTabCourtId={selectedTabCourtId}
-            isAddingNewSubCourt={isAddingNewSubCourt}
-            effectiveParentId={effectiveParentId}
-            activeCourt={activeCourt}
-            parentCourt={parentCourt}
-            isActiveTabParent={isActiveTabParent}
-            previewName={previewName}
-            previewRate={previewRate}
-            previewSurface={previewSurface}
-            previewPhoto={previewPhoto}
-            groundTypeLabels={groundTypeLabels}
-            onTabClick={loadCourtDataIntoForm}
-            onAddSubCourt={handleAddSubCourt}
-            onToggleMultiCourt={handleMultiCourtToggle}
-            venueName={venueName}
-            onVenueNameChange={setVenueName}
-          />
-        </div>
+        {/* Multi-court tabs (mobile) */}
+        {isEditing && showMultiCourtConfig && (
+          <div className="lg:hidden">
+            <Card className="rounded-2xl border border-border shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex gap-2 flex-wrap">
+                  {tabCourts.map((court, index) => (
+                    <button
+                      key={court.id}
+                      type="button"
+                      onClick={() => loadCourtDataIntoForm(court)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        !isAddingNewSubCourt && selectedTabCourtId === court.id
+                          ? "bg-primary/10 text-primary border-primary"
+                          : "bg-muted text-muted-foreground border-border"
+                      }`}
+                    >
+                      {index === 0 ? "Main" : court.name}
+                    </button>
+                  ))}
+                  {isAddingNewSubCourt && (
+                    <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary">
+                      New
+                    </span>
+                  )}
+                  {!isAddingNewSubCourt && (
+                    <button
+                      type="button"
+                      onClick={handleAddSubCourt}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium border border-dashed border-muted-foreground/40 text-muted-foreground flex items-center gap-1"
+                    >
+                      <Plus className="h-3 w-3" /> Add
+                    </button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Two Column Layout */}
         <div className="flex gap-8 items-start max-w-[1600px] mx-auto w-full">
