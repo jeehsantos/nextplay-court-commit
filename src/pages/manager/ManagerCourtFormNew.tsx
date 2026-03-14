@@ -535,22 +535,6 @@ export default function ManagerCourtFormNew() {
     setValue("is_multi_court", checked);
   };
 
-  if (loading) {
-    return (
-      <ManagerLayout>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </ManagerLayout>
-    );
-  }
-
-  // Preview court data for right panel
-  const previewName = watchedName || "Unnamed Court";
-  const previewRate = watchedRate || 0;
-  const previewSurface = groundTypeLabels[watchedGroundType] || watchedGroundType || "-";
-  const previewPhoto = watchedPhotoUrls?.[0] || null;
-
   // Determine label for active court
   const activeIsSubCourt = isAddingNewSubCourt || (activeCourt?.parent_court_id != null);
 
