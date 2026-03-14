@@ -1042,7 +1042,6 @@ export default function ManagerCourtFormNew() {
   );
 }
 
-  isEditing: boolean;
   isMultiCourt: boolean;
   showMultiCourtConfig: boolean;
   hasChildren: boolean;
