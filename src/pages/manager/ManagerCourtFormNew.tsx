@@ -186,10 +186,6 @@ export default function ManagerCourtFormNew() {
   const paymentTiming = watch("payment_timing");
   const paymentHoursBefore = watch("payment_hours_before");
   const isMultiCourt = watch("is_multi_court");
-  const watchedName = watch("name");
-  const watchedRate = watch("hourly_rate");
-  const watchedGroundType = watch("ground_type");
-  const watchedPhotoUrls = watch("photo_urls");
 
   useEffect(() => {
     if (selectedCity) {
