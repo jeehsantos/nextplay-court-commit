@@ -117,36 +117,26 @@ export default function ManagerCourtsNew() {
         .eq("id", editVenue.venue.id);
       if (venueError) throw venueError;
 
-      // 2. Update main court designation if changed
-      const mainCourts = editVenue.courts.filter(c => !c.parent_court_id);
-      if (editMainCourtId && mainCourts.length > 0) {
-        // Set the selected court as main (is_multi_court=true, parent_court_id=null)
+      // 2. Update main court designation if changed and venue has multiple courts
+      if (editMainCourtId && editVenue.courts.length > 1) {
+        // Promote selected court: clear parent, set is_multi_court=true
         const { error: mainError } = await supabase
           .from("courts")
           .update({ is_multi_court: true, parent_court_id: null } as any)
           .eq("id", editMainCourtId);
         if (mainError) throw mainError;
 
-        // Set all OTHER top-level courts to have parent_court_id = mainCourtId
-        const otherTopLevel = mainCourts.filter(c => c.id !== editMainCourtId);
-        for (const court of otherTopLevel) {
+        // All other courts become sub-courts of the new main
+        const otherCourtIds = editVenue.courts
+          .filter(c => c.id !== editMainCourtId)
+          .map(c => c.id);
+
+        if (otherCourtIds.length > 0) {
           const { error } = await supabase
             .from("courts")
-            .update({ parent_court_id: editMainCourtId } as any)
-            .eq("id", court.id);
+            .update({ parent_court_id: editMainCourtId, is_multi_court: false } as any)
+            .in("id", otherCourtIds);
           if (error) throw error;
-        }
-
-        // Also update existing sub-courts to point to new main
-        const existingChildren = editVenue.courts.filter(c => c.parent_court_id);
-        for (const court of existingChildren) {
-          if (court.parent_court_id !== editMainCourtId) {
-            const { error } = await supabase
-              .from("courts")
-              .update({ parent_court_id: editMainCourtId } as any)
-              .eq("id", court.id);
-            if (error) throw error;
-          }
         }
       }
 
@@ -573,25 +563,23 @@ export default function ManagerCourtsNew() {
 
                   {/* Court Selection Chips */}
                   <div className="flex flex-wrap gap-2">
-                    {editVenue.courts
-                      .filter(c => !c.parent_court_id || c.id === editMainCourtId)
-                      .map((court) => {
-                        const isSelected = editMainCourtId === court.id;
-                        return (
-                          <button
-                            key={court.id}
-                            type="button"
-                            onClick={() => setEditMainCourtId(isSelected ? null : court.id)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                              isSelected
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border bg-muted/50 text-foreground hover:border-primary/50"
-                            }`}
-                          >
-                            {court.name}
-                          </button>
-                        );
-                      })}
+                    {editVenue.courts.map((court) => {
+                      const isSelected = editMainCourtId === court.id;
+                      return (
+                        <button
+                          key={court.id}
+                          type="button"
+                          onClick={() => setEditMainCourtId(court.id)}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                            isSelected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-muted/50 text-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {court.name}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {/* Court Preview Cards */}
