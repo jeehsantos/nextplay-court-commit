@@ -542,18 +542,18 @@ export default function ManagerCourtsNew() {
 
         {/* Venue Edit Dialog */}
         <Dialog open={!!editVenue} onOpenChange={(open) => !open && setEditVenue(null)}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Venue Settings</DialogTitle>
               <DialogDescription>
-                Edit venue name, designate a main court, or delete this venue.
+                Manage venue details, court configuration, and deletion.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-5 py-2">
               {/* Venue Name */}
               <div className="space-y-1.5">
-                <Label>Venue Name</Label>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Venue Name</Label>
                 <Input
                   value={editVenueName}
                   onChange={(e) => setEditVenueName(e.target.value)}
@@ -561,31 +561,93 @@ export default function ManagerCourtsNew() {
                 />
               </div>
 
-              {/* Main Court Selection */}
+              {/* Multi-Court Configuration */}
               {editVenue && editVenue.courts.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Main Court</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Select which court is the main court. Other courts will become sub-courts.
-                  </p>
-                  <RadioGroup
-                    value={editMainCourtId || ""}
-                    onValueChange={(value) => setEditMainCourtId(value)}
-                  >
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Main Court</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Select which court is the main court to enable multi-court setup.
+                    </p>
+                  </div>
+
+                  {/* Court Selection Chips */}
+                  <div className="flex flex-wrap gap-2">
                     {editVenue.courts
                       .filter(c => !c.parent_court_id || c.id === editMainCourtId)
-                      .map((court) => (
-                        <div key={court.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                          <RadioGroupItem value={court.id} id={`court-${court.id}`} />
-                          <Label htmlFor={`court-${court.id}`} className="flex-1 cursor-pointer">
-                            <span className="font-medium text-sm">{court.name}</span>
-                            <span className="text-xs text-muted-foreground ml-2">
-                              ${court.hourly_rate.toFixed(2)}/hr
-                            </span>
-                          </Label>
+                      .map((court) => {
+                        const isSelected = editMainCourtId === court.id;
+                        return (
+                          <button
+                            key={court.id}
+                            type="button"
+                            onClick={() => setEditMainCourtId(isSelected ? null : court.id)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                              isSelected
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-muted/50 text-foreground hover:border-primary/50"
+                            }`}
+                          >
+                            {court.name}
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  {/* Court Preview Cards */}
+                  <div className="space-y-2">
+                    {editVenue.courts.map((court) => {
+                      const isMain = editMainCourtId === court.id;
+                      const isSubCourt = !!court.parent_court_id && court.id !== editMainCourtId;
+                      return (
+                        <div
+                          key={court.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                            isMain ? "border-primary bg-primary/5" : "border-border"
+                          }`}
+                        >
+                          {/* Court Thumbnail */}
+                          <div className="h-14 w-20 rounded-md bg-muted overflow-hidden flex-shrink-0">
+                            {court.photo_url ? (
+                              <img
+                                src={court.photo_url}
+                                alt={court.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <SportIcon sport={court.allowed_sports?.[0] || "other"} size="sm" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Court Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                                {isMain ? "Main Court" : isSubCourt ? "Sub-Court" : "Court"}
+                              </span>
+                            </div>
+                            <p className="font-semibold text-sm text-primary truncate">{court.name}</p>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                              <span className="flex items-center gap-0.5">
+                                <DollarSign className="h-3 w-3" />
+                                {court.hourly_rate.toFixed(2)}/hr
+                              </span>
+                              <span>{court.is_indoor ? "Indoor" : "Outdoor"}</span>
+                            </div>
+                          </div>
+
+                          {/* Main badge */}
+                          {isMain && (
+                            <Badge variant="default" className="text-[10px] flex-shrink-0">
+                              Main
+                            </Badge>
+                          )}
                         </div>
-                      ))}
-                  </RadioGroup>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -607,11 +669,11 @@ export default function ManagerCourtsNew() {
               </div>
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditVenue(null)}>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setEditVenue(null)} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button onClick={saveVenueEdit} disabled={savingVenueEdit}>
+              <Button onClick={saveVenueEdit} disabled={savingVenueEdit} className="w-full sm:w-auto">
                 {savingVenueEdit && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Save Changes
               </Button>
