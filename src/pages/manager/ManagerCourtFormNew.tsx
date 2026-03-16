@@ -256,10 +256,6 @@ export default function ManagerCourtFormNew() {
         photo_urls: (data as any).photo_urls || (data.photo_url ? [data.photo_url] : []),
         description: "",
         rules: (data as any).rules || "",
-        address: data.venue?.address || "",
-        city: data.venue?.city || "",
-        suburb: data.venue?.suburb || "",
-        country: data.venue?.country || "New Zealand",
         payment_timing: (data.payment_timing as any) || "at_booking",
         payment_hours_before: data.payment_hours_before || 24,
       });
