@@ -57,7 +57,7 @@ export default function ManagerVenues() {
               <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="font-semibold text-lg mb-2">{t("venues.noVenuesYet")}</h3>
               <p className="text-muted-foreground mb-4">{t("venues.noVenuesDesc")}</p>
-              <Link to="/manager/venues/new"><Button>{t("venues.addFirstVenue")}</Button></Link>
+              <Link to="/manager/venues/new"><Button disabled={!stripeReady}>{t("venues.addFirstVenue")}</Button></Link>
             </CardContent>
           </Card>
         ) : (
