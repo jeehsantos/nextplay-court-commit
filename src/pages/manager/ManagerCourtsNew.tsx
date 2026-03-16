@@ -102,8 +102,11 @@ export default function ManagerCourtsNew() {
   const [newVenueName, setNewVenueName] = useState("");
   const [newVenueAddress, setNewVenueAddress] = useState("");
   const [newVenueCity, setNewVenueCity] = useState("");
+  const [newVenueSuburb, setNewVenueSuburb] = useState("");
   const [creatingVenue, setCreatingVenue] = useState(false);
   const venueFormRef = useRef<HTMLDivElement>(null);
+
+  const availableSuburbs = newVenueCity ? getSuburbsForCity(newVenueCity) : [];
 
   const handleCreateVenue = async () => {
     const trimmedName = newVenueName.trim();
@@ -120,6 +123,8 @@ export default function ManagerCourtsNew() {
           name: trimmedName,
           address: trimmedAddress,
           city: newVenueCity,
+          suburb: newVenueSuburb || null,
+          country: "New Zealand",
           owner_id: user!.id,
         })
         .select("id, name, city, address")
@@ -129,6 +134,7 @@ export default function ManagerCourtsNew() {
       setNewVenueName("");
       setNewVenueAddress("");
       setNewVenueCity("");
+      setNewVenueSuburb("");
       setShowAddVenueForm(false);
       toast({ title: t("courts.venueCreated") });
     } catch (error: any) {
