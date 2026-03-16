@@ -32,6 +32,17 @@ const Index = forwardRef<HTMLDivElement>((_props, ref) => {
     return <Landing />;
   }
 
+  // User is logged in but role not resolved yet (or null) — 
+  // if stuck for too long, redirect to a safe default
+  if (!userRole) {
+    return (
+      <div ref={ref} className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Fallback: role loaded but no redirect matched above — go to courts
   return (
     <div ref={ref} className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />

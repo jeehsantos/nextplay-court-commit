@@ -159,7 +159,7 @@ export default function Auth() {
   }, [user, userRole, isLoading]);
 
   useEffect(() => {
-    if (!isLoading && user && userRole && !window.location.pathname.includes('/auth')) {
+    if (!isLoading && user && userRole) {
       // Don't redirect while pending OAuth role correction is in progress
       const pendingRole = localStorage.getItem("pendingOAuthRole");
       if (pendingRole && pendingRole !== userRole) return;
