@@ -188,6 +188,12 @@ export default function ManagerCourtFormNew() {
   useEffect(() => {
     if (isEditing && id) {
       fetchCourt(id);
+    } else {
+      // New court — read venue_id from search params
+      const venueIdParam = searchParams.get("venue_id");
+      if (venueIdParam) {
+        setExistingVenueId(venueIdParam);
+      }
     }
   }, [id, isEditing]);
 
