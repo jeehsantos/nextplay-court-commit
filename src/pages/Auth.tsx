@@ -26,7 +26,7 @@ export default function Auth() {
   const [resetSent, setResetSent] = useState(false);
   const [lockoutUntil, setLockoutUntil] = useState<Date | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
-  const { user, userRole, signIn, signUp, resetPassword, isLoading } = useAuth();
+  const { user, userRole, signIn, signUp, resetPassword, refreshRole, isLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -94,12 +94,18 @@ export default function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
+    // If on signup tab, store the selected role before OAuth redirect
+    if (activeTab === "signup") {
+      const selectedRole = signUpForm.getValues("role") || "player";
+      localStorage.setItem("pendingOAuthRole", selectedRole);
+    }
     setIsGoogleLoading(true);
     const { error } = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin
     });
     if (error) {
       setIsGoogleLoading(false);
+      localStorage.removeItem("pendingOAuthRole");
       toast({ variant: "destructive", title: t("googleSignInFailed"), description: error.message || t("googleSignInError") });
     }
   };
@@ -124,8 +130,40 @@ export default function Auth() {
     if (refParam) localStorage.setItem("referralCode", refParam);
   }, [searchParams, signUpForm]);
 
+  // Post-OAuth role correction
+  useEffect(() => {
+    if (!user || !userRole || isLoading) return;
+
+    const pendingRole = localStorage.getItem("pendingOAuthRole");
+    if (!pendingRole || pendingRole === userRole) {
+      localStorage.removeItem("pendingOAuthRole");
+      return;
+    }
+
+    // Call edge function to correct the role
+    const correctRole = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("set-initial-role", {
+          body: { role: pendingRole },
+        });
+        if (!error && data?.success) {
+          await refreshRole();
+          toast({ title: t("accountCreated"), description: t("welcomeMessage") });
+        }
+      } catch (e) {
+        console.error("Failed to correct OAuth role:", e);
+      } finally {
+        localStorage.removeItem("pendingOAuthRole");
+      }
+    };
+    correctRole();
+  }, [user, userRole, isLoading]);
+
   useEffect(() => {
     if (!isLoading && user && userRole && !window.location.pathname.includes('/auth')) {
+      // Don't redirect while pending OAuth role correction is in progress
+      const pendingRole = localStorage.getItem("pendingOAuthRole");
+      if (pendingRole && pendingRole !== userRole) return;
       navigate(getRedirectPath(userRole), { replace: true });
     }
   }, [user, userRole, isLoading, navigate]);
