@@ -89,15 +89,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    const roleError = null;
-
-    if (roleError) {
-      console.error("Failed to upsert role:", roleError);
-      return new Response(
-        JSON.stringify({ error: "UPDATE_FAILED", message: roleError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     // Ensure profile exists — create if missing
     const { data: existingProfile } = await supabaseAdmin
