@@ -425,9 +425,9 @@ export default function ManagerCourtsNew() {
           <Card ref={venueFormRef}>
             <CardContent className="p-4 md:p-6 space-y-4">
               <h3 className="font-semibold text-lg">{t("courts.addNewVenue")}</h3>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="text-sm">{t("courts.venueName")}</Label>
+                  <Label className="text-sm">{t("courts.venueName")} *</Label>
                   <Input
                     placeholder={t("courts.venueNamePlaceholder")}
                     value={newVenueName}
@@ -435,8 +435,19 @@ export default function ManagerCourtsNew() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-sm">{t("courts.venueCity")}</Label>
-                  <Select value={newVenueCity} onValueChange={setNewVenueCity}>
+                  <Label className="text-sm">{t("courts.venueCountry")}</Label>
+                  <Select value="New Zealand" disabled>
+                    <SelectTrigger className="bg-muted/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="New Zealand">New Zealand</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t("courts.venueCity")} *</Label>
+                  <Select value={newVenueCity} onValueChange={(value) => { setNewVenueCity(value); setNewVenueSuburb(""); }}>
                     <SelectTrigger>
                       <SelectValue placeholder={t("courts.selectCity")} />
                     </SelectTrigger>
@@ -448,7 +459,24 @@ export default function ManagerCourtsNew() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-sm">{t("courts.venueAddress")}</Label>
+                  <Label className="text-sm">{t("courts.venueSuburb")}</Label>
+                  <Select
+                    value={newVenueSuburb}
+                    onValueChange={setNewVenueSuburb}
+                    disabled={!newVenueCity || availableSuburbs.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={newVenueCity ? t("courts.selectSuburb") : t("courts.selectCityFirst")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSuburbs.map((suburb) => (
+                        <SelectItem key={suburb} value={suburb}>{suburb}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-sm">{t("courts.venueAddress")} *</Label>
                   <Input
                     placeholder={t("courts.venueAddressPlaceholder")}
                     value={newVenueAddress}
