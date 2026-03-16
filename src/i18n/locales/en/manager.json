@@ -86,7 +86,11 @@
     "venueAddressPlaceholder": "e.g. 123 Main Street",
     "fillAllFields": "Please fill in all fields",
     "venueCreated": "Venue created successfully",
-    "createVenue": "Create Venue"
+    "createVenue": "Create Venue",
+    "venueCountry": "Country",
+    "venueSuburb": "Suburb",
+    "selectSuburb": "Select suburb...",
+    "selectCityFirst": "Select a city first"
   },
   "courtForm": {
     "editCourt": "Edit Court",
