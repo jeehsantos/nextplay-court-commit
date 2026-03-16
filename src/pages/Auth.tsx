@@ -94,12 +94,18 @@ export default function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
+    // If on signup tab, store the selected role before OAuth redirect
+    if (activeTab === "signup") {
+      const selectedRole = signUpForm.getValues("role") || "player";
+      localStorage.setItem("pendingOAuthRole", selectedRole);
+    }
     setIsGoogleLoading(true);
     const { error } = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin
     });
     if (error) {
       setIsGoogleLoading(false);
+      localStorage.removeItem("pendingOAuthRole");
       toast({ variant: "destructive", title: t("googleSignInFailed"), description: error.message || t("googleSignInError") });
     }
   };
