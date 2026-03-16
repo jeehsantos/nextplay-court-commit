@@ -26,7 +26,7 @@ export default function Auth() {
   const [resetSent, setResetSent] = useState(false);
   const [lockoutUntil, setLockoutUntil] = useState<Date | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
-  const { user, userRole, signIn, signUp, resetPassword, isLoading } = useAuth();
+  const { user, userRole, signIn, signUp, resetPassword, refreshRole, isLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
