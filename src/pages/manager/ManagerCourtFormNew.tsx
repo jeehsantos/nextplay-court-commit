@@ -358,10 +358,6 @@ export default function ManagerCourtFormNew() {
           .from("venues")
           .update({
             name: venueName,
-            address: data.address,
-            city: data.city,
-            suburb: data.suburb || null,
-            country: data.country,
             amenities: venueAmenities,
           } as any)
           .eq("id", existingVenueId);
