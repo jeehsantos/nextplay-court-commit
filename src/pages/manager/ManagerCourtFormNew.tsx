@@ -171,7 +171,6 @@ export default function ManagerCourtFormNew() {
       is_multi_court: false,
       parent_court_id: null,
       ground_type: surfaceTypesData.length > 0 ? surfaceTypesData[0].name : "",
-      country: "New Zealand",
       payment_timing: "at_booking",
       payment_hours_before: 24,
       photo_urls: [],
