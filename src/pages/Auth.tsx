@@ -379,6 +379,17 @@ export default function Auth() {
                 </TabsContent>
 
                 <TabsContent value="signup">
+                  {/* Role context banner */}
+                  <div className={`mb-5 flex items-center gap-3 rounded-xl border-2 p-4 ${signupRole === "court_manager" ? "border-green-500/40 bg-green-50 dark:bg-green-900/10" : "border-blue-500/40 bg-blue-50 dark:bg-blue-900/10"}`}>
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${signupRole === "court_manager" ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" : "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"}`}>
+                      {signupRole === "court_manager" ? <Building2 className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{signupRole === "court_manager" ? t("signingUpAsManager") : t("signingUpAsPlayer")}</p>
+                      <p className="text-xs text-muted-foreground">{signupRole === "court_manager" ? t("managerAccountDesc") : t("playerAccountDesc")}</p>
+                    </div>
+                  </div>
+
                   <Form {...signUpForm}>
                     <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
                       <FormField control={signUpForm.control} name="fullName" render={({ field }) =>
@@ -392,32 +403,6 @@ export default function Auth() {
                     <FormItem>
                           <FormLabel>{t("email")}</FormLabel>
                           <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                    } />
-                      <FormField control={signUpForm.control} name="role" render={({ field }) =>
-                    <FormItem>
-                          <FormLabel>{t("joinAs")}</FormLabel>
-                          <FormControl>
-                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="grid grid-cols-2 gap-3 pt-2">
-                              <label htmlFor="player" className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${field.value === "player" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
-                                <RadioGroupItem value="player" id="player" className="sr-only" />
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${field.value === "player" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                                  <Users className="h-6 w-6" />
-                                </div>
-                                <span className="font-semibold text-sm">{t("player")}</span>
-                                <span className="text-xs text-muted-foreground text-center">{t("playerDesc")}</span>
-                              </label>
-                              <label htmlFor="court_manager" className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${field.value === "court_manager" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
-                                <RadioGroupItem value="court_manager" id="court_manager" className="sr-only" />
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${field.value === "court_manager" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                                  <Building2 className="h-6 w-6" />
-                                </div>
-                                <span className="font-semibold text-sm">{t("courtManager")}</span>
-                                <span className="text-xs text-muted-foreground text-center">{t("courtManagerDesc")}</span>
-                              </label>
-                            </RadioGroup>
-                          </FormControl>
                           <FormMessage />
                         </FormItem>
                     } />
@@ -461,6 +446,14 @@ export default function Auth() {
                       }
                         {t("continueWithGoogle")}
                       </Button>
+
+                      <p className="text-xs text-center text-muted-foreground mt-2">
+                        {signupRole === "court_manager" ? (
+                          <>{t("notAManager")} <Link to="/auth?tab=signup&role=player" className="text-primary hover:underline">{t("signUpAsPlayer")}</Link></>
+                        ) : (
+                          <>{t("areYouManager")} <Link to="/auth?tab=signup&role=court_manager" className="text-primary hover:underline">{t("signUpAsManager")}</Link></>
+                        )}
+                      </p>
                     </form>
                   </Form>
                 </TabsContent>
