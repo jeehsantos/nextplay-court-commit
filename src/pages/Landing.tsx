@@ -148,6 +148,13 @@ const Landing = forwardRef<HTMLDivElement>((_props, ref) => {
                     </div>
                   ))}
                 </div>
+                <div className="mt-8 pt-6 border-t border-border">
+                  <Link to="/auth?tab=signup&role=player">
+                    <Button className="w-full rounded-xl bg-blue-600 text-white hover:bg-blue-700 h-11 font-semibold">
+                      {t("howItWorks.playerCta")}
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
               <div className="rounded-[2rem] border border-border bg-card p-10 shadow-sm">
@@ -167,6 +174,13 @@ const Landing = forwardRef<HTMLDivElement>((_props, ref) => {
                       </div>
                     </div>
                   ))}
+                </div>
+                <div className="mt-8 pt-6 border-t border-border">
+                  <Link to="/auth?tab=signup&role=court_manager">
+                    <Button className="w-full rounded-xl bg-green-600 text-white hover:bg-green-700 h-11 font-semibold">
+                      {t("howItWorks.managerCta")}
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </div>

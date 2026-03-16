@@ -6,7 +6,11 @@
     "contact": "Contact",
     "signIn": "Sign In",
     "getStarted": "Get Started",
-    "openMenu": "Open menu"
+    "openMenu": "Open menu",
+    "startAsPlayer": "Start as Player",
+    "startAsPlayerDesc": "Book courts & join games",
+    "startAsManager": "Start as Court Manager",
+    "startAsManagerDesc": "List venues & manage bookings"
   },
   "bottomNav": {
     "myGames": "My Games",

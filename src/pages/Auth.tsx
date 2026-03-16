@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Users, Building2, ShieldAlert } from "lucide-react";
 import { PublicLayout } from "@/components/layout/PublicLayout";
@@ -33,6 +33,10 @@ export default function Auth() {
   const { t } = useTranslation("auth");
   const { t: tc } = useTranslation("common");
 
+  // Role from URL param (set by landing page / navbar)
+  const roleFromUrl = searchParams.get("role") as "player" | "court_manager" | null;
+  const signupRole = roleFromUrl === "court_manager" ? "court_manager" : "player";
+
   const loginSchema = z.object({
     email: z.string().email(t("validation.emailRequired")),
     password: z.string().min(1, t("validation.passwordRequired"))
@@ -48,9 +52,6 @@ export default function Auth() {
     regex(/[0-9]/, t("validation.passwordNumber")).
     regex(/[^A-Za-z0-9]/, t("validation.passwordSpecial")),
     confirmPassword: z.string(),
-    role: z.enum(["player", "court_manager"], {
-      required_error: t("validation.roleRequired")
-    })
   }).refine((data) => data.password === data.confirmPassword, {
     message: t("validation.passwordsNoMatch"),
     path: ["confirmPassword"]
@@ -72,13 +73,11 @@ export default function Auth() {
     const playerPaths = ["/courts", "/games", "/groups", "/discover", "/profile", "/quick-games", "/payment-success", "/join", "/archived-sessions"];
 
     if (role === "court_manager" || role === "venue_staff") {
-      // Managers/staff should only go to manager paths
       return managerPaths.some(p => path.startsWith(p));
     }
     if (role === "admin") {
       return adminPaths.some(p => path.startsWith(p));
     }
-    // Players should not access manager or admin paths
     return !managerPaths.some(p => path.startsWith(p)) && !adminPaths.some(p => path.startsWith(p));
   };
 
@@ -94,10 +93,9 @@ export default function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
-    // If on signup tab, store the selected role before OAuth redirect
+    // If on signup tab, store the role from URL before OAuth redirect
     if (activeTab === "signup") {
-      const selectedRole = signUpForm.getValues("role") || "player";
-      localStorage.setItem("pendingOAuthRole", selectedRole);
+      localStorage.setItem("pendingOAuthRole", signupRole);
     }
     setIsGoogleLoading(true);
     const { error } = await lovable.auth.signInWithOAuth("google", {
@@ -117,18 +115,16 @@ export default function Auth() {
 
   const signUpForm = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "", role: "player" }
+    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" }
   });
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    const roleParam = searchParams.get("role");
     const refParam = searchParams.get("ref");
     if (tabParam === "signup") setActiveTab("signup");else
     if (tabParam === "login") setActiveTab("login");
-    if (roleParam === "player" || roleParam === "court_manager") signUpForm.setValue("role", roleParam, { shouldValidate: true });
     if (refParam) localStorage.setItem("referralCode", refParam);
-  }, [searchParams, signUpForm]);
+  }, [searchParams]);
 
   // Post-OAuth role correction
   useEffect(() => {
@@ -236,7 +232,7 @@ export default function Auth() {
   const handleSignUp = async (data: SignUpFormData) => {
     setIsSubmitting(true);
     const referralCode = localStorage.getItem("referralCode") || undefined;
-    const { error, session } = await signUp(data.email, data.password, data.fullName, data.role, referralCode);
+    const { error, session } = await signUp(data.email, data.password, data.fullName, signupRole, referralCode);
     setIsSubmitting(false);
 
     if (error) {
@@ -253,7 +249,7 @@ export default function Auth() {
     } else {
       if (referralCode) localStorage.removeItem("referralCode");
       toast({ title: t("accountCreated"), description: t("welcomeMessage") });
-      navigate(getRedirectPath(data.role), { replace: true });
+      navigate(getRedirectPath(signupRole), { replace: true });
     }
   };
 
@@ -383,6 +379,17 @@ export default function Auth() {
                 </TabsContent>
 
                 <TabsContent value="signup">
+                  {/* Role context banner */}
+                  <div className={`mb-5 flex items-center gap-3 rounded-xl border-2 p-4 ${signupRole === "court_manager" ? "border-green-500/40 bg-green-50 dark:bg-green-900/10" : "border-blue-500/40 bg-blue-50 dark:bg-blue-900/10"}`}>
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${signupRole === "court_manager" ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" : "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"}`}>
+                      {signupRole === "court_manager" ? <Building2 className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{signupRole === "court_manager" ? t("signingUpAsManager") : t("signingUpAsPlayer")}</p>
+                      <p className="text-xs text-muted-foreground">{signupRole === "court_manager" ? t("managerAccountDesc") : t("playerAccountDesc")}</p>
+                    </div>
+                  </div>
+
                   <Form {...signUpForm}>
                     <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
                       <FormField control={signUpForm.control} name="fullName" render={({ field }) =>
@@ -396,32 +403,6 @@ export default function Auth() {
                     <FormItem>
                           <FormLabel>{t("email")}</FormLabel>
                           <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                    } />
-                      <FormField control={signUpForm.control} name="role" render={({ field }) =>
-                    <FormItem>
-                          <FormLabel>{t("joinAs")}</FormLabel>
-                          <FormControl>
-                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="grid grid-cols-2 gap-3 pt-2">
-                              <label htmlFor="player" className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${field.value === "player" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
-                                <RadioGroupItem value="player" id="player" className="sr-only" />
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${field.value === "player" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                                  <Users className="h-6 w-6" />
-                                </div>
-                                <span className="font-semibold text-sm">{t("player")}</span>
-                                <span className="text-xs text-muted-foreground text-center">{t("playerDesc")}</span>
-                              </label>
-                              <label htmlFor="court_manager" className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${field.value === "court_manager" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
-                                <RadioGroupItem value="court_manager" id="court_manager" className="sr-only" />
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${field.value === "court_manager" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                                  <Building2 className="h-6 w-6" />
-                                </div>
-                                <span className="font-semibold text-sm">{t("courtManager")}</span>
-                                <span className="text-xs text-muted-foreground text-center">{t("courtManagerDesc")}</span>
-                              </label>
-                            </RadioGroup>
-                          </FormControl>
                           <FormMessage />
                         </FormItem>
                     } />
@@ -465,6 +446,14 @@ export default function Auth() {
                       }
                         {t("continueWithGoogle")}
                       </Button>
+
+                      <p className="text-xs text-center text-muted-foreground mt-2">
+                        {signupRole === "court_manager" ? (
+                          <>{t("notAManager")} <Link to="/auth?tab=signup&role=player" className="text-primary hover:underline">{t("signUpAsPlayer")}</Link></>
+                        ) : (
+                          <>{t("areYouManager")} <Link to="/auth?tab=signup&role=court_manager" className="text-primary hover:underline">{t("signUpAsManager")}</Link></>
+                        )}
+                      </p>
                     </form>
                   </Form>
                 </TabsContent>

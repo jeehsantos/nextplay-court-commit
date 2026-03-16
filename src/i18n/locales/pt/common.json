@@ -6,7 +6,11 @@
     "contact": "Contato",
     "signIn": "Entrar",
     "getStarted": "Começar",
-    "openMenu": "Abrir menu"
+    "openMenu": "Abrir menu",
+    "startAsPlayer": "Começar como Jogador",
+    "startAsPlayerDesc": "Reserve quadras e entre em jogos",
+    "startAsManager": "Começar como Gestor",
+    "startAsManagerDesc": "Cadastre quadras e gerencie reservas"
   },
   "bottomNav": {
     "myGames": "Meus Jogos",
