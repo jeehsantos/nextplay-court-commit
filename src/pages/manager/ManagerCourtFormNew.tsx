@@ -177,18 +177,9 @@ export default function ManagerCourtFormNew() {
     },
   });
 
-  const selectedCity = watch("city");
   const paymentTiming = watch("payment_timing");
   const paymentHoursBefore = watch("payment_hours_before");
   const isMultiCourt = watch("is_multi_court");
-
-  useEffect(() => {
-    if (selectedCity) {
-      setAvailableSuburbs(getSuburbsForCity(selectedCity));
-    } else {
-      setAvailableSuburbs([]);
-    }
-  }, [selectedCity]);
 
   useEffect(() => {
     if (surfaceTypesData.length > 0 && !watch("ground_type")) {
