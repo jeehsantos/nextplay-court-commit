@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import type { Database } from "@/integrations/supabase/types";
 import { useTranslation } from "react-i18next";
+import { useManagerStripeReady } from "@/hooks/useStripeConnectStatus";
+import { StripeSetupAlert } from "@/components/manager/StripeSetupAlert";
 
 type Venue = Database["public"]["Tables"]["venues"]["Row"];
 
@@ -17,6 +19,8 @@ export default function ManagerVenues() {
   const { t } = useTranslation("manager");
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
+  const { data: stripeStatus } = useManagerStripeReady();
+  const stripeReady = stripeStatus?.isReady ?? false;
 
   useEffect(() => { if (user) fetchVenues(); }, [user]);
 
@@ -36,8 +40,14 @@ export default function ManagerVenues() {
             <h1 className="font-display text-2xl font-bold">{t("venues.title")}</h1>
             <p className="text-muted-foreground">{t("venues.subtitle")}</p>
           </div>
-          <Link to="/manager/venues/new"><Button className="gap-2"><Plus className="h-4 w-4" />{t("venues.addVenue")}</Button></Link>
+          <Link to="/manager/venues/new">
+            <Button className="gap-2" disabled={!stripeReady}>
+              <Plus className="h-4 w-4" />{t("venues.addVenue")}
+            </Button>
+          </Link>
         </div>
+
+        {!stripeReady && <StripeSetupAlert hasVenues={venues.length > 0} />}
 
         {loading ? (
           <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -47,7 +57,7 @@ export default function ManagerVenues() {
               <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="font-semibold text-lg mb-2">{t("venues.noVenuesYet")}</h3>
               <p className="text-muted-foreground mb-4">{t("venues.noVenuesDesc")}</p>
-              <Link to="/manager/venues/new"><Button>{t("venues.addFirstVenue")}</Button></Link>
+              <Link to="/manager/venues/new"><Button disabled={!stripeReady}>{t("venues.addFirstVenue")}</Button></Link>
             </CardContent>
           </Card>
         ) : (
