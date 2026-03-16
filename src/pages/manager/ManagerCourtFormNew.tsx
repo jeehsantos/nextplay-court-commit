@@ -283,10 +283,6 @@ export default function ManagerCourtFormNew() {
       photo_urls: court.photo_urls || (court.photo_url ? [court.photo_url] : []),
       description: "",
       rules: court.rules || "",
-      address: venueData?.address || "",
-      city: venueData?.city || "",
-      suburb: venueData?.suburb || "",
-      country: venueData?.country || "New Zealand",
       payment_timing: (court.payment_timing as any) || "at_booking",
       payment_hours_before: court.payment_hours_before || 24,
     });
