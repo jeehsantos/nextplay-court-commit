@@ -86,7 +86,11 @@
     "venueAddressPlaceholder": "ex. Rua Principal, 123",
     "fillAllFields": "Preencha todos os campos",
     "venueCreated": "Espaço criado com sucesso",
-    "createVenue": "Criar Espaço"
+    "createVenue": "Criar Espaço",
+    "venueCountry": "País",
+    "venueSuburb": "Bairro",
+    "selectSuburb": "Selecionar bairro...",
+    "selectCityFirst": "Selecione uma cidade primeiro"
   },
   "courtForm": {
     "editCourt": "Editar Quadra",
