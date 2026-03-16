@@ -232,7 +232,7 @@ export default function Auth() {
   const handleSignUp = async (data: SignUpFormData) => {
     setIsSubmitting(true);
     const referralCode = localStorage.getItem("referralCode") || undefined;
-    const { error, session } = await signUp(data.email, data.password, data.fullName, data.role, referralCode);
+    const { error, session } = await signUp(data.email, data.password, data.fullName, signupRole, referralCode);
     setIsSubmitting(false);
 
     if (error) {
@@ -249,7 +249,7 @@ export default function Auth() {
     } else {
       if (referralCode) localStorage.removeItem("referralCode");
       toast({ title: t("accountCreated"), description: t("welcomeMessage") });
-      navigate(getRedirectPath(data.role), { replace: true });
+      navigate(getRedirectPath(signupRole), { replace: true });
     }
   };
 
