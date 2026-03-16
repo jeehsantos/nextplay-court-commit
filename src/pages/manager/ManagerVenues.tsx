@@ -19,6 +19,8 @@ export default function ManagerVenues() {
   const { t } = useTranslation("manager");
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
+  const { data: stripeStatus } = useManagerStripeReady();
+  const stripeReady = stripeStatus?.isReady ?? false;
 
   useEffect(() => { if (user) fetchVenues(); }, [user]);
 
