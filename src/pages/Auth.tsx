@@ -129,17 +129,35 @@ export default function Auth() {
     if (refParam) localStorage.setItem("referralCode", refParam);
   }, [searchParams]);
 
-  // Post-OAuth role correction
+  // Post-OAuth role correction / setup
   useEffect(() => {
-    if (!user || !userRole || isLoading) return;
+    if (!user || isLoading) return;
 
     const pendingRole = localStorage.getItem("pendingOAuthRole");
-    if (!pendingRole || pendingRole === userRole) {
+    if (!pendingRole) return;
+
+    // Detect returning user: if account was created more than 1 minute ago, this is an existing user
+    const accountAge = Date.now() - new Date(user.created_at).getTime();
+    const isExistingUser = accountAge > 60_000;
+
+    if (isExistingUser) {
+      localStorage.removeItem("pendingOAuthRole");
+      toast({ title: t("welcomeBack"), description: t("alreadyHaveAccount") });
+      // For existing users, if role is already loaded, redirect will happen via the other effect
+      // If role is null (shouldn't happen for existing users), redirect to courts as fallback
+      if (!userRole) {
+        navigate("/courts", { replace: true });
+      }
+      return;
+    }
+
+    // New user: if role already matches, nothing to do
+    if (userRole === pendingRole) {
       localStorage.removeItem("pendingOAuthRole");
       return;
     }
 
-    // Call edge function to correct the role
+    // Call edge function to set/correct role (handles missing role row via UPSERT)
     const correctRole = async () => {
       try {
         const { data, error } = await supabase.functions.invoke("set-initial-role", {
@@ -148,9 +166,14 @@ export default function Auth() {
         if (!error && data?.success) {
           await refreshRole();
           toast({ title: t("accountCreated"), description: t("welcomeMessage") });
+        } else {
+          console.error("set-initial-role failed:", error || data);
+          // Fallback: redirect anyway
+          navigate(getDefaultPathForRole(pendingRole), { replace: true });
         }
       } catch (e) {
         console.error("Failed to correct OAuth role:", e);
+        navigate(getDefaultPathForRole(pendingRole), { replace: true });
       } finally {
         localStorage.removeItem("pendingOAuthRole");
       }
