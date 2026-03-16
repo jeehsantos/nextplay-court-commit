@@ -77,7 +77,16 @@
     "deleteDesc": "Essa ação não pode ser desfeita. A quadra e todos os seus dados serão removidos permanentemente.",
     "cancel": "Cancelar",
     "venueNameUpdated": "Nome do espaço atualizado",
-    "venueNameEmpty": "O nome do espaço não pode ficar vazio"
+    "venueNameEmpty": "O nome do espaço não pode ficar vazio",
+    "venueName": "Nome do Espaço",
+    "venueNamePlaceholder": "ex. Sport Arena Auckland",
+    "venueCity": "Cidade",
+    "selectCity": "Selecionar cidade",
+    "venueAddress": "Endereço",
+    "venueAddressPlaceholder": "ex. Rua Principal, 123",
+    "fillAllFields": "Preencha todos os campos",
+    "venueCreated": "Espaço criado com sucesso",
+    "createVenue": "Criar Espaço"
   },
   "courtForm": {
     "editCourt": "Editar Quadra",
