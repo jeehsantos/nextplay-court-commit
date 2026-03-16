@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { nzCities } from "@/data/nzLocations";
+import { nzCities, getSuburbsForCity } from "@/data/nzLocations";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SportIcon, getSportLabel } from "@/components/ui/sport-icon";
