@@ -77,7 +77,16 @@
     "deleteDesc": "This action cannot be undone. The court and all its data will be permanently removed.",
     "cancel": "Cancel",
     "venueNameUpdated": "Venue name updated",
-    "venueNameEmpty": "Venue name cannot be empty"
+    "venueNameEmpty": "Venue name cannot be empty",
+    "venueName": "Venue Name",
+    "venueNamePlaceholder": "e.g. Sport Arena Auckland",
+    "venueCity": "City",
+    "selectCity": "Select city",
+    "venueAddress": "Address",
+    "venueAddressPlaceholder": "e.g. 123 Main Street",
+    "fillAllFields": "Please fill in all fields",
+    "venueCreated": "Venue created successfully",
+    "createVenue": "Create Venue"
   },
   "courtForm": {
     "editCourt": "Edit Court",
