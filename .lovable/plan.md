@@ -1,40 +1,61 @@
 
+Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-## Plan: Fix Google OAuth Sign-Up Issues
+What I found (already verified):
+1) Data inconsistency exists now:
+   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
+   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
+2) `ManagerCourtFormNew` root causes:
+   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
+   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
+   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
+3) Backend side effect confirmed:
+   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
 
-### Problem Analysis
+Implementation plan (execute in this order):
+1. Database integrity hardening + backfill (migration)
+   - Backfill: set `is_multi_court=true` for any court that already has children.
+   - Add DB validation trigger(s) on `courts` to enforce:
+     - child cannot reference itself
+     - child parent must be in same venue
+     - parent cannot be set `is_multi_court=false` while children exist
+     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
+   - This guarantees the bug cannot recur from any client path.
 
-From the network requests, `user_roles` and `profiles` queries both return `[]` for the Google OAuth user. Two root causes:
+2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
+   - Remove direct `window.history.replaceState` usage.
+   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
+   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
+   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
 
-1. **No redirect after sign-up**: The post-OAuth role correction effect (line 133) has `if (!user || !userRole || isLoading) return;` — since `userRole` is `null` (no role row exists), the effect never fires. Additionally, the edge function does an `UPDATE` on `user_roles`, but if no row exists (trigger didn't create one), nothing happens.
+3. Multi-court UI behavior safeguards
+   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
+   - Disable/harden turning off multi-court when children exist (with clear message).
+   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
 
-2. **No feedback for duplicate email**: When Google OAuth signs in an existing user from the signup tab, there's no messaging — it just silently bounces back.
+4. Availability resilience (backend function)
+   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
+   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
 
-### Changes
+5. Verification I will perform (not asking you to test manually)
+   - DB checks:
+     - verify parent `57e11168...` becomes `is_multi_court=true`
+     - verify child links remain unchanged
+     - verify no rows exist with `children > 0 AND is_multi_court=false`
+   - Functional checks:
+     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
+   - UI checks:
+     - exercise add-sub-court flow and confirm:
+       - main court remains main
+       - child appears as child tab
+       - subsequent saves update correct court record
+       - no panel collapse/desync
 
-**`supabase/functions/set-initial-role/index.ts`**
-- Change from `UPDATE` to `UPSERT` — insert the role row if it doesn't exist, or update if it does.
-- Also create a `profiles` row if missing (using the user's metadata: full_name, avatar_url, email).
-
-**`src/pages/Auth.tsx`**
-- **Fix the post-OAuth useEffect** (line 133): Fire when `user` exists and `userRole` is `null` OR differs from `pendingOAuthRole`. Currently it exits early when `userRole` is null.
-- **Detect existing user on signup tab**: After OAuth completes, check if the user's `created_at` is older than 1 minute. If so, show a "Welcome back! You already have an account" toast and redirect normally instead of attempting role correction.
-- **Redirect fix**: The redirect effect (line 161) already handles `user && userRole` — once the edge function creates the role and `refreshRole()` runs, it will trigger the redirect.
-
-### Technical Detail
-
-```text
-Post-OAuth flow (fixed):
-1. User returns from Google OAuth → session established
-2. useEffect detects: user exists, pendingOAuthRole in localStorage
-3. If user.created_at > 1 min ago → existing user, show "welcome back" toast, clear localStorage, redirect
-4. If new user → call set-initial-role edge function (which now UPSERTs role + creates profile)
-5. refreshRole() → userRole updates → redirect effect fires → user lands on correct dashboard
-```
-
-### Files
-- `supabase/functions/set-initial-role/index.ts` — UPSERT role + create profile if missing
-- `src/pages/Auth.tsx` — fix post-OAuth effect conditions, add existing-user detection
-- `src/i18n/locales/en/auth.json` — add "welcomeBack" and "alreadyHaveAccount" keys
-- `src/i18n/locales/pt/auth.json` — Portuguese translations
-
+Technical details:
+- Files to update:
+  - `supabase/migrations/<new>.sql`
+  - `src/pages/manager/ManagerCourtFormNew.tsx`
+  - `supabase/functions/get-availability/index.ts`
+- No money/payment logic touched.
+- No auth model changes.
+- Existing routing and form schema preserved; this is a consistency + state synchronization fix.

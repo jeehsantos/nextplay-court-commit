@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Extract user from JWT
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "UNAUTHORIZED" }), {
@@ -24,7 +23,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // User-scoped client to get the authenticated user
     const supabaseUser = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { authorization: authHeader } },
     });
@@ -39,7 +37,6 @@ Deno.serve(async (req) => {
 
     const { role } = await req.json();
 
-    // Only allow player or court_manager
     if (role !== "player" && role !== "court_manager") {
       return new Response(JSON.stringify({ error: "INVALID_ROLE" }), {
         status: 400,
@@ -59,20 +56,45 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use service role to update user_roles (RLS blocks user UPDATE on this table)
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { error: updateError } = await supabaseAdmin
+    // UPSERT role — insert if missing, update if exists
+    const { error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .update({ role })
-      .eq("user_id", user.id);
+      .upsert(
+        { user_id: user.id, role },
+        { onConflict: "user_id" }
+      );
 
-    if (updateError) {
-      console.error("Failed to update role:", updateError);
+    if (roleError) {
+      console.error("Failed to upsert role:", roleError);
       return new Response(
-        JSON.stringify({ error: "UPDATE_FAILED", message: updateError.message }),
+        JSON.stringify({ error: "UPDATE_FAILED", message: roleError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Ensure profile exists — create if missing
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!existingProfile) {
+      const meta = user.user_metadata || {};
+      const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .insert({
+          user_id: user.id,
+          full_name: meta.full_name || meta.name || null,
+          avatar_url: meta.avatar_url || meta.picture || null,
+        });
+
+      if (profileError) {
+        console.error("Failed to create profile:", profileError);
+        // Non-fatal — role was set successfully
+      }
     }
 
     return new Response(JSON.stringify({ success: true, role }), {
