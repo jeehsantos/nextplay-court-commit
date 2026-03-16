@@ -306,10 +306,6 @@ export default function ManagerCourtFormNew() {
       photo_urls: [],
       description: "",
       rules: "",
-      address: venueData?.address || "",
-      city: venueData?.city || "",
-      suburb: venueData?.suburb || "",
-      country: venueData?.country || "New Zealand",
       payment_timing: "at_booking",
       payment_hours_before: 24,
     });
