@@ -390,27 +390,18 @@ export default function ManagerCourtFormNew() {
         await refetchCourts();
         toast({ title: t("courtForm.courtUpdated") });
       } else {
-        const { data: newVenueData, error: venueError } = await supabase
-          .from("venues")
-          .insert([{
-            owner_id: user.id,
-            name: data.name,
-            address: data.address,
-            city: data.city,
-            suburb: data.suburb || null,
-            country: data.country,
-            is_active: true,
-            amenities: venueAmenities,
-          } as any])
-          .select()
-          .single();
-
-        if (venueError) throw venueError;
+        // Venue was already created inline — get venue_id from search params
+        const venueIdFromParams = searchParams.get("venue_id");
+        if (!venueIdFromParams) {
+          toast({ title: "Error", description: "No venue selected. Please create a venue first.", variant: "destructive" });
+          navigate("/manager/courts");
+          return;
+        }
 
         const { error: courtError } = await supabase
           .from("courts")
           .insert([{
-            venue_id: newVenueData.id,
+            venue_id: venueIdFromParams,
             name: data.name,
             ground_type: data.ground_type as any,
             hourly_rate: data.hourly_rate,
