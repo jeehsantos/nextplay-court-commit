@@ -82,7 +82,6 @@ export default function ManagerCourtFormNew() {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [existingVenueId, setExistingVenueId] = useState<string | null>(null);
-  const [availableSuburbs, setAvailableSuburbs] = useState<string[]>([]);
   const [venueName, setVenueName] = useState<string>("");
   const [venueData, setVenueData] = useState<any>(null);
   const [venueAllowedSports, setVenueAllowedSports] = useState<string[]>([]);
