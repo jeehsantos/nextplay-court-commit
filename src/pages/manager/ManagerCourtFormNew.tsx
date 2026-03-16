@@ -46,10 +46,6 @@ const courtSchema = z.object({
   photo_urls: z.array(z.string()).default([]),
   description: z.string().optional(),
   rules: z.string().optional(),
-  address: z.string().min(5, "Address must be at least 5 characters"),
-  city: z.string().min(2, "City is required"),
-  suburb: z.string().optional(),
-  country: z.string().default("New Zealand"),
   payment_timing: z.enum(["at_booking", "before_session"]),
   payment_hours_before: z.number().min(1).max(168).default(24),
 });
