@@ -97,6 +97,47 @@ export default function ManagerCourtsNew() {
   const [deleteVenueTarget, setDeleteVenueTarget] = useState<{ venue: Venue; courts: Court[] } | null>(null);
   const [deleteVenueLoading, setDeleteVenueLoading] = useState(false);
 
+  // Inline Venue Creation state
+  const [showAddVenueForm, setShowAddVenueForm] = useState(false);
+  const [newVenueName, setNewVenueName] = useState("");
+  const [newVenueAddress, setNewVenueAddress] = useState("");
+  const [newVenueCity, setNewVenueCity] = useState("");
+  const [creatingVenue, setCreatingVenue] = useState(false);
+  const venueFormRef = useRef<HTMLDivElement>(null);
+
+  const handleCreateVenue = async () => {
+    const trimmedName = newVenueName.trim();
+    const trimmedAddress = newVenueAddress.trim();
+    if (!trimmedName || !trimmedAddress || !newVenueCity) {
+      toast({ title: t("courts.fillAllFields"), variant: "destructive" });
+      return;
+    }
+    setCreatingVenue(true);
+    try {
+      const { data, error } = await supabase
+        .from("venues")
+        .insert({
+          name: trimmedName,
+          address: trimmedAddress,
+          city: newVenueCity,
+          owner_id: user!.id,
+        })
+        .select("id, name, city, address")
+        .single();
+      if (error) throw error;
+      setVenueGroups(prev => [{ venue: data, courts: [] }, ...prev]);
+      setNewVenueName("");
+      setNewVenueAddress("");
+      setNewVenueCity("");
+      setShowAddVenueForm(false);
+      toast({ title: t("courts.venueCreated") });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setCreatingVenue(false);
+    }
+  };
+
   const openVenueEditDialog = (venue: Venue, courts: Court[]) => {
     setEditVenueName(venue.name);
     // Find the current main court (is_multi_court=true and no parent)
