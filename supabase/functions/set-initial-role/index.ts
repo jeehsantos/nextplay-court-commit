@@ -59,20 +59,36 @@ Deno.serve(async (req) => {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // UPSERT role — insert if missing, update if exists
-    const { error: roleError } = await supabaseAdmin
+    // First try update (most common case: trigger already created the row)
+    const { data: updateData, error: updateError } = await supabaseAdmin
       .from("user_roles")
-      .upsert(
-        { user_id: user.id, role },
-        { onConflict: "user_id" }
-      );
+      .update({ role })
+      .eq("user_id", user.id)
+      .select("id");
 
-    if (roleError) {
-      console.error("Failed to upsert role:", roleError);
+    if (updateError) {
+      console.error("Failed to update role:", updateError);
       return new Response(
-        JSON.stringify({ error: "UPDATE_FAILED", message: roleError.message }),
+        JSON.stringify({ error: "UPDATE_FAILED", message: updateError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // If no row was updated, insert one (trigger didn't fire)
+    if (!updateData || updateData.length === 0) {
+      const { error: insertError } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: user.id, role });
+
+      if (insertError) {
+        console.error("Failed to insert role:", insertError);
+        return new Response(
+          JSON.stringify({ error: "INSERT_FAILED", message: insertError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
 
     // Ensure profile exists — create if missing
     const { data: existingProfile } = await supabaseAdmin
