@@ -98,8 +98,11 @@ export default function Auth() {
       localStorage.setItem("pendingOAuthRole", signupRole);
     }
     setIsGoogleLoading(true);
+    const redirectBack = activeTab === "signup"
+      ? `${window.location.origin}/auth?tab=signup&role=${signupRole}`
+      : `${window.location.origin}/auth?tab=login`;
     const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin
+      redirect_uri: redirectBack
     });
     if (error) {
       setIsGoogleLoading(false);
@@ -156,7 +159,7 @@ export default function Auth() {
   }, [user, userRole, isLoading]);
 
   useEffect(() => {
-    if (!isLoading && user && userRole && !window.location.pathname.includes('/auth')) {
+    if (!isLoading && user && userRole) {
       // Don't redirect while pending OAuth role correction is in progress
       const pendingRole = localStorage.getItem("pendingOAuthRole");
       if (pendingRole && pendingRole !== userRole) return;
