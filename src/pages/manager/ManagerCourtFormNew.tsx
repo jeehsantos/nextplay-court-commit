@@ -32,7 +32,6 @@ import { VenueDetailsEditor } from "@/components/manager/VenueDetailsEditor";
 import { AllowedSportsSelector } from "@/components/manager/AllowedSportsSelector";
 import { StripeSetupAlert } from "@/components/manager/StripeSetupAlert";
 import { useManagerStripeReady } from "@/hooks/useStripeConnectStatus";
-import { nzCities, getSuburbsForCity } from "@/data/nzLocations";
 import { useSurfaceTypes } from "@/hooks/useSurfaceTypes";
 
 const courtSchema = z.object({
@@ -46,10 +45,6 @@ const courtSchema = z.object({
   photo_urls: z.array(z.string()).default([]),
   description: z.string().optional(),
   rules: z.string().optional(),
-  address: z.string().min(5, "Address must be at least 5 characters"),
-  city: z.string().min(2, "City is required"),
-  suburb: z.string().optional(),
-  country: z.string().default("New Zealand"),
   payment_timing: z.enum(["at_booking", "before_session"]),
   payment_hours_before: z.number().min(1).max(168).default(24),
 });
@@ -86,7 +81,6 @@ export default function ManagerCourtFormNew() {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [existingVenueId, setExistingVenueId] = useState<string | null>(null);
-  const [availableSuburbs, setAvailableSuburbs] = useState<string[]>([]);
   const [venueName, setVenueName] = useState<string>("");
   const [venueData, setVenueData] = useState<any>(null);
   const [venueAllowedSports, setVenueAllowedSports] = useState<string[]>([]);
@@ -175,25 +169,15 @@ export default function ManagerCourtFormNew() {
       is_multi_court: false,
       parent_court_id: null,
       ground_type: surfaceTypesData.length > 0 ? surfaceTypesData[0].name : "",
-      country: "New Zealand",
       payment_timing: "at_booking",
       payment_hours_before: 24,
       photo_urls: [],
     },
   });
 
-  const selectedCity = watch("city");
   const paymentTiming = watch("payment_timing");
   const paymentHoursBefore = watch("payment_hours_before");
   const isMultiCourt = watch("is_multi_court");
-
-  useEffect(() => {
-    if (selectedCity) {
-      setAvailableSuburbs(getSuburbsForCity(selectedCity));
-    } else {
-      setAvailableSuburbs([]);
-    }
-  }, [selectedCity]);
 
   useEffect(() => {
     if (surfaceTypesData.length > 0 && !watch("ground_type")) {
@@ -204,6 +188,12 @@ export default function ManagerCourtFormNew() {
   useEffect(() => {
     if (isEditing && id) {
       fetchCourt(id);
+    } else {
+      // New court — read venue_id from search params
+      const venueIdParam = searchParams.get("venue_id");
+      if (venueIdParam) {
+        setExistingVenueId(venueIdParam);
+      }
     }
   }, [id, isEditing]);
 
@@ -270,10 +260,6 @@ export default function ManagerCourtFormNew() {
         photo_urls: (data as any).photo_urls || (data.photo_url ? [data.photo_url] : []),
         description: "",
         rules: (data as any).rules || "",
-        address: data.venue?.address || "",
-        city: data.venue?.city || "",
-        suburb: data.venue?.suburb || "",
-        country: data.venue?.country || "New Zealand",
         payment_timing: (data.payment_timing as any) || "at_booking",
         payment_hours_before: data.payment_hours_before || 24,
       });
@@ -301,10 +287,6 @@ export default function ManagerCourtFormNew() {
       photo_urls: court.photo_urls || (court.photo_url ? [court.photo_url] : []),
       description: "",
       rules: court.rules || "",
-      address: venueData?.address || "",
-      city: venueData?.city || "",
-      suburb: venueData?.suburb || "",
-      country: venueData?.country || "New Zealand",
       payment_timing: (court.payment_timing as any) || "at_booking",
       payment_hours_before: court.payment_hours_before || 24,
     });
@@ -328,10 +310,6 @@ export default function ManagerCourtFormNew() {
       photo_urls: [],
       description: "",
       rules: "",
-      address: venueData?.address || "",
-      city: venueData?.city || "",
-      suburb: venueData?.suburb || "",
-      country: venueData?.country || "New Zealand",
       payment_timing: "at_booking",
       payment_hours_before: 24,
     });
@@ -384,10 +362,6 @@ export default function ManagerCourtFormNew() {
           .from("venues")
           .update({
             name: venueName,
-            address: data.address,
-            city: data.city,
-            suburb: data.suburb || null,
-            country: data.country,
             amenities: venueAmenities,
           } as any)
           .eq("id", existingVenueId);
@@ -420,27 +394,18 @@ export default function ManagerCourtFormNew() {
         await refetchCourts();
         toast({ title: t("courtForm.courtUpdated") });
       } else {
-        const { data: newVenueData, error: venueError } = await supabase
-          .from("venues")
-          .insert([{
-            owner_id: user.id,
-            name: data.name,
-            address: data.address,
-            city: data.city,
-            suburb: data.suburb || null,
-            country: data.country,
-            is_active: true,
-            amenities: venueAmenities,
-          } as any])
-          .select()
-          .single();
-
-        if (venueError) throw venueError;
+        // Venue was already created inline — get venue_id from search params
+        const venueIdFromParams = searchParams.get("venue_id");
+        if (!venueIdFromParams) {
+          toast({ title: "Error", description: "No venue selected. Please create a venue first.", variant: "destructive" });
+          navigate("/manager/courts");
+          return;
+        }
 
         const { error: courtError } = await supabase
           .from("courts")
           .insert([{
-            venue_id: newVenueData.id,
+            venue_id: venueIdFromParams,
             name: data.name,
             ground_type: data.ground_type as any,
             hourly_rate: data.hourly_rate,
@@ -730,87 +695,7 @@ export default function ManagerCourtFormNew() {
               </CardContent>
             </Card>
 
-            {/* 3. Location Card */}
-            <Card className="rounded-2xl border border-border shadow-sm">
-              <CardHeader className="pb-3 border-b border-border">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  Location
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <Label>Country</Label>
-                    <Select
-                      value={watch("country")}
-                      onValueChange={(value) => setValue("country", value)}
-                      disabled
-                    >
-                      <SelectTrigger className="bg-muted/50">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="New Zealand">New Zealand</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
 
-                  <div className="space-y-1.5">
-                    <Label>City *</Label>
-                    <Select
-                      value={watch("city")}
-                      onValueChange={(value) => {
-                        setValue("city", value);
-                        setValue("suburb", "");
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select city..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {nzCities.map((city) => (
-                          <SelectItem key={city} value={city}>{city}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.city && (
-                      <p className="text-sm text-destructive">{errors.city.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label>Suburb</Label>
-                    <Select
-                      value={watch("suburb") || ""}
-                      onValueChange={(value) => setValue("suburb", value)}
-                      disabled={!selectedCity || availableSuburbs.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={selectedCity ? "Select suburb..." : "Select a city first"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableSuburbs.map((suburb) => (
-                          <SelectItem key={suburb} value={suburb}>{suburb}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="address">Street Address *</Label>
-                    <Input
-                      id="address"
-                      {...register("address")}
-                      placeholder="e.g., 123 Sports Lane"
-                    />
-                    {errors.address && (
-                      <p className="text-sm text-destructive">{errors.address.message}</p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* 4. Venue Facilities - Only for parent courts */}
             {(!activeIsSubCourt) && (
