@@ -33,6 +33,10 @@ export default function Auth() {
   const { t } = useTranslation("auth");
   const { t: tc } = useTranslation("common");
 
+  // Role from URL param (set by landing page / navbar)
+  const roleFromUrl = searchParams.get("role") as "player" | "court_manager" | null;
+  const signupRole = roleFromUrl === "court_manager" ? "court_manager" : "player";
+
   const loginSchema = z.object({
     email: z.string().email(t("validation.emailRequired")),
     password: z.string().min(1, t("validation.passwordRequired"))
@@ -48,9 +52,6 @@ export default function Auth() {
     regex(/[0-9]/, t("validation.passwordNumber")).
     regex(/[^A-Za-z0-9]/, t("validation.passwordSpecial")),
     confirmPassword: z.string(),
-    role: z.enum(["player", "court_manager"], {
-      required_error: t("validation.roleRequired")
-    })
   }).refine((data) => data.password === data.confirmPassword, {
     message: t("validation.passwordsNoMatch"),
     path: ["confirmPassword"]
@@ -72,13 +73,11 @@ export default function Auth() {
     const playerPaths = ["/courts", "/games", "/groups", "/discover", "/profile", "/quick-games", "/payment-success", "/join", "/archived-sessions"];
 
     if (role === "court_manager" || role === "venue_staff") {
-      // Managers/staff should only go to manager paths
       return managerPaths.some(p => path.startsWith(p));
     }
     if (role === "admin") {
       return adminPaths.some(p => path.startsWith(p));
     }
-    // Players should not access manager or admin paths
     return !managerPaths.some(p => path.startsWith(p)) && !adminPaths.some(p => path.startsWith(p));
   };
 
@@ -94,10 +93,9 @@ export default function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
-    // If on signup tab, store the selected role before OAuth redirect
+    // If on signup tab, store the role from URL before OAuth redirect
     if (activeTab === "signup") {
-      const selectedRole = signUpForm.getValues("role") || "player";
-      localStorage.setItem("pendingOAuthRole", selectedRole);
+      localStorage.setItem("pendingOAuthRole", signupRole);
     }
     setIsGoogleLoading(true);
     const { error } = await lovable.auth.signInWithOAuth("google", {
@@ -117,18 +115,16 @@ export default function Auth() {
 
   const signUpForm = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "", role: "player" }
+    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" }
   });
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    const roleParam = searchParams.get("role");
     const refParam = searchParams.get("ref");
     if (tabParam === "signup") setActiveTab("signup");else
     if (tabParam === "login") setActiveTab("login");
-    if (roleParam === "player" || roleParam === "court_manager") signUpForm.setValue("role", roleParam, { shouldValidate: true });
     if (refParam) localStorage.setItem("referralCode", refParam);
-  }, [searchParams, signUpForm]);
+  }, [searchParams]);
 
   // Post-OAuth role correction
   useEffect(() => {
