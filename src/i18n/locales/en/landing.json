@@ -28,7 +28,9 @@
     "managerStep2Title": "Manage Availability",
     "managerStep2Desc": "Set your court schedules and pricing.",
     "managerStep3Title": "Grow Your Business",
-    "managerStep3Desc": "Reach more players and fill your courts efficiently."
+    "managerStep3Desc": "Reach more players and fill your courts efficiently.",
+    "playerCta": "Get Started as Player →",
+    "managerCta": "Get Started as Manager →"
   },
   "cta": {
     "title": "Ready to Find Your Next Game?",

@@ -28,7 +28,9 @@
     "managerStep2Title": "Gerencie a Disponibilidade",
     "managerStep2Desc": "Defina os horários e preços das suas quadras.",
     "managerStep3Title": "Cresça seu Negócio",
-    "managerStep3Desc": "Alcance mais jogadores e preencha suas quadras de forma eficiente."
+    "managerStep3Desc": "Alcance mais jogadores e preencha suas quadras de forma eficiente.",
+    "playerCta": "Começar como Jogador →",
+    "managerCta": "Começar como Gestor →"
   },
   "cta": {
     "title": "Pronto pra Encontrar seu Próximo Jogo?",
