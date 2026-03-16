@@ -32,7 +32,6 @@ import { VenueDetailsEditor } from "@/components/manager/VenueDetailsEditor";
 import { AllowedSportsSelector } from "@/components/manager/AllowedSportsSelector";
 import { StripeSetupAlert } from "@/components/manager/StripeSetupAlert";
 import { useManagerStripeReady } from "@/hooks/useStripeConnectStatus";
-import { nzCities, getSuburbsForCity } from "@/data/nzLocations";
 import { useSurfaceTypes } from "@/hooks/useSurfaceTypes";
 
 const courtSchema = z.object({
