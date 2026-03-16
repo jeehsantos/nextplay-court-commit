@@ -40,7 +40,11 @@ export default function ManagerVenues() {
             <h1 className="font-display text-2xl font-bold">{t("venues.title")}</h1>
             <p className="text-muted-foreground">{t("venues.subtitle")}</p>
           </div>
-          <Link to="/manager/venues/new"><Button className="gap-2"><Plus className="h-4 w-4" />{t("venues.addVenue")}</Button></Link>
+          <Link to="/manager/venues/new">
+            <Button className="gap-2" disabled={!stripeReady}>
+              <Plus className="h-4 w-4" />{t("venues.addVenue")}
+            </Button>
+          </Link>
         </div>
 
         {loading ? (
