@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { nzCities } from "@/data/nzLocations";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SportIcon, getSportLabel } from "@/components/ui/sport-icon";
@@ -32,6 +34,8 @@ import {
   Plus,
   MapPin,
   DollarSign,
+  ChevronUp,
+  ChevronDown,
   Edit,
   Loader2,
   Users,
@@ -92,6 +96,47 @@ export default function ManagerCourtsNew() {
   // Venue Delete state
   const [deleteVenueTarget, setDeleteVenueTarget] = useState<{ venue: Venue; courts: Court[] } | null>(null);
   const [deleteVenueLoading, setDeleteVenueLoading] = useState(false);
+
+  // Inline Venue Creation state
+  const [showAddVenueForm, setShowAddVenueForm] = useState(false);
+  const [newVenueName, setNewVenueName] = useState("");
+  const [newVenueAddress, setNewVenueAddress] = useState("");
+  const [newVenueCity, setNewVenueCity] = useState("");
+  const [creatingVenue, setCreatingVenue] = useState(false);
+  const venueFormRef = useRef<HTMLDivElement>(null);
+
+  const handleCreateVenue = async () => {
+    const trimmedName = newVenueName.trim();
+    const trimmedAddress = newVenueAddress.trim();
+    if (!trimmedName || !trimmedAddress || !newVenueCity) {
+      toast({ title: t("courts.fillAllFields"), variant: "destructive" });
+      return;
+    }
+    setCreatingVenue(true);
+    try {
+      const { data, error } = await supabase
+        .from("venues")
+        .insert({
+          name: trimmedName,
+          address: trimmedAddress,
+          city: newVenueCity,
+          owner_id: user!.id,
+        })
+        .select("id, name, city, address")
+        .single();
+      if (error) throw error;
+      setVenueGroups(prev => [{ venue: data, courts: [] }, ...prev]);
+      setNewVenueName("");
+      setNewVenueAddress("");
+      setNewVenueCity("");
+      setShowAddVenueForm(false);
+      toast({ title: t("courts.venueCreated") });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setCreatingVenue(false);
+    }
+  };
 
   const openVenueEditDialog = (venue: Venue, courts: Court[]) => {
     setEditVenueName(venue.name);
@@ -353,14 +398,70 @@ export default function ManagerCourtsNew() {
             <h1 className="font-display text-2xl font-bold">{t("courts.title")}</h1>
             <p className="text-sm text-muted-foreground">{t("courts.subtitle")}</p>
           </div>
-          <Link to="/manager/courts/new">
-            <Button className="gap-2" disabled={!stripeStatus?.isReady}>
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("courts.addNewVenue")}</span>
-              <span className="sm:hidden">{t("courts.add")}</span>
-            </Button>
-          </Link>
+          <Button
+            className="gap-2"
+            disabled={!stripeStatus?.isReady}
+            onClick={() => {
+              setShowAddVenueForm(!showAddVenueForm);
+              if (!showAddVenueForm) {
+                setTimeout(() => venueFormRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100);
+              }
+            }}
+          >
+            {showAddVenueForm ? <ChevronUp className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            <span className="hidden sm:inline">{t("courts.addNewVenue")}</span>
+            <span className="sm:hidden">{t("courts.add")}</span>
+          </Button>
         </div>
+
+        {/* Inline Add Venue Form */}
+        {showAddVenueForm && (
+          <Card ref={venueFormRef}>
+            <CardContent className="p-4 md:p-6 space-y-4">
+              <h3 className="font-semibold text-lg">{t("courts.addNewVenue")}</h3>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t("courts.venueName")}</Label>
+                  <Input
+                    placeholder={t("courts.venueNamePlaceholder")}
+                    value={newVenueName}
+                    onChange={(e) => setNewVenueName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t("courts.venueCity")}</Label>
+                  <Select value={newVenueCity} onValueChange={setNewVenueCity}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("courts.selectCity")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {nzCities.map((city) => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t("courts.venueAddress")}</Label>
+                  <Input
+                    placeholder={t("courts.venueAddressPlaceholder")}
+                    value={newVenueAddress}
+                    onChange={(e) => setNewVenueAddress(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowAddVenueForm(false)}>
+                  {t("courts.cancel")}
+                </Button>
+                <Button onClick={handleCreateVenue} disabled={creatingVenue}>
+                  {creatingVenue && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  {t("courts.createVenue")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stripe Setup Warning */}
         {!stripeLoading && !stripeStatus?.isReady && (
@@ -372,7 +473,7 @@ export default function ManagerCourtsNew() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : venueGroups.length === 0 ? (
+        ) : venueGroups.length === 0 && !showAddVenueForm ? (
           <Card>
             <CardContent className="py-12 text-center">
               <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -380,9 +481,12 @@ export default function ManagerCourtsNew() {
               <p className="text-muted-foreground mb-4">
                 {t("courts.noVenuesDesc")}
               </p>
-              <Link to="/manager/courts/new">
-                <Button>{t("courts.addFirstVenue")}</Button>
-              </Link>
+              <Button
+                disabled={!stripeStatus?.isReady}
+                onClick={() => setShowAddVenueForm(true)}
+              >
+                {t("courts.addFirstVenue")}
+              </Button>
             </CardContent>
           </Card>
         ) : (
