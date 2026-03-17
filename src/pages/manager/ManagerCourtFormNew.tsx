@@ -28,7 +28,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { CourtPhotosUpload } from "@/components/manager/CourtPhotosUpload";
-import { VenueDetailsEditor } from "@/components/manager/VenueDetailsEditor";
 import { AllowedSportsSelector } from "@/components/manager/AllowedSportsSelector";
 import { StripeSetupAlert } from "@/components/manager/StripeSetupAlert";
 import { useManagerStripeReady } from "@/hooks/useStripeConnectStatus";
@@ -84,7 +83,6 @@ export default function ManagerCourtFormNew() {
   const [venueName, setVenueName] = useState<string>("");
   const [venueData, setVenueData] = useState<any>(null);
   const [venueAllowedSports, setVenueAllowedSports] = useState<string[]>([]);
-  const [venueAmenities, setVenueAmenities] = useState<string[]>([]);
   const { data: stripeStatus, isLoading: stripeLoading } = useManagerStripeReady();
 
   // Multi-court state — selectedTabCourtId is the single source of truth for which court is being edited
@@ -247,7 +245,7 @@ export default function ManagerCourtFormNew() {
       setVenueName(data.venue?.name || "");
       setVenueData(data.venue);
       setVenueAllowedSports((data as any).allowed_sports || []);
-      setVenueAmenities(data.venue?.amenities || []);
+      
 
       reset({
         name: data.name,
@@ -362,7 +360,6 @@ export default function ManagerCourtFormNew() {
           .from("venues")
           .update({
             name: venueName,
-            amenities: venueAmenities,
           } as any)
           .eq("id", existingVenueId);
 
@@ -697,13 +694,6 @@ export default function ManagerCourtFormNew() {
 
 
 
-            {/* 4. Venue Facilities - Only for parent courts */}
-            {(!activeIsSubCourt) && (
-              <VenueDetailsEditor
-                amenities={venueAmenities}
-                onAmenitiesChange={setVenueAmenities}
-              />
-            )}
 
             {/* 5. Policies & Settings Card */}
             <Card className="rounded-2xl border border-border shadow-sm">

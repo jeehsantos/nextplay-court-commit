@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { nzCities, getSuburbsForCity } from "@/data/nzLocations";
 import { Card, CardContent } from "@/components/ui/card";
+import { VenueDetailsEditor } from "@/components/manager/VenueDetailsEditor";
 import { Badge } from "@/components/ui/badge";
 import { SportIcon, getSportLabel } from "@/components/ui/sport-icon";
 import {
@@ -55,6 +56,7 @@ interface Venue {
   name: string;
   city: string;
   address: string;
+  amenities: string[] | null;
 }
 
 interface Court {
@@ -91,6 +93,7 @@ export default function ManagerCourtsNew() {
   const [editVenue, setEditVenue] = useState<{ venue: Venue; courts: Court[] } | null>(null);
   const [editVenueName, setEditVenueName] = useState("");
   const [editMainCourtId, setEditMainCourtId] = useState<string | null>(null);
+  const [editVenueAmenities, setEditVenueAmenities] = useState<string[]>([]);
   const [savingVenueEdit, setSavingVenueEdit] = useState(false);
 
   // Venue Delete state
@@ -103,6 +106,7 @@ export default function ManagerCourtsNew() {
   const [newVenueAddress, setNewVenueAddress] = useState("");
   const [newVenueCity, setNewVenueCity] = useState("");
   const [newVenueSuburb, setNewVenueSuburb] = useState("");
+  const [newVenueAmenities, setNewVenueAmenities] = useState<string[]>([]);
   const [creatingVenue, setCreatingVenue] = useState(false);
   const venueFormRef = useRef<HTMLDivElement>(null);
 
@@ -126,8 +130,9 @@ export default function ManagerCourtsNew() {
           suburb: newVenueSuburb || null,
           country: "New Zealand",
           owner_id: user!.id,
+          amenities: newVenueAmenities.length > 0 ? newVenueAmenities : null,
         })
-        .select("id, name, city, address")
+        .select("id, name, city, address, amenities")
         .single();
       if (error) throw error;
       setVenueGroups(prev => [{ venue: data, courts: [] }, ...prev]);
@@ -135,6 +140,7 @@ export default function ManagerCourtsNew() {
       setNewVenueAddress("");
       setNewVenueCity("");
       setNewVenueSuburb("");
+      setNewVenueAmenities([]);
       setShowAddVenueForm(false);
       toast({ title: t("courts.venueCreated") });
     } catch (error: any) {
@@ -146,6 +152,7 @@ export default function ManagerCourtsNew() {
 
   const openVenueEditDialog = (venue: Venue, courts: Court[]) => {
     setEditVenueName(venue.name);
+    setEditVenueAmenities(venue.amenities || []);
     // Find the current main court (is_multi_court=true and no parent)
     const mainCourt = courts.find(c => c.is_multi_court && !c.parent_court_id);
     setEditMainCourtId(mainCourt?.id || null);
@@ -161,10 +168,10 @@ export default function ManagerCourtsNew() {
     }
     setSavingVenueEdit(true);
     try {
-      // 1. Update venue name
+      // 1. Update venue name and amenities
       const { error: venueError } = await supabase
         .from("venues")
-        .update({ name: trimmed })
+        .update({ name: trimmed, amenities: editVenueAmenities.length > 0 ? editVenueAmenities : null } as any)
         .eq("id", editVenue.venue.id);
       if (venueError) throw venueError;
 
@@ -289,7 +296,7 @@ export default function ManagerCourtsNew() {
     try {
       const { data: venues, error: venuesError } = await supabase
         .from("venues")
-        .select("id, name, city, address")
+        .select("id, name, city, address, amenities")
         .eq("owner_id", user?.id)
         .order("created_at", { ascending: false });
 
@@ -484,6 +491,11 @@ export default function ManagerCourtsNew() {
                   />
                 </div>
               </div>
+              {/* Venue Facilities */}
+              <VenueDetailsEditor
+                amenities={newVenueAmenities}
+                onAmenitiesChange={setNewVenueAmenities}
+              />
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowAddVenueForm(false)}>
                   {t("courts.cancel")}
@@ -684,6 +696,12 @@ export default function ManagerCourtsNew() {
                   placeholder="Venue name"
                 />
               </div>
+
+              {/* Venue Facilities */}
+              <VenueDetailsEditor
+                amenities={editVenueAmenities}
+                onAmenitiesChange={setEditVenueAmenities}
+              />
 
               {/* Multi-Court Configuration */}
               {editVenue && editVenue.courts.length > 0 && (
