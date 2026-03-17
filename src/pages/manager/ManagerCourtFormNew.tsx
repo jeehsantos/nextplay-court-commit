@@ -29,7 +29,6 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { CourtPhotosUpload } from "@/components/manager/CourtPhotosUpload";
 import { AllowedSportsSelector } from "@/components/manager/AllowedSportsSelector";
-import { AllowedSportsSelector } from "@/components/manager/AllowedSportsSelector";
 import { StripeSetupAlert } from "@/components/manager/StripeSetupAlert";
 import { useManagerStripeReady } from "@/hooks/useStripeConnectStatus";
 import { useSurfaceTypes } from "@/hooks/useSurfaceTypes";
