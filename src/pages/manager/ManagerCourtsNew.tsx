@@ -697,6 +697,12 @@ export default function ManagerCourtsNew() {
                 />
               </div>
 
+              {/* Venue Facilities */}
+              <VenueDetailsEditor
+                amenities={editVenueAmenities}
+                onAmenitiesChange={setEditVenueAmenities}
+              />
+
               {/* Multi-Court Configuration */}
               {editVenue && editVenue.courts.length > 0 && (
                 <div className="space-y-3">
