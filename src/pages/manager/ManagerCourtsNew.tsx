@@ -106,6 +106,7 @@ export default function ManagerCourtsNew() {
   const [newVenueAddress, setNewVenueAddress] = useState("");
   const [newVenueCity, setNewVenueCity] = useState("");
   const [newVenueSuburb, setNewVenueSuburb] = useState("");
+  const [newVenueAmenities, setNewVenueAmenities] = useState<string[]>([]);
   const [creatingVenue, setCreatingVenue] = useState(false);
   const venueFormRef = useRef<HTMLDivElement>(null);
 

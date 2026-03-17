@@ -696,13 +696,6 @@ export default function ManagerCourtFormNew() {
 
 
 
-            {/* 4. Venue Facilities - Only for parent courts */}
-            {(!activeIsSubCourt) && (
-              <VenueDetailsEditor
-                amenities={venueAmenities}
-                onAmenitiesChange={setVenueAmenities}
-              />
-            )}
 
             {/* 5. Policies & Settings Card */}
             <Card className="rounded-2xl border border-border shadow-sm">
