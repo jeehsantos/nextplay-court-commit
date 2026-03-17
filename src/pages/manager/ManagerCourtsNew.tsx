@@ -491,6 +491,11 @@ export default function ManagerCourtsNew() {
                   />
                 </div>
               </div>
+              {/* Venue Facilities */}
+              <VenueDetailsEditor
+                amenities={newVenueAmenities}
+                onAmenitiesChange={setNewVenueAmenities}
+              />
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowAddVenueForm(false)}>
                   {t("courts.cancel")}
