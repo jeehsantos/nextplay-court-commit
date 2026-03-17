@@ -28,7 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { CourtPhotosUpload } from "@/components/manager/CourtPhotosUpload";
-import { VenueDetailsEditor } from "@/components/manager/VenueDetailsEditor";
+import { AllowedSportsSelector } from "@/components/manager/AllowedSportsSelector";
 import { AllowedSportsSelector } from "@/components/manager/AllowedSportsSelector";
 import { StripeSetupAlert } from "@/components/manager/StripeSetupAlert";
 import { useManagerStripeReady } from "@/hooks/useStripeConnectStatus";
