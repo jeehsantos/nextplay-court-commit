@@ -134,56 +134,86 @@ export default function Auth() {
     if (refParam) localStorage.setItem("referralCode", refParam);
   }, [searchParams]);
 
-  // Post-OAuth role correction / setup
+  // Post-OAuth: detect accidental registration on login tab and rollback
   useEffect(() => {
     if (!user || isLoading) return;
 
-    const pendingRole = localStorage.getItem("pendingOAuthRole");
-    if (!pendingRole) return;
+    const oauthIntent = localStorage.getItem("oauthIntent");
+    if (!oauthIntent) return; // Not an OAuth return, skip
 
-    // Detect returning user: if account was created more than 1 minute ago, this is an existing user
     const accountAge = Date.now() - new Date(user.created_at).getTime();
-    const isExistingUser = accountAge > 60_000;
+    const isNewAccount = accountAge < 60_000;
 
-    if (isExistingUser) {
-      localStorage.removeItem("pendingOAuthRole");
-      toast({ title: t("welcomeBack"), description: t("alreadyHaveAccount") });
-      // For existing users, if role is already loaded, redirect will happen via the other effect
-      // If role is null (shouldn't happen for existing users), redirect to courts as fallback
-      if (!userRole) {
-        navigate("/courts", { replace: true });
+    // LOGIN intent: if account is brand new, this user didn't exist → rollback
+    if (oauthIntent === "login") {
+      localStorage.removeItem("oauthIntent");
+
+      if (isNewAccount) {
+        const rollback = async () => {
+          try {
+            await supabase.functions.invoke("rollback-oauth-user");
+          } catch (e) {
+            console.error("Rollback failed:", e);
+          }
+          await supabase.auth.signOut();
+          toast({
+            variant: "destructive",
+            title: t("noAccountFound"),
+            description: t("pleaseSignUp"),
+          });
+        };
+        rollback();
+        return;
       }
+      // Existing user on login tab → normal sign-in, redirect handled by other effect
       return;
     }
 
-    // New user: if role already matches, nothing to do
-    if (userRole === pendingRole) {
-      localStorage.removeItem("pendingOAuthRole");
-      return;
-    }
+    // SIGNUP intent: proceed with role correction
+    if (oauthIntent === "signup") {
+      localStorage.removeItem("oauthIntent");
 
-    // Call edge function to set/correct role (handles missing role row via UPSERT)
-    const correctRole = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("set-initial-role", {
-          body: { role: pendingRole },
-        });
-        if (!error && data?.success) {
-          await refreshRole();
-          toast({ title: t("accountCreated"), description: t("welcomeMessage") });
-        } else {
-          console.error("set-initial-role failed:", error || data);
-          // Fallback: redirect anyway
-          navigate(getDefaultPathForRole(pendingRole), { replace: true });
-        }
-      } catch (e) {
-        console.error("Failed to correct OAuth role:", e);
-        navigate(getDefaultPathForRole(pendingRole), { replace: true });
-      } finally {
+      const pendingRole = localStorage.getItem("pendingOAuthRole");
+      if (!pendingRole) return;
+
+      // Detect returning user
+      if (!isNewAccount) {
         localStorage.removeItem("pendingOAuthRole");
+        toast({ title: t("welcomeBack"), description: t("alreadyHaveAccount") });
+        if (!userRole) {
+          navigate("/courts", { replace: true });
+        }
+        return;
       }
-    };
-    correctRole();
+
+      // New user: if role already matches, nothing to do
+      if (userRole === pendingRole) {
+        localStorage.removeItem("pendingOAuthRole");
+        return;
+      }
+
+      // Call edge function to set/correct role
+      const correctRole = async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke("set-initial-role", {
+            body: { role: pendingRole },
+          });
+          if (!error && data?.success) {
+            await refreshRole();
+            toast({ title: t("accountCreated"), description: t("welcomeMessage") });
+          } else {
+            console.error("set-initial-role failed:", error || data);
+            navigate(getDefaultPathForRole(pendingRole), { replace: true });
+          }
+        } catch (e) {
+          console.error("Failed to correct OAuth role:", e);
+          navigate(getDefaultPathForRole(pendingRole), { replace: true });
+        } finally {
+          localStorage.removeItem("pendingOAuthRole");
+        }
+      };
+      correctRole();
+    }
   }, [user, userRole, isLoading]);
 
   useEffect(() => {
