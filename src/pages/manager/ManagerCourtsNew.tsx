@@ -293,7 +293,7 @@ export default function ManagerCourtsNew() {
     try {
       const { data: venues, error: venuesError } = await supabase
         .from("venues")
-        .select("id, name, city, address")
+        .select("id, name, city, address, amenities")
         .eq("owner_id", user?.id)
         .order("created_at", { ascending: false });
 
