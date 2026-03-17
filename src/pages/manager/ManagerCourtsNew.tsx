@@ -130,8 +130,9 @@ export default function ManagerCourtsNew() {
           suburb: newVenueSuburb || null,
           country: "New Zealand",
           owner_id: user!.id,
+          amenities: newVenueAmenities.length > 0 ? newVenueAmenities : null,
         })
-        .select("id, name, city, address")
+        .select("id, name, city, address, amenities")
         .single();
       if (error) throw error;
       setVenueGroups(prev => [{ venue: { ...data, amenities: newVenueAmenities }, courts: [] }, ...prev]);
