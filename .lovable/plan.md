@@ -1,61 +1,69 @@
 
-Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-What I found (already verified):
-1) Data inconsistency exists now:
-   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
-   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
-2) `ManagerCourtFormNew` root causes:
-   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
-   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
-   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
-3) Backend side effect confirmed:
-   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
+## Problem Analysis
 
-Implementation plan (execute in this order):
-1. Database integrity hardening + backfill (migration)
-   - Backfill: set `is_multi_court=true` for any court that already has children.
-   - Add DB validation trigger(s) on `courts` to enforce:
-     - child cannot reference itself
-     - child parent must be in same venue
-     - parent cannot be set `is_multi_court=false` while children exist
-     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
-   - This guarantees the bug cannot recur from any client path.
+**Root cause**: Google OAuth in the authentication system does not distinguish between "sign in" and "sign up". When a user clicks "Continue with Google" on the **Login tab** with an unregistered email, the authentication system automatically creates a new account. The `handle_new_user` database trigger then fires, creating a profile and assigning the default `player` role. The user is fully registered and granted access without ever going through the sign-up flow.
 
-2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
-   - Remove direct `window.history.replaceState` usage.
-   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
-   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
-   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
+**Security concerns**:
+1. Unintended account creation bypasses the sign-up process entirely
+2. Users get auto-registered with a default `player` role without consent
+3. No terms/privacy acceptance when auto-registered via login tab
+4. The `set-initial-role` edge function has a 5-minute window that could be exploited
 
-3. Multi-court UI behavior safeguards
-   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
-   - Disable/harden turning off multi-court when children exist (with clear message).
-   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
+## Solution
 
-4. Availability resilience (backend function)
-   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
-   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
+### 1. Detect and reverse accidental registration (Auth.tsx)
 
-5. Verification I will perform (not asking you to test manually)
-   - DB checks:
-     - verify parent `57e11168...` becomes `is_multi_court=true`
-     - verify child links remain unchanged
-     - verify no rows exist with `children > 0 AND is_multi_court=false`
-   - Functional checks:
-     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
-   - UI checks:
-     - exercise add-sub-court flow and confirm:
-       - main court remains main
-       - child appears as child tab
-       - subsequent saves update correct court record
-       - no panel collapse/desync
+After Google OAuth returns on the **login tab** (when `pendingOAuthRole` is NOT set in localStorage), check the user's account age. If the account was created less than 60 seconds ago, this means the user didn't exist before and was auto-registered. In that case:
 
-Technical details:
-- Files to update:
-  - `supabase/migrations/<new>.sql`
-  - `src/pages/manager/ManagerCourtFormNew.tsx`
-  - `supabase/functions/get-availability/index.ts`
-- No money/payment logic touched.
-- No auth model changes.
-- Existing routing and form schema preserved; this is a consistency + state synchronization fix.
+- Call a new edge function `rollback-oauth-user` to delete the freshly created account (using admin API)
+- Sign the user out locally
+- Show an error toast: "No account found for this email. Please sign up first."
+
+### 2. Create `rollback-oauth-user` edge function
+
+A lightweight, secure edge function that:
+- Validates the caller's JWT
+- Confirms the account was created less than 2 minutes ago (safety guard)
+- Deletes the user via `admin.auth.admin.deleteUser()` (cascades to `user_roles` and `profiles`)
+- Much simpler than `delete-user-account` since there's no data to preserve for a brand-new account
+
+### 3. Harden the login-tab Google button flow (Auth.tsx)
+
+In `handleGoogleSignIn`:
+- When `activeTab === "login"`, store a flag `localStorage.setItem("oauthIntent", "login")` 
+- When `activeTab === "signup"`, store `localStorage.setItem("oauthIntent", "signup")` (and `pendingOAuthRole` as before)
+
+In the post-OAuth effect:
+- Read `oauthIntent` from localStorage
+- If `oauthIntent === "login"` AND account age < 60s → rollback + sign out + error message
+- If `oauthIntent === "signup"` → proceed with existing role correction flow
+- Clean up localStorage flags in all cases
+
+### 4. Update `set-initial-role` edge function
+
+Add a check: if the requesting user was NOT created via OAuth (no Google identity), reject the request. This prevents the edge function from being abused on manually created accounts.
+
+## Files to Change
+
+| File | Change |
+|------|--------|
+| `supabase/functions/rollback-oauth-user/index.ts` | **New** - Delete freshly created OAuth accounts (< 2 min old) |
+| `src/pages/Auth.tsx` | Add `oauthIntent` localStorage flag; add post-OAuth guard that detects accidental registration, calls rollback, signs out, shows error |
+| `src/i18n/locales/en/auth.json` | Add `noAccountFound` and `pleaseSignUp` translation keys |
+| `src/i18n/locales/pt/auth.json` | Add Portuguese translations for same keys |
+
+## Flow After Fix
+
+```text
+Login Tab + Google OAuth:
+  User exists    → Sign in normally → redirect by role
+  User NOT exist → Account auto-created → detected (age < 60s) 
+                 → rollback-oauth-user called → account deleted 
+                 → local sign out → toast "No account found, please sign up"
+
+Signup Tab + Google OAuth:
+  User exists    → detected (age > 60s) → "Welcome back" toast → redirect
+  User NOT exist → Account created → set-initial-role corrects role → redirect
+```
+
