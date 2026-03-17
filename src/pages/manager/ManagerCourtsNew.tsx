@@ -134,7 +134,7 @@ export default function ManagerCourtsNew() {
         .select("id, name, city, address")
         .single();
       if (error) throw error;
-      setVenueGroups(prev => [{ venue: data, courts: [] }, ...prev]);
+      setVenueGroups(prev => [{ venue: { ...data, amenities: newVenueAmenities }, courts: [] }, ...prev]);
       setNewVenueName("");
       setNewVenueAddress("");
       setNewVenueCity("");

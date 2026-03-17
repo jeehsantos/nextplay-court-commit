@@ -84,7 +84,6 @@ export default function ManagerCourtFormNew() {
   const [venueData, setVenueData] = useState<any>(null);
   const [venueAllowedSports, setVenueAllowedSports] = useState<string[]>([]);
   const { data: stripeStatus, isLoading: stripeLoading } = useManagerStripeReady();
-  const { data: stripeStatus, isLoading: stripeLoading } = useManagerStripeReady();
 
   // Multi-court state — selectedTabCourtId is the single source of truth for which court is being edited
   const [selectedTabCourtId, setSelectedTabCourtId] = useState<string | null>(null);
