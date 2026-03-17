@@ -362,7 +362,6 @@ export default function ManagerCourtFormNew() {
           .from("venues")
           .update({
             name: venueName,
-            amenities: venueAmenities,
           } as any)
           .eq("id", existingVenueId);
 
