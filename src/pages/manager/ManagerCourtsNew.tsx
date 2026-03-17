@@ -93,6 +93,7 @@ export default function ManagerCourtsNew() {
   const [editVenue, setEditVenue] = useState<{ venue: Venue; courts: Court[] } | null>(null);
   const [editVenueName, setEditVenueName] = useState("");
   const [editMainCourtId, setEditMainCourtId] = useState<string | null>(null);
+  const [editVenueAmenities, setEditVenueAmenities] = useState<string[]>([]);
   const [savingVenueEdit, setSavingVenueEdit] = useState(false);
 
   // Venue Delete state
