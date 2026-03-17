@@ -135,11 +135,12 @@ export default function ManagerCourtsNew() {
         .select("id, name, city, address, amenities")
         .single();
       if (error) throw error;
-      setVenueGroups(prev => [{ venue: { ...data, amenities: newVenueAmenities }, courts: [] }, ...prev]);
+      setVenueGroups(prev => [{ venue: data, courts: [] }, ...prev]);
       setNewVenueName("");
       setNewVenueAddress("");
       setNewVenueCity("");
       setNewVenueSuburb("");
+      setNewVenueAmenities([]);
       setShowAddVenueForm(false);
       toast({ title: t("courts.venueCreated") });
     } catch (error: any) {
