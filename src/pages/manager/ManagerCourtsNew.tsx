@@ -56,6 +56,7 @@ interface Venue {
   name: string;
   city: string;
   address: string;
+  amenities: string[] | null;
 }
 
 interface Court {
