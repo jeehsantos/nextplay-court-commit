@@ -168,10 +168,10 @@ export default function ManagerCourtsNew() {
     }
     setSavingVenueEdit(true);
     try {
-      // 1. Update venue name
+      // 1. Update venue name and amenities
       const { error: venueError } = await supabase
         .from("venues")
-        .update({ name: trimmed })
+        .update({ name: trimmed, amenities: editVenueAmenities.length > 0 ? editVenueAmenities : null } as any)
         .eq("id", editVenue.venue.id);
       if (venueError) throw venueError;
 
