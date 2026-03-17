@@ -93,9 +93,13 @@ export default function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
-    // If on signup tab, store the role from URL before OAuth redirect
+    // Store intent so post-OAuth handler knows whether this was login or signup
     if (activeTab === "signup") {
       localStorage.setItem("pendingOAuthRole", signupRole);
+      localStorage.setItem("oauthIntent", "signup");
+    } else {
+      localStorage.setItem("oauthIntent", "login");
+      localStorage.removeItem("pendingOAuthRole");
     }
     setIsGoogleLoading(true);
     const redirectBack = activeTab === "signup"
@@ -107,6 +111,7 @@ export default function Auth() {
     if (error) {
       setIsGoogleLoading(false);
       localStorage.removeItem("pendingOAuthRole");
+      localStorage.removeItem("oauthIntent");
       toast({ variant: "destructive", title: t("googleSignInFailed"), description: error.message || t("googleSignInError") });
     }
   };
