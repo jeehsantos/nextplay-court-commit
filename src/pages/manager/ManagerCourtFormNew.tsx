@@ -247,7 +247,7 @@ export default function ManagerCourtFormNew() {
       setVenueName(data.venue?.name || "");
       setVenueData(data.venue);
       setVenueAllowedSports((data as any).allowed_sports || []);
-      setVenueAmenities(data.venue?.amenities || []);
+      
 
       reset({
         name: data.name,
