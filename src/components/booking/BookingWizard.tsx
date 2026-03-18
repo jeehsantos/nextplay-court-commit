@@ -230,7 +230,7 @@ export function BookingWizard({
           .insert({
             name: newGroupName.trim(),
             organizer_id: user!.id,
-            sport_type: sportType,
+            sport_category_id: selectedSportCategoryId,
             city: city,
             default_day_of_week: dayOfWeek,
             default_start_time: startTime,
