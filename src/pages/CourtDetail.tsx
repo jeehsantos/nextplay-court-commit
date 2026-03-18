@@ -2104,7 +2104,7 @@ export default function CourtDetail() {
             open={showGroupModal}
             onOpenChange={setShowGroupModal}
             onConfirm={handleBookingConfirm}
-            sportType={(court.allowed_sports?.[0] || "other") as any}
+            sportType={(["futsal","tennis","volleyball","basketball","turf_hockey","badminton","hockey","other"].includes(court.allowed_sports?.[0] || "") ? court.allowed_sports![0] : "other") as any}
             courtPrice={courtPrice}
             dayOfWeek={getDay(selectedDate)}
             startTime={getStartTime()}
