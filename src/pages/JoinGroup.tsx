@@ -222,8 +222,8 @@ export default function JoinGroup() {
               
               <div className="rounded-lg bg-muted/50 p-4 space-y-3">
                 <div className="flex items-center gap-3">
-                  <SportIcon sport={group.sport_type} className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-sm">{getSportLabel(group.sport_type)}</span>
+                  <SportIcon sport="other" className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm">Sport Group</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <MapPin className="h-5 w-5 text-muted-foreground" />
