@@ -8,7 +8,7 @@ type SportCategory = Database["public"]["Tables"]["sport_categories"]["Row"];
 export interface GameData {
   id: string;
   groupName: string;
-  sport: Database["public"]["Enums"]["sport_type"];
+  sport: string;
   sportCategory?: SportCategory;
   courtName: string;
   venueName: string;
