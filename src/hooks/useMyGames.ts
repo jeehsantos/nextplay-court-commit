@@ -127,8 +127,8 @@ async function fetchSessions(
     const court = session.courts;
 
     let sportCategory = session.sport_categories;
-    if (!sportCategory && group?.sport_type) {
-      sportCategory = sportCategoriesMap.get(group.sport_type);
+    if (!sportCategory && group?.sport_categories) {
+      sportCategory = group.sport_categories;
     }
 
     const [hours, minutes] = session.start_time.split(":").map(Number);
