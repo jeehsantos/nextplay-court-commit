@@ -45,7 +45,7 @@ export async function getSportCategoryDisplay(
     await cachePromise;
   }
 
-  const category = sportCategoriesCache?.get(sportType);
+  const category = sportCategoriesCache?.get(sportKey);
   return category?.display_name || "Sport TBD";
 }
 
