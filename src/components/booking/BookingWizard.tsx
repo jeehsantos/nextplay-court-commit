@@ -60,7 +60,7 @@ interface BookingWizardProps {
     sportCategoryId: string;
     splitPlayers?: number;
   }) => void;
-  sportType: SportType;
+  allowedSports?: string[];
   courtPrice: number;
   dayOfWeek: number;
   startTime: string;
