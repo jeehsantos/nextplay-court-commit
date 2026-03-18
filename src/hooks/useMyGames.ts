@@ -77,7 +77,7 @@ async function fetchSessions(
       sport_category_id,
       group_id,
       sport_categories ( id, name, display_name, icon, sort_order, is_active, created_at, updated_at ),
-      groups!inner ( name, sport_type ),
+      groups!inner ( name, sport_category_id, sport_categories ( name, display_name, icon ) ),
       courts ( name, venues ( name ) )
     `)
     .eq("is_cancelled", false);
