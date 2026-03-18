@@ -32,7 +32,7 @@ interface GroupSelectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (groupId: string, isNewGroup: boolean, paymentType: BookingPaymentType, sessionType: SessionType) => void;
-  sportType: SportType;
+  sportCategoryId: string;
   courtPrice: number;
   dayOfWeek: number;
   startTime: string;
