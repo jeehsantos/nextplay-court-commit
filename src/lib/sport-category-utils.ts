@@ -64,7 +64,7 @@ export async function getSportCategory(
     await cachePromise;
   }
 
-  return sportCategoriesCache?.get(sportType) || null;
+  return sportCategoriesCache?.get(sportKey) || null;
 }
 
 /**

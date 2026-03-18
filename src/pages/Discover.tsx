@@ -401,7 +401,7 @@ export default function Discover() {
         rescueGamesData.push({
           id: session.id,
           groupName: group?.name || "Unknown Group",
-          sport: (group?.sport_type || "other") as SportType,
+          sport: (group?.sport_categories?.name || "other") as SportType,
           courtName: court?.name || "Court",
           venueName: court?.venues?.name || "Venue",
           city: court?.venues?.city || group?.city || "",
