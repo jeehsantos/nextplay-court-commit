@@ -509,7 +509,6 @@ export function BookingWizard({
               {/* Sport Category Selection */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium flex items-center gap-2">
-                  <SportIcon sport={sportType} className="h-4 w-4" />
                   Sport Category
                 </Label>
                 
