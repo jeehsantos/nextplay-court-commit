@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "other";
+type SportType = string;
 
 interface RescueGame {
   id: string;
