@@ -51,7 +51,7 @@ export default function ArchivedSessions() {
             session_date,
             group_id,
             court_id,
-            groups!inner (sport_type),
+            groups!inner (sport_category_id, sport_categories (name, display_name)),
             courts (name, venues (name))
           ),
           payments (amount)
