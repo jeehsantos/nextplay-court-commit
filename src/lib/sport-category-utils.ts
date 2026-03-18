@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-type SportType = Database["public"]["Enums"]["sport_type"];
+type SportCategory = Database["public"]["Tables"]["sport_categories"]["Row"];
 type SportCategory = Database["public"]["Tables"]["sport_categories"]["Row"];
 
 // In-memory cache for sport categories
