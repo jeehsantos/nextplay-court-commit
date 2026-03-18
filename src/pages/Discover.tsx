@@ -345,8 +345,9 @@ export default function Discover() {
           groups (
             id,
             name,
-            sport_type,
-            city
+            sport_category_id,
+            city,
+            sport_categories ( name, display_name, icon )
           ),
           courts (
             name,
