@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-type SportCategoryRow = Database["public"]["Tables"]["sport_categories"]["Row"];
+type SportCategory = Database["public"]["Tables"]["sport_categories"]["Row"];
 
 // In-memory cache for sport categories
 let sportCategoriesCache: Map<string, SportCategory> | null = null;
