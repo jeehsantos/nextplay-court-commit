@@ -47,7 +47,7 @@ export function GroupSelectionModal({
   open,
   onOpenChange,
   onConfirm,
-  sportType,
+  sportCategoryId,
   courtPrice,
   dayOfWeek,
   startTime,
