@@ -360,7 +360,7 @@ export function BookingWizard({
           {/* Venue Summary - Always visible */}
           <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-3 sm:p-4">
             <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-              <SportIcon sport={sportType} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0" />
+              <SportIcon sport={allowedSports?.[0] || "other"} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0" />
               <div className="min-w-0">
                 <h3 className="font-semibold text-base sm:text-lg truncate">{courtName}</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground truncate">{venueName}</p>
