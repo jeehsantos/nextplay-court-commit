@@ -9,15 +9,7 @@ import { format } from "date-fns";
 import type { Database } from "@/integrations/supabase/types";
 
 type SessionState = "protected" | "pending" | "rescue" | "released";
-type SportType =
-  | "futsal"
-  | "tennis"
-  | "volleyball"
-  | "basketball"
-  | "turf_hockey"
-  | "badminton"
-  | "hockey"
-  | "other";
+type SportType = string;
 type SportCategory = Database["public"]["Tables"]["sport_categories"]["Row"];
 
 interface GameCardProps {

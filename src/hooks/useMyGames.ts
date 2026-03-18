@@ -191,7 +191,7 @@ async function fetchQuickChallenges(userId: string): Promise<GameData[]> {
     return {
       id: qc.id,
       groupName: `Quick ${scRow?.display_name || "Match"}`,
-      sport: "other" as Database["public"]["Enums"]["sport_type"],
+      sport: "other",
       sportCategory: scRow || undefined,
       courtName: qc.courts?.name || "TBD",
       venueName: qc.venues?.name || "TBD",
