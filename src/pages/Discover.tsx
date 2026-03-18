@@ -386,7 +386,7 @@ export default function Discover() {
 
         const group = session.groups as {
           name?: string;
-          sport_type?: string;
+          sport_categories?: { name?: string; display_name?: string; icon?: string } | null;
           city?: string;
         } | null;
         const court = session.courts as {
