@@ -198,10 +198,10 @@ export default function GameDetail() {
 
       if (groupError) throw groupError;
 
-      // Use sport category directly from session (preferred) or fallback to group's sport_type
+      // Use sport category directly from session (preferred) or fallback to group's sport_category_id
       let sportCategory = (sessionData as any).sport_categories as SportCategory | null;
-      if (!sportCategory && groupData?.sport_type) {
-        sportCategory = await getSportCategory(groupData.sport_type);
+      if (!sportCategory && groupData?.sport_category_id) {
+        sportCategory = await getSportCategory(groupData.sport_category_id);
       }
 
       // Fetch players
