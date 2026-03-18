@@ -936,7 +936,7 @@ const getGoogleMapsUrl = (address: string): string => {
               <CardContent className="p-4 lg:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <SportIcon sport={group.sport_type as SportType} size="lg" />
+                    <SportIcon sport={gameData?.sportCategory?.name || "other"} size="lg" />
                     <div>
                       <h2 className="font-display text-xl lg:text-2xl font-bold">{group.name}</h2>
                       <p className="text-muted-foreground">{sportDisplayName}</p>
