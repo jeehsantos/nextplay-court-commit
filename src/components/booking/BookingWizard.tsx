@@ -473,9 +473,8 @@ export function BookingWizard({
                     </SelectTrigger>
                     <SelectContent className="bg-popover border border-border shadow-lg">
                       {userGroups.map((group) => (
-                        <SelectItem key={group.id} value={group.id} className="py-3">
+                      <SelectItem key={group.id} value={group.id} className="py-3">
                           <div className="flex items-center gap-2">
-                            <SportIcon sport={group.sport_type} className="h-4 w-4" />
                             <span>{group.name}</span>
                           </div>
                         </SelectItem>
