@@ -26,7 +26,6 @@ import { SessionTypeDropdown, type SessionType } from "@/components/session/Sess
 import type { Database } from "@/integrations/supabase/types";
 
 type Group = Database["public"]["Tables"]["groups"]["Row"];
-type SportType = Database["public"]["Enums"]["sport_type"];
 type BookingPaymentType = "single" | "split";
 
 interface GroupSelectionModalProps {
