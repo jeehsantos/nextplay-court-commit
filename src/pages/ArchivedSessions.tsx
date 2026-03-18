@@ -65,7 +65,7 @@ export default function ArchivedSessions() {
       const formattedSessions: ArchivedSession[] = (data || []).map((item: any) => ({
         id: item.sessions?.id || item.id,
         session_date: item.sessions?.session_date || "",
-        sport_type: item.sessions?.groups?.sport_type || "other",
+        sport_name: item.sessions?.groups?.sport_categories?.display_name || "Other",
         court_name: item.sessions?.courts?.name || "Unknown Court",
         venue_name: item.sessions?.courts?.venues?.name || "Unknown Venue",
         amount_paid: item.payments?.[0]?.amount || 0,
