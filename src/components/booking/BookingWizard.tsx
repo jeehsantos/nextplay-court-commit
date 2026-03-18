@@ -87,7 +87,7 @@ export function BookingWizard({
   open,
   onOpenChange,
   onConfirm,
-  sportType,
+  allowedSports,
   courtPrice,
   dayOfWeek,
   startTime,
