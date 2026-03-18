@@ -138,7 +138,7 @@ export default function ArchivedSessions() {
               <Card key={session.id}>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center justify-between">
-                    <span className="capitalize">{session.sport_type}</span>
+                    <span className="capitalize">{session.sport_name}</span>
                     {session.amount_paid > 0 && (
                       <span className="text-sm font-normal text-muted-foreground">
                         {formatCurrency(session.amount_paid)}
