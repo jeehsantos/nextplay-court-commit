@@ -499,7 +499,7 @@ export type Database = {
           organizer_id: string
           payment_deadline_hours: number
           photo_url: string | null
-          sport_type: Database["public"]["Enums"]["sport_type"]
+          sport_category_id: string
           updated_at: string
           weekly_court_price: number
         }
@@ -520,7 +520,7 @@ export type Database = {
           organizer_id: string
           payment_deadline_hours?: number
           photo_url?: string | null
-          sport_type: Database["public"]["Enums"]["sport_type"]
+          sport_category_id: string
           updated_at?: string
           weekly_court_price: number
         }
@@ -541,7 +541,7 @@ export type Database = {
           organizer_id?: string
           payment_deadline_hours?: number
           photo_url?: string | null
-          sport_type?: Database["public"]["Enums"]["sport_type"]
+          sport_category_id?: string
           updated_at?: string
           weekly_court_price?: number
         }
@@ -551,6 +551,13 @@ export type Database = {
             columns: ["default_court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groups_sport_category_id_fkey"
+            columns: ["sport_category_id"]
+            isOneToOne: false
+            referencedRelation: "sport_categories"
             referencedColumns: ["id"]
           },
         ]
