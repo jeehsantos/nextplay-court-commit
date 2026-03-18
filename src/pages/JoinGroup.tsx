@@ -210,7 +210,7 @@ export default function JoinGroup() {
           <Card>
             <CardHeader className="text-center pb-4">
               <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <SportIcon sport={group.sport_type} className="h-8 w-8" />
+                <SportIcon sport="other" className="h-8 w-8" />
               </div>
               <CardTitle className="text-xl">{group.name}</CardTitle>
               <CardDescription>{t("invitedToJoin")}</CardDescription>
