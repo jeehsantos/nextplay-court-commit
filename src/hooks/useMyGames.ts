@@ -140,7 +140,7 @@ async function fetchSessions(
     return {
       id: session.id,
       groupName: group?.name || "Unknown Group",
-      sport: group?.sport_type || "other",
+      sport: sportCategory?.name || "other",
       sportCategory,
       courtName: court?.name || "TBD",
       venueName: court?.venues?.name || "TBD",
