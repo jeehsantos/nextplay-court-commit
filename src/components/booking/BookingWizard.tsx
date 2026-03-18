@@ -45,7 +45,6 @@ import {
 import type { Database } from "@/integrations/supabase/types";
 
 type Group = Database["public"]["Tables"]["groups"]["Row"];
-type SportType = Database["public"]["Enums"]["sport_type"];
 type BookingPaymentType = "single" | "split";
 
 import type { Equipment } from "@/hooks/useVenueEquipment";
