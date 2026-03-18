@@ -193,10 +193,8 @@ export function GroupSelectionModal({
             {/* Booking Summary Card */}
             <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-4">
               <div className="flex items-center gap-3 mb-3">
-                <SportIcon sport={sportType} className="h-10 w-10" />
                 <div>
                   <h3 className="font-semibold text-lg">{courtName}</h3>
-                  <p className="text-sm text-muted-foreground">{getSportLabel(sportType)}</p>
                 </div>
               </div>
               
