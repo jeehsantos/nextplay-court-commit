@@ -14,7 +14,7 @@ interface GroupData {
   id: string;
   name: string;
   description: string | null;
-  sport_type: string;
+  sport_category_id: string;
   city: string;
   default_day_of_week: number;
   default_start_time: string;
@@ -210,7 +210,7 @@ export default function JoinGroup() {
           <Card>
             <CardHeader className="text-center pb-4">
               <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <SportIcon sport={group.sport_type} className="h-8 w-8" />
+                <SportIcon sport="other" className="h-8 w-8" />
               </div>
               <CardTitle className="text-xl">{group.name}</CardTitle>
               <CardDescription>{t("invitedToJoin")}</CardDescription>
@@ -222,8 +222,8 @@ export default function JoinGroup() {
               
               <div className="rounded-lg bg-muted/50 p-4 space-y-3">
                 <div className="flex items-center gap-3">
-                  <SportIcon sport={group.sport_type} className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-sm">{getSportLabel(group.sport_type)}</span>
+                  <SportIcon sport="other" className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm">Sport Group</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <MapPin className="h-5 w-5 text-muted-foreground" />

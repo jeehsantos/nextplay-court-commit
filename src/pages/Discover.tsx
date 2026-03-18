@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "other";
+type SportType = string;
 
 interface RescueGame {
   id: string;
@@ -345,8 +345,9 @@ export default function Discover() {
           groups (
             id,
             name,
-            sport_type,
-            city
+            sport_category_id,
+            city,
+            sport_categories ( name, display_name, icon )
           ),
           courts (
             name,
@@ -385,7 +386,7 @@ export default function Discover() {
 
         const group = session.groups as {
           name?: string;
-          sport_type?: string;
+          sport_categories?: { name?: string; display_name?: string; icon?: string } | null;
           city?: string;
         } | null;
         const court = session.courts as {
@@ -400,7 +401,7 @@ export default function Discover() {
         rescueGamesData.push({
           id: session.id,
           groupName: group?.name || "Unknown Group",
-          sport: (group?.sport_type || "other") as SportType,
+          sport: (group?.sport_categories?.name || "other") as SportType,
           courtName: court?.name || "Court",
           venueName: court?.venues?.name || "Venue",
           city: court?.venues?.city || group?.city || "",

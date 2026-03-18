@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SportIcon, getSportLabel } from "@/components/ui/sport-icon";
 import { Badge } from "@/components/ui/badge";
 
-type SportType = "futsal" | "tennis" | "volleyball" | "basketball" | "turf_hockey" | "badminton" | "hockey" | "other";
+type SportType = string;
 
 interface GroupCardProps {
   id: string;

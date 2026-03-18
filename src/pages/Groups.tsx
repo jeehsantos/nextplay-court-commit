@@ -144,7 +144,7 @@ export default function Groups() {
                 key={group.id}
                 id={group.id}
                 name={group.name}
-                sport={group.sport_type}
+                sport={group.sport_category_id || "other"}
                 city={group.city}
                 memberCount={group.memberCount}
                 schedule={`${getDayName(group.default_day_of_week)} at ${formatTime(group.default_start_time)}`}

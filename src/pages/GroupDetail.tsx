@@ -454,10 +454,9 @@ export default function GroupDetail() {
             <CardContent className="p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <SportIcon sport={group.sport_type} size="lg" />
+                  <SportIcon sport={group.sport_category_id || "other"} size="lg" />
                   <div>
                     <h1 className="font-display text-xl lg:text-2xl font-bold">{group.name}</h1>
-                    <p className="text-muted-foreground">{getSportLabel(group.sport_type)}</p>
                   </div>
                 </div>
                 <Badge variant={group.is_public ? "secondary" : "outline"}>

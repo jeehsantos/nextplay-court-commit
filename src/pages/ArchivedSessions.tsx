@@ -11,7 +11,7 @@ import { toast } from "sonner";
 interface ArchivedSession {
   id: string;
   session_date: string;
-  sport_type: string;
+  sport_name: string;
   court_name: string;
   venue_name: string;
   amount_paid: number;
@@ -51,7 +51,7 @@ export default function ArchivedSessions() {
             session_date,
             group_id,
             court_id,
-            groups!inner (sport_type),
+            groups!inner (sport_category_id, sport_categories (name, display_name)),
             courts (name, venues (name))
           ),
           payments (amount)
@@ -65,7 +65,7 @@ export default function ArchivedSessions() {
       const formattedSessions: ArchivedSession[] = (data || []).map((item: any) => ({
         id: item.sessions?.id || item.id,
         session_date: item.sessions?.session_date || "",
-        sport_type: item.sessions?.groups?.sport_type || "other",
+        sport_name: item.sessions?.groups?.sport_categories?.display_name || "Other",
         court_name: item.sessions?.courts?.name || "Unknown Court",
         venue_name: item.sessions?.courts?.venues?.name || "Unknown Venue",
         amount_paid: item.payments?.[0]?.amount || 0,
@@ -138,7 +138,7 @@ export default function ArchivedSessions() {
               <Card key={session.id}>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center justify-between">
-                    <span className="capitalize">{session.sport_type}</span>
+                    <span className="capitalize">{session.sport_name}</span>
                     {session.amount_paid > 0 && (
                       <span className="text-sm font-normal text-muted-foreground">
                         {formatCurrency(session.amount_paid)}

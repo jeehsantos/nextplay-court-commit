@@ -8,7 +8,7 @@ type SportCategory = Database["public"]["Tables"]["sport_categories"]["Row"];
 export interface GameData {
   id: string;
   groupName: string;
-  sport: Database["public"]["Enums"]["sport_type"];
+  sport: string;
   sportCategory?: SportCategory;
   courtName: string;
   venueName: string;
@@ -77,7 +77,7 @@ async function fetchSessions(
       sport_category_id,
       group_id,
       sport_categories ( id, name, display_name, icon, sort_order, is_active, created_at, updated_at ),
-      groups!inner ( name, sport_type ),
+      groups!inner ( name, sport_category_id, sport_categories ( name, display_name, icon ) ),
       courts ( name, venues ( name ) )
     `)
     .eq("is_cancelled", false);
@@ -127,8 +127,8 @@ async function fetchSessions(
     const court = session.courts;
 
     let sportCategory = session.sport_categories;
-    if (!sportCategory && group?.sport_type) {
-      sportCategory = sportCategoriesMap.get(group.sport_type);
+    if (!sportCategory && group?.sport_categories) {
+      sportCategory = group.sport_categories;
     }
 
     const [hours, minutes] = session.start_time.split(":").map(Number);
@@ -140,7 +140,7 @@ async function fetchSessions(
     return {
       id: session.id,
       groupName: group?.name || "Unknown Group",
-      sport: group?.sport_type || "other",
+      sport: sportCategory?.name || "other",
       sportCategory,
       courtName: court?.name || "TBD",
       venueName: court?.venues?.name || "TBD",
@@ -191,7 +191,7 @@ async function fetchQuickChallenges(userId: string): Promise<GameData[]> {
     return {
       id: qc.id,
       groupName: `Quick ${scRow?.display_name || "Match"}`,
-      sport: "other" as Database["public"]["Enums"]["sport_type"],
+      sport: "other",
       sportCategory: scRow || undefined,
       courtName: qc.courts?.name || "TBD",
       venueName: qc.venues?.name || "TBD",

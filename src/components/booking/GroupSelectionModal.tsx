@@ -26,14 +26,13 @@ import { SessionTypeDropdown, type SessionType } from "@/components/session/Sess
 import type { Database } from "@/integrations/supabase/types";
 
 type Group = Database["public"]["Tables"]["groups"]["Row"];
-type SportType = Database["public"]["Enums"]["sport_type"];
 type BookingPaymentType = "single" | "split";
 
 interface GroupSelectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (groupId: string, isNewGroup: boolean, paymentType: BookingPaymentType, sessionType: SessionType) => void;
-  sportType: SportType;
+  sportCategoryId: string;
   courtPrice: number;
   dayOfWeek: number;
   startTime: string;
@@ -48,7 +47,7 @@ export function GroupSelectionModal({
   open,
   onOpenChange,
   onConfirm,
-  sportType,
+  sportCategoryId,
   courtPrice,
   dayOfWeek,
   startTime,
@@ -123,7 +122,7 @@ export function GroupSelectionModal({
           .insert({
             name: newGroupName.trim(),
             organizer_id: user!.id,
-            sport_type: sportType,
+            sport_category_id: sportCategoryId,
             city: city,
             default_day_of_week: dayOfWeek,
             default_start_time: startTime,
@@ -194,10 +193,8 @@ export function GroupSelectionModal({
             {/* Booking Summary Card */}
             <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-4">
               <div className="flex items-center gap-3 mb-3">
-                <SportIcon sport={sportType} className="h-10 w-10" />
                 <div>
                   <h3 className="font-semibold text-lg">{courtName}</h3>
-                  <p className="text-sm text-muted-foreground">{getSportLabel(sportType)}</p>
                 </div>
               </div>
               
@@ -234,7 +231,6 @@ export function GroupSelectionModal({
                   {userGroups.map((group) => (
                     <SelectItem key={group.id} value={group.id} className="py-3">
                       <div className="flex items-center gap-2">
-                        <SportIcon sport={group.sport_type} className="h-4 w-4" />
                         <span>{group.name}</span>
                       </div>
                     </SelectItem>

@@ -1,78 +1,61 @@
 
+Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-## Problem
+What I found (already verified):
+1) Data inconsistency exists now:
+   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
+   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
+2) `ManagerCourtFormNew` root causes:
+   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
+   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
+   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
+3) Backend side effect confirmed:
+   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
 
-The `groups` table has a `sport_type` column using a **Postgres enum** (`sport_type`) with a fixed set of values (`futsal`, `tennis`, `volleyball`, `basketball`, `turf_hockey`, `badminton`, `hockey`, `other`). When an admin adds a new sport category (e.g., "football") to the `sport_categories` table, the booking flow crashes because it tries to insert that name into the enum column and Postgres rejects it.
+Implementation plan (execute in this order):
+1. Database integrity hardening + backfill (migration)
+   - Backfill: set `is_multi_court=true` for any court that already has children.
+   - Add DB validation trigger(s) on `courts` to enforce:
+     - child cannot reference itself
+     - child parent must be in same venue
+     - parent cannot be set `is_multi_court=false` while children exist
+     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
+   - This guarantees the bug cannot recur from any client path.
 
-The previous fix used a hardcoded array of valid enum values as a fallback -- exactly the static approach you want eliminated. The real fix is to **replace `groups.sport_type` (enum) with `groups.sport_category_id` (UUID FK to `sport_categories`)**, making the system fully dynamic.
+2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
+   - Remove direct `window.history.replaceState` usage.
+   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
+   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
+   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
 
-## Solution: Migrate `groups.sport_type` to `groups.sport_category_id`
+3. Multi-court UI behavior safeguards
+   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
+   - Disable/harden turning off multi-court when children exist (with clear message).
+   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
 
-### 1. Database migration
+4. Availability resilience (backend function)
+   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
+   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
 
-- Add `sport_category_id UUID REFERENCES sport_categories(id)` column to `groups` table (nullable initially)
-- Backfill existing rows: match `groups.sport_type` name against `sport_categories.name`, set the FK
-- For any unmatched rows, create corresponding sport_categories or map to a fallback
-- Make `sport_category_id` NOT NULL after backfill
-- Drop the `sport_type` column from `groups`
-- Also change `profiles.preferred_sports` from `sport_type[]` to `text[]` (it already stores category names as strings, so this is just a type correction -- the column default is already `'{}'::text[]` but the declared type is `sport_type[]`)
+5. Verification I will perform (not asking you to test manually)
+   - DB checks:
+     - verify parent `57e11168...` becomes `is_multi_court=true`
+     - verify child links remain unchanged
+     - verify no rows exist with `children > 0 AND is_multi_court=false`
+   - Functional checks:
+     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
+   - UI checks:
+     - exercise add-sub-court flow and confirm:
+       - main court remains main
+       - child appears as child tab
+       - subsequent saves update correct court record
+       - no panel collapse/desync
 
-### 2. Frontend changes
-
-| File | Change |
-|------|--------|
-| `src/components/booking/BookingWizard.tsx` | Remove `sportType` prop. The component already selects a `sportCategoryId` from the DB. Use that for group creation instead of `sport_type`. Insert `sport_category_id` instead of `sport_type` when creating a new group. |
-| `src/components/booking/GroupSelectionModal.tsx` | Remove `sportType` prop. Add sport category selection (like BookingWizard already has). Insert `sport_category_id` instead of `sport_type`. |
-| `src/pages/CourtDetail.tsx` | Remove the hardcoded enum array check. Stop passing `sportType` to BookingWizard/GroupSelectionModal. Pass `allowedSports` (from court) so the wizards can filter categories. |
-| `src/components/cards/GroupCard.tsx` | Change `sport` prop from the hardcoded `SportType` union to `string`. Look up display info from sport category data instead of static maps. |
-| `src/pages/Groups.tsx` | Update to pass sport category info instead of `sport_type` to GroupCard. |
-| `src/pages/GroupDetail.tsx` | Replace `group.sport_type` references with sport category lookup. |
-| `src/pages/Discover.tsx` | Replace `group.sport_type` references with sport category data. |
-| `src/pages/GameDetail.tsx` | Replace `group.sport_type` fallback with `sport_category_id` join. |
-| `src/pages/ArchivedSessions.tsx` | Replace `sport_type` references with sport category join. |
-| `src/hooks/useMyGames.ts` | Replace `sport` field (enum) with sport category data from the `sport_category_id` FK. |
-| `src/lib/sport-category-utils.ts` | Remove the `SportType` enum dependency. Functions already work with string keys. |
-| `src/components/ui/sport-icon.tsx` | Already handles arbitrary strings with fallbacks -- no change needed. |
-| `supabase/functions/export-user-data/index.ts` | Update `groups` select to use `sport_category_id` instead of `sport_type`. |
-| `supabase/functions/create-booking/index.ts` | Already receives `sportCategoryId` -- no change needed. |
-
-### 3. Profile `preferred_sports` column
-
-The `profiles.preferred_sports` column is declared as `sport_type[]` but actually stores sport category names as strings. The migration will alter it to `text[]` to match reality and remove the enum dependency.
-
-## Technical details
-
-### Migration SQL (conceptual)
-
-```sql
--- Add new column
-ALTER TABLE groups ADD COLUMN sport_category_id UUID REFERENCES sport_categories(id);
-
--- Backfill from sport_type name matching sport_categories.name
-UPDATE groups g SET sport_category_id = sc.id
-FROM sport_categories sc WHERE sc.name = g.sport_type::text;
-
--- For any remaining nulls, map to 'other' category
-UPDATE groups SET sport_category_id = (SELECT id FROM sport_categories WHERE name = 'other' LIMIT 1)
-WHERE sport_category_id IS NULL;
-
--- Make NOT NULL
-ALTER TABLE groups ALTER COLUMN sport_category_id SET NOT NULL;
-
--- Drop old column
-ALTER TABLE groups DROP COLUMN sport_type;
-
--- Fix profiles column type
-ALTER TABLE profiles ALTER COLUMN preferred_sports TYPE text[] USING preferred_sports::text[];
-```
-
-### Key booking flow after fix
-
-```text
-Court has allowed_sports: ["football", "tennis"]
-  → BookingWizard fetches sport_categories, filters by court's allowed_sports
-  → User picks "Football" (sport_category_id = abc123)
-  → New group created with sport_category_id = abc123 (no enum involved)
-  → Works for ANY sport category added by admin
-```
-
+Technical details:
+- Files to update:
+  - `supabase/migrations/<new>.sql`
+  - `src/pages/manager/ManagerCourtFormNew.tsx`
+  - `supabase/functions/get-availability/index.ts`
+- No money/payment logic touched.
+- No auth model changes.
+- Existing routing and form schema preserved; this is a consistency + state synchronization fix.

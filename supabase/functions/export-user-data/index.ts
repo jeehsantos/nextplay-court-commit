@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       admin.from("profiles").select("full_name, phone, city, nationality_code, gender, preferred_sports, created_at").eq("user_id", userId).maybeSingle(),
       admin.from("user_credits").select("balance").eq("user_id", userId).maybeSingle(),
       admin.from("credit_transactions").select("amount, transaction_type, reason, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(100),
-      admin.from("group_members").select("group_id, is_admin, joined_at, groups(name, city, sport_type)").eq("user_id", userId),
+      admin.from("group_members").select("group_id, is_admin, joined_at, groups(name, city, sport_category_id)").eq("user_id", userId),
       admin.from("session_players").select("session_id, is_confirmed, joined_at, sessions(session_date, start_time, court_price)").eq("user_id", userId).order("joined_at", { ascending: false }).limit(100),
       admin.from("payments").select("amount, court_amount, service_fee, status, paid_at, paid_with_credits, payment_type_snapshot, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(100),
       admin.from("notifications").select("type, title, message, is_read, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),

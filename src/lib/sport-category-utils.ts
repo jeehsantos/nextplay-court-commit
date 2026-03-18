@@ -1,7 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-type SportType = Database["public"]["Enums"]["sport_type"];
 type SportCategory = Database["public"]["Tables"]["sport_categories"]["Row"];
 
 // In-memory cache for sport categories
@@ -35,7 +34,7 @@ async function initializeSportCategoriesCache(): Promise<void> {
  * Returns "Sport TBD" if category not found
  */
 export async function getSportCategoryDisplay(
-  sportType: SportType
+  sportKey: string
 ): Promise<string> {
   // Ensure cache is initialized
   if (!sportCategoriesCache) {
@@ -45,7 +44,7 @@ export async function getSportCategoryDisplay(
     await cachePromise;
   }
 
-  const category = sportCategoriesCache?.get(sportType);
+  const category = sportCategoriesCache?.get(sportKey);
   return category?.display_name || "Sport TBD";
 }
 
@@ -54,7 +53,7 @@ export async function getSportCategoryDisplay(
  * Returns null if category not found
  */
 export async function getSportCategory(
-  sportType: SportType
+  sportKey: string
 ): Promise<SportCategory | null> {
   // Ensure cache is initialized
   if (!sportCategoriesCache) {
@@ -64,7 +63,7 @@ export async function getSportCategory(
     await cachePromise;
   }
 
-  return sportCategoriesCache?.get(sportType) || null;
+  return sportCategoriesCache?.get(sportKey) || null;
 }
 
 /**

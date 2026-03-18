@@ -45,7 +45,6 @@ import {
 import type { Database } from "@/integrations/supabase/types";
 
 type Group = Database["public"]["Tables"]["groups"]["Row"];
-type SportType = Database["public"]["Enums"]["sport_type"];
 type BookingPaymentType = "single" | "split";
 
 import type { Equipment } from "@/hooks/useVenueEquipment";
@@ -61,7 +60,7 @@ interface BookingWizardProps {
     sportCategoryId: string;
     splitPlayers?: number;
   }) => void;
-  sportType: SportType;
+  allowedSports?: string[];
   courtPrice: number;
   dayOfWeek: number;
   startTime: string;
@@ -88,7 +87,7 @@ export function BookingWizard({
   open,
   onOpenChange,
   onConfirm,
-  sportType,
+  allowedSports,
   courtPrice,
   dayOfWeek,
   startTime,
@@ -124,10 +123,19 @@ export function BookingWizard({
   const { preferredSports } = useUserProfile();
   
   const sportCategories = useMemo(() => {
-    if (preferredSports.length === 0) return allSportCategories;
-    const filtered = allSportCategories.filter(cat => preferredSports.includes(cat.name));
-    return filtered.length > 0 ? filtered : allSportCategories;
-  }, [allSportCategories, preferredSports]);
+    // Filter by court's allowed sports first
+    let filtered = allSportCategories;
+    if (allowedSports && allowedSports.length > 0) {
+      const courtFiltered = allSportCategories.filter(cat => allowedSports.includes(cat.name));
+      if (courtFiltered.length > 0) filtered = courtFiltered;
+    }
+    // Then filter by user's preferred sports
+    if (preferredSports.length > 0) {
+      const prefFiltered = filtered.filter(cat => preferredSports.includes(cat.name));
+      if (prefFiltered.length > 0) filtered = prefFiltered;
+    }
+    return filtered;
+  }, [allSportCategories, preferredSports, allowedSports]);
    // Fetch admin-configured platform fee (read-only display)
   const { playerFee: platformFee } = usePlatformFee();
 
@@ -222,7 +230,7 @@ export function BookingWizard({
           .insert({
             name: newGroupName.trim(),
             organizer_id: user!.id,
-            sport_type: sportType,
+            sport_category_id: selectedSportCategoryId,
             city: city,
             default_day_of_week: dayOfWeek,
             default_start_time: startTime,
@@ -352,7 +360,7 @@ export function BookingWizard({
           {/* Venue Summary - Always visible */}
           <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-3 sm:p-4">
             <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-              <SportIcon sport={sportType} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0" />
+              <SportIcon sport={allowedSports?.[0] || "other"} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0" />
               <div className="min-w-0">
                 <h3 className="font-semibold text-base sm:text-lg truncate">{courtName}</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground truncate">{venueName}</p>
@@ -465,9 +473,8 @@ export function BookingWizard({
                     </SelectTrigger>
                     <SelectContent className="bg-popover border border-border shadow-lg">
                       {userGroups.map((group) => (
-                        <SelectItem key={group.id} value={group.id} className="py-3">
+                      <SelectItem key={group.id} value={group.id} className="py-3">
                           <div className="flex items-center gap-2">
-                            <SportIcon sport={group.sport_type} className="h-4 w-4" />
                             <span>{group.name}</span>
                           </div>
                         </SelectItem>
@@ -502,7 +509,6 @@ export function BookingWizard({
               {/* Sport Category Selection */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium flex items-center gap-2">
-                  <SportIcon sport={sportType} className="h-4 w-4" />
                   Sport Category
                 </Label>
                 

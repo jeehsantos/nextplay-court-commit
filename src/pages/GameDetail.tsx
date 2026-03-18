@@ -198,10 +198,10 @@ export default function GameDetail() {
 
       if (groupError) throw groupError;
 
-      // Use sport category directly from session (preferred) or fallback to group's sport_type
+      // Use sport category directly from session (preferred) or fallback to group's sport_category_id
       let sportCategory = (sessionData as any).sport_categories as SportCategory | null;
-      if (!sportCategory && groupData?.sport_type) {
-        sportCategory = await getSportCategory(groupData.sport_type);
+      if (!sportCategory && groupData?.sport_category_id) {
+        sportCategory = await getSportCategory(groupData.sport_category_id);
       }
 
       // Fetch players
@@ -910,7 +910,7 @@ const getGoogleMapsUrl = (address: string): string => {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 flex items-end justify-between">
                   <div className="flex items-center gap-3 text-white">
-                    <SportIcon sport={group.sport_type as SportType} size="lg" className="drop-shadow-lg" />
+                    <SportIcon sport={gameData?.sportCategory?.name || "other"} size="lg" className="drop-shadow-lg" />
                     <div>
                       <h2 className="font-display text-lg sm:text-xl font-bold drop-shadow-md">
                         {court.name || group.name}
@@ -936,7 +936,7 @@ const getGoogleMapsUrl = (address: string): string => {
               <CardContent className="p-4 lg:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <SportIcon sport={group.sport_type as SportType} size="lg" />
+                    <SportIcon sport={gameData?.sportCategory?.name || "other"} size="lg" />
                     <div>
                       <h2 className="font-display text-xl lg:text-2xl font-bold">{group.name}</h2>
                       <p className="text-muted-foreground">{sportDisplayName}</p>
