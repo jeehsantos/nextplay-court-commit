@@ -123,10 +123,19 @@ export function BookingWizard({
   const { preferredSports } = useUserProfile();
   
   const sportCategories = useMemo(() => {
-    if (preferredSports.length === 0) return allSportCategories;
-    const filtered = allSportCategories.filter(cat => preferredSports.includes(cat.name));
-    return filtered.length > 0 ? filtered : allSportCategories;
-  }, [allSportCategories, preferredSports]);
+    // Filter by court's allowed sports first
+    let filtered = allSportCategories;
+    if (allowedSports && allowedSports.length > 0) {
+      const courtFiltered = allSportCategories.filter(cat => allowedSports.includes(cat.name));
+      if (courtFiltered.length > 0) filtered = courtFiltered;
+    }
+    // Then filter by user's preferred sports
+    if (preferredSports.length > 0) {
+      const prefFiltered = filtered.filter(cat => preferredSports.includes(cat.name));
+      if (prefFiltered.length > 0) filtered = prefFiltered;
+    }
+    return filtered;
+  }, [allSportCategories, preferredSports, allowedSports]);
    // Fetch admin-configured platform fee (read-only display)
   const { playerFee: platformFee } = usePlatformFee();
 
