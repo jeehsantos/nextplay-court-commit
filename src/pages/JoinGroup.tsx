@@ -14,7 +14,7 @@ interface GroupData {
   id: string;
   name: string;
   description: string | null;
-  sport_type: string;
+  sport_category_id: string;
   city: string;
   default_day_of_week: number;
   default_start_time: string;
