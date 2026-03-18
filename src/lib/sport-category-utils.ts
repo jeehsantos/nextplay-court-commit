@@ -54,7 +54,7 @@ export async function getSportCategoryDisplay(
  * Returns null if category not found
  */
 export async function getSportCategory(
-  sportType: SportType
+  sportKey: string
 ): Promise<SportCategory | null> {
   // Ensure cache is initialized
   if (!sportCategoriesCache) {
