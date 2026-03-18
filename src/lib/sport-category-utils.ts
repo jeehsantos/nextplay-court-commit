@@ -35,7 +35,7 @@ async function initializeSportCategoriesCache(): Promise<void> {
  * Returns "Sport TBD" if category not found
  */
 export async function getSportCategoryDisplay(
-  sportType: SportType
+  sportKey: string
 ): Promise<string> {
   // Ensure cache is initialized
   if (!sportCategoriesCache) {
