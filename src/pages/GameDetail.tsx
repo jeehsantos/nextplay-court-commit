@@ -910,7 +910,7 @@ const getGoogleMapsUrl = (address: string): string => {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 flex items-end justify-between">
                   <div className="flex items-center gap-3 text-white">
-                    <SportIcon sport={group.sport_type as SportType} size="lg" className="drop-shadow-lg" />
+                    <SportIcon sport={gameData?.sportCategory?.name || "other"} size="lg" className="drop-shadow-lg" />
                     <div>
                       <h2 className="font-display text-lg sm:text-xl font-bold drop-shadow-md">
                         {court.name || group.name}
