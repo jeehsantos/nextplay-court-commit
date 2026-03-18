@@ -11,7 +11,7 @@ import { toast } from "sonner";
 interface ArchivedSession {
   id: string;
   session_date: string;
-  sport_type: string;
+  sport_name: string;
   court_name: string;
   venue_name: string;
   amount_paid: number;
