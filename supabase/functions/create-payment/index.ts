@@ -553,7 +553,8 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
   const normalizedAttempt = Number.isFinite(Number(attempt)) && Number(attempt) > 0
     ? Math.trunc(Number(attempt))
     : 1;
-  const checkoutIdempotencyKey = `checkout:deferred:${courtId}:${sessionDate}:${startTime}:user:${user.id}:attempt:${normalizedAttempt}`;
+  const creditsSuffix = creditsToApply > 0 ? `:cr${Math.round(creditsToApply * 100)}` : "";
+  const checkoutIdempotencyKey = `checkout:deferred:${courtId}:${sessionDate}:${startTime}:user:${user.id}:attempt:${normalizedAttempt}:fee${serviceFeeTotalCents}${creditsSuffix}`;
 
   const checkoutSession = await stripe.checkout.sessions.create(
     sessionParams,
