@@ -121,17 +121,17 @@ serve(async (req) => {
       );
     }
 
-    // Fetch weekly rules
+    // Fetch weekly rules (per-court)
     const { data: weeklyRules } = await supabase
       .from("venue_weekly_rules")
       .select("*")
-      .eq("venue_id", venueId);
+      .eq("court_id", courtId);
 
-    // Fetch date overrides
+    // Fetch date overrides (per-court)
     const { data: dateOverrides } = await supabase
       .from("venue_date_overrides")
       .select("*")
-      .eq("venue_id", venueId)
+      .eq("court_id", courtId)
       .lte("start_date", date)
       .or(`end_date.gte.${date},end_date.is.null`);
 

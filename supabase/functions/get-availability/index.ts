@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 interface WeeklyRule {
+  court_id: string;
   day_of_week: number;
   start_time: string;
   end_time: string;
@@ -14,6 +15,7 @@ interface WeeklyRule {
 }
 
 interface DateOverride {
+  court_id: string;
   start_date: string;
   end_date: string | null;
   is_closed: boolean;
@@ -82,15 +84,18 @@ function minutesToTime(minutes: number): string {
   return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
 }
 
-function getAvailableWindow(
+function getAvailableWindowForCourt(
   date: string,
+  courtId: string,
   weeklyRules: WeeklyRule[],
   dateOverrides: DateOverride[]
 ): { startTime: string; endTime: string } | null {
   const targetDate = new Date(date);
   const dayOfWeek = targetDate.getDay();
 
+  // Check for court-specific date override first
   const override = dateOverrides.find((o) => {
+    if (o.court_id !== courtId) return false;
     const startDate = new Date(o.start_date);
     const endDate = o.end_date ? new Date(o.end_date) : startDate;
     return targetDate >= startDate && targetDate <= endDate;
@@ -103,7 +108,8 @@ function getAvailableWindow(
     }
   }
 
-  const weeklyRule = weeklyRules.find((r) => r.day_of_week === dayOfWeek);
+  // Check court-specific weekly rule
+  const weeklyRule = weeklyRules.find((r) => r.court_id === courtId && r.day_of_week === dayOfWeek);
   if (!weeklyRule || weeklyRule.is_closed) return null;
 
   return { startTime: weeklyRule.start_time, endTime: weeklyRule.end_time };
@@ -161,21 +167,9 @@ serve(async (req) => {
       .eq("is_active", true)
       .order("name", { ascending: true });
 
-    const rulesPromise = supabase
-      .from("venue_weekly_rules")
-      .select("day_of_week, start_time, end_time, is_closed")
-      .eq("venue_id", venueId);
-
-    const overridesPromise = supabase
-      .from("venue_date_overrides")
-      .select("start_date, end_date, is_closed, custom_start_time, custom_end_time")
-      .eq("venue_id", venueId)
-      .lte("start_date", date)
-      .or(`end_date.gte.${date},end_date.is.null`);
-
-    // Await all phase-1 queries simultaneously
-    const [currentUserId, venueResult, courtsResult, rulesResult, overridesResult] =
-      await Promise.all([userPromise, venuePromise, courtsPromise, rulesPromise, overridesPromise]);
+    // Await phase-1 queries
+    const [currentUserId, venueResult, courtsResult] =
+      await Promise.all([userPromise, venuePromise, courtsPromise]);
 
     if (venueResult.error || !venueResult.data) {
       return new Response(
@@ -186,18 +180,14 @@ serve(async (req) => {
 
     const venue = venueResult.data;
     const allCourts: Court[] = courtsResult.data || [];
-    const weeklyRules: WeeklyRule[] = rulesResult.data || [];
-    const dateOverrides: DateOverride[] = overridesResult.data || [];
 
     // Determine which courts to process
-    // RESILIENCE: Use actual parent_court_id relationships, not just is_multi_court flag
     let courtsToProcess: Court[] = [];
     let courtsForDropdown: Court[] = [];
 
     if (courtId) {
       const requestedCourt = allCourts.find(c => c.id === courtId);
       if (requestedCourt) {
-        // Check if this court has children by relationship (resilient to is_multi_court flag)
         const children = allCourts.filter(c => c.parent_court_id === courtId);
         const isEffectiveParent = requestedCourt.is_multi_court || children.length > 0;
 
@@ -227,22 +217,12 @@ serve(async (req) => {
       );
     }
 
-    // Get the availability window
-    const window = getAvailableWindow(date, weeklyRules, dateOverrides);
-
-    if (!window) {
-      return new Response(
-        JSON.stringify({ available: false, reason: "closed", slots: [], venue_courts: venueCourtEntries }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // ── PHASE 2: Fetch bookings + holds in parallel (need courtIds from phase 1) ──
+    // ── PHASE 2: Fetch bookings, holds, and per-court schedules in parallel ──
     const courtIds = courtsToProcess.map(c => c.id);
     const startOfDay = `${date}T00:00:00Z`;
     const endOfDay = `${date}T23:59:59Z`;
 
-    const [bookingsResult, holdsResult] = await Promise.all([
+    const [bookingsResult, holdsResult, rulesResult, overridesResult] = await Promise.all([
       supabase
         .from("court_availability")
         .select("court_id, start_time, end_time")
@@ -257,6 +237,16 @@ serve(async (req) => {
         .gte("start_datetime", startOfDay)
         .lte("start_datetime", endOfDay)
         .in("court_id", courtIds),
+      supabase
+        .from("venue_weekly_rules")
+        .select("court_id, day_of_week, start_time, end_time, is_closed")
+        .in("court_id", courtIds),
+      supabase
+        .from("venue_date_overrides")
+        .select("court_id, start_date, end_date, is_closed, custom_start_time, custom_end_time")
+        .in("court_id", courtIds)
+        .lte("start_date", date)
+        .or(`end_date.gte.${date},end_date.is.null`),
     ]);
 
     if (bookingsResult.error) throw bookingsResult.error;
@@ -264,20 +254,46 @@ serve(async (req) => {
 
     const bookings: Booking[] = bookingsResult.data || [];
     const holds: BookingHold[] = holdsResult.data || [];
+    const weeklyRules: WeeklyRule[] = rulesResult.data || [];
+    const dateOverrides: DateOverride[] = overridesResult.data || [];
 
     // ── PHASE 3: Compute slots (pure CPU, no I/O) ──
     const intervalMin = venue.slot_interval_minutes;
     const maxBookingMin = venue.max_booking_minutes;
-    const windowStartMin = timeToMinutes(window.startTime);
-    const windowEndMin = timeToMinutes(window.endTime);
 
-    // Generate all time blocks as minutes for fast comparison
+    // Get per-court availability windows
+    const courtWindows = new Map<string, { startMin: number; endMin: number } | null>();
+    let globalWindowStart = Infinity;
+    let globalWindowEnd = -Infinity;
+
+    for (const court of courtsToProcess) {
+      const window = getAvailableWindowForCourt(date, court.id, weeklyRules, dateOverrides);
+      if (window) {
+        const startMin = timeToMinutes(window.startTime);
+        const endMin = timeToMinutes(window.endTime);
+        courtWindows.set(court.id, { startMin, endMin });
+        if (startMin < globalWindowStart) globalWindowStart = startMin;
+        if (endMin > globalWindowEnd) globalWindowEnd = endMin;
+      } else {
+        courtWindows.set(court.id, null);
+      }
+    }
+
+    // If no court has any availability window, venue is effectively closed
+    if (globalWindowStart === Infinity) {
+      return new Response(
+        JSON.stringify({ available: false, reason: "closed", slots: [], venue_courts: venueCourtEntries }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Generate all time blocks across the global window
     const allBlockMinutes: number[] = [];
-    for (let m = windowStartMin; m < windowEndMin; m += intervalMin) {
+    for (let m = globalWindowStart; m < globalWindowEnd; m += intervalMin) {
       allBlockMinutes.push(m);
     }
 
-    // Pre-index bookings by courtId → Set of booked minute ranges
+    // Pre-index bookings by courtId
     const bookedRanges = new Map<string, Array<[number, number]>>();
     for (const b of bookings) {
       if (!bookedRanges.has(b.court_id)) bookedRanges.set(b.court_id, []);
@@ -298,16 +314,23 @@ serve(async (req) => {
       });
     }
 
-    // Pre-compute available block Sets per court
+    // Pre-compute available block Sets per court (respecting per-court windows)
     const courtAvailableSets = new Map<string, Set<number>>();
     for (const court of courtsToProcess) {
+      const courtWindow = courtWindows.get(court.id);
       const ranges = bookedRanges.get(court.id) || [];
       const available = new Set<number>();
-      for (const blockMin of allBlockMinutes) {
-        const blockEnd = blockMin + intervalMin;
-        const isBooked = ranges.some(([s, e]) => blockMin < e && blockEnd > s);
-        if (!isBooked) available.add(blockMin);
+
+      if (courtWindow) {
+        for (const blockMin of allBlockMinutes) {
+          // Only include blocks within this court's window
+          if (blockMin < courtWindow.startMin || blockMin + intervalMin > courtWindow.endMin) continue;
+          const blockEnd = blockMin + intervalMin;
+          const isBooked = ranges.some(([s, e]) => blockMin < e && blockEnd > s);
+          if (!isBooked) available.add(blockMin);
+        }
       }
+
       courtAvailableSets.set(court.id, available);
     }
 
@@ -326,8 +349,11 @@ serve(async (req) => {
         const availSet = courtAvailableSets.get(court.id)!;
 
         if (!availSet.has(blockMin)) {
-          // Block is booked on this court
-          slotStatus = "CONFIRMED";
+          // Block is outside window or booked on this court
+          const courtWindow = courtWindows.get(court.id);
+          if (courtWindow && blockMin >= courtWindow.startMin && blockEnd <= courtWindow.endMin) {
+            slotStatus = "CONFIRMED";
+          }
           continue;
         }
 
@@ -347,10 +373,11 @@ serve(async (req) => {
         }
 
         // Calculate available durations for this court at this block
+        const courtWindow = courtWindows.get(court.id)!;
         const durations: number[] = [];
         for (let dur = intervalMin; dur <= maxBookingMin; dur += intervalMin) {
           const requiredEnd = blockMin + dur;
-          if (requiredEnd > windowEndMin) break;
+          if (requiredEnd > courtWindow.endMin) break;
 
           let allAvail = true;
           for (let m = blockMin; m < requiredEnd; m += intervalMin) {
@@ -398,10 +425,11 @@ serve(async (req) => {
       slots.push(slot);
     }
 
+    // Use the global window for the response
     return new Response(
       JSON.stringify({
         available: true,
-        window: { start_time: window.startTime, end_time: window.endTime },
+        window: { start_time: minutesToTime(globalWindowStart), end_time: minutesToTime(globalWindowEnd) },
         slot_interval_minutes: intervalMin,
         max_booking_minutes: maxBookingMin,
         slots,

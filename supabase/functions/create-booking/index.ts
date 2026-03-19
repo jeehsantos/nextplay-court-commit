@@ -115,11 +115,11 @@ serve(async (req) => {
       supabaseAdmin
         .from("venue_weekly_rules")
         .select("day_of_week, start_time, end_time, is_closed")
-        .eq("venue_id", court.venue_id),
+        .eq("court_id", courtId),
       supabaseAdmin
         .from("venue_date_overrides")
         .select("start_date, end_date, is_closed, custom_start_time, custom_end_time")
-        .eq("venue_id", court.venue_id)
+        .eq("court_id", courtId)
         .lte("start_date", sessionDate)
         .or(`end_date.gte.${sessionDate},end_date.is.null`),
       supabaseAdmin
