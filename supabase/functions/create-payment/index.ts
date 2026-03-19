@@ -289,7 +289,8 @@ serve(async (req) => {
     const normalizedAttempt = Number.isFinite(Number(body.attempt)) && Number(body.attempt) > 0
       ? Math.trunc(Number(body.attempt))
       : 1;
-    const checkoutIdempotencyKey = `checkout:session:${sessionId}:user:${user.id}:attempt:${normalizedAttempt}`;
+    const creditsSuffix = creditsToApply > 0 ? `:cr${Math.round(creditsToApply * 100)}` : "";
+    const checkoutIdempotencyKey = `checkout:session:${sessionId}:user:${user.id}:attempt:${normalizedAttempt}:fee${serviceFeeTotalCents}${creditsSuffix}`;
 
     const checkoutSession = await stripe.checkout.sessions.create(
       sessionParams,
