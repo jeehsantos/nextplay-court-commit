@@ -136,7 +136,7 @@ export default function ManagerCourtsNew() {
           owner_id: user!.id,
           amenities: newVenueAmenities.length > 0 ? newVenueAmenities : null,
         })
-        .select("id, name, city, address, amenities")
+        .select("id, name, city, suburb, address, amenities")
         .single();
       if (error) throw error;
       setVenueGroups(prev => [{ venue: data, courts: [] }, ...prev]);
