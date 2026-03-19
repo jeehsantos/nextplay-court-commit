@@ -93,6 +93,9 @@ export default function ManagerCourtsNew() {
   // Venue Edit Dialog state
   const [editVenue, setEditVenue] = useState<{ venue: Venue; courts: Court[] } | null>(null);
   const [editVenueName, setEditVenueName] = useState("");
+  const [editVenueCity, setEditVenueCity] = useState("");
+  const [editVenueSuburb, setEditVenueSuburb] = useState("");
+  const [editVenueAddress, setEditVenueAddress] = useState("");
   const [editMainCourtId, setEditMainCourtId] = useState<string | null>(null);
   const [editVenueAmenities, setEditVenueAmenities] = useState<string[]>([]);
   const [savingVenueEdit, setSavingVenueEdit] = useState(false);
