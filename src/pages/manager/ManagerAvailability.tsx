@@ -147,11 +147,11 @@ export default function ManagerAvailability() {
             {venueId && (
               <div className="grid lg:grid-cols-2 gap-5 md:gap-6">
                 <div className="space-y-6">
-                  <WeeklyScheduleEditor venueId={venueId} onScheduleUpdated={handleRefresh} />
+                  <WeeklyScheduleEditor venueId={venueId} courtId={selectedCourt} onScheduleUpdated={handleRefresh} />
                   <VenueConfigEditor venueId={venueId} onConfigUpdated={handleRefresh} />
                 </div>
                 <div className="space-y-6">
-                  <DateOverridesEditor venueId={venueId} onOverridesUpdated={handleRefresh} />
+                  <DateOverridesEditor venueId={venueId} courtId={selectedCourt} onOverridesUpdated={handleRefresh} />
                   <AvailabilityPreview venueId={venueId} courtId={selectedCourt} refreshTrigger={refreshTrigger} />
                 </div>
               </div>
