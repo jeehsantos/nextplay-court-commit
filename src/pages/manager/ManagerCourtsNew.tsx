@@ -55,6 +55,7 @@ interface Venue {
   id: string;
   name: string;
   city: string;
+  suburb: string | null;
   address: string;
   amenities: string[] | null;
 }
