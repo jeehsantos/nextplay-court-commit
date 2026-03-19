@@ -23,7 +23,9 @@ export function AvailabilityPreview({ venueId, courtId, refreshTrigger }: Availa
     if (!selectedDate) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("get-availability", { body: { venueId, courtId, date: format(selectedDate, "yyyy-MM-dd") } });
+      const { data, error } = await supabase.functions.invoke("get-availability", {
+        body: { venueId, courtId, date: format(selectedDate, "yyyy-MM-dd"), strictCourt: true },
+      });
       if (error) throw error;
       setAvailability(data);
     } catch (error) { console.error("Error fetching availability:", error); setAvailability(null); } finally { setLoading(false); }

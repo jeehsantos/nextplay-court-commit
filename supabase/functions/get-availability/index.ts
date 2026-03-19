@@ -133,7 +133,7 @@ serve(async (req) => {
   }
 
   try {
-    const { venueId, courtId, date } = await req.json();
+    const { venueId, courtId, date, strictCourt } = await req.json();
 
     if (!venueId || !date) {
       return new Response(
@@ -167,7 +167,6 @@ serve(async (req) => {
       .eq("is_active", true)
       .order("name", { ascending: true });
 
-    // Await phase-1 queries
     const [currentUserId, venueResult, courtsResult] =
       await Promise.all([userPromise, venuePromise, courtsPromise]);
 
@@ -181,27 +180,31 @@ serve(async (req) => {
     const venue = venueResult.data;
     const allCourts: Court[] = courtsResult.data || [];
 
-    // Determine which courts to process
     let courtsToProcess: Court[] = [];
     let courtsForDropdown: Court[] = [];
 
     if (courtId) {
       const requestedCourt = allCourts.find(c => c.id === courtId);
       if (requestedCourt) {
-        const children = allCourts.filter(c => c.parent_court_id === courtId);
-        const isEffectiveParent = requestedCourt.is_multi_court || children.length > 0;
-
-        if (isEffectiveParent) {
-          courtsForDropdown = [requestedCourt, ...children];
-        } else if (requestedCourt.parent_court_id) {
-          const parentCourt = allCourts.find(c => c.id === requestedCourt.parent_court_id);
-          courtsForDropdown = parentCourt
-            ? [parentCourt, ...allCourts.filter(c => c.parent_court_id === parentCourt.id)]
-            : [requestedCourt];
-        } else {
+        if (strictCourt) {
           courtsForDropdown = [requestedCourt];
+          courtsToProcess = [requestedCourt];
+        } else {
+          const children = allCourts.filter(c => c.parent_court_id === courtId);
+          const isEffectiveParent = requestedCourt.is_multi_court || children.length > 0;
+
+          if (isEffectiveParent) {
+            courtsForDropdown = [requestedCourt, ...children];
+          } else if (requestedCourt.parent_court_id) {
+            const parentCourt = allCourts.find(c => c.id === requestedCourt.parent_court_id);
+            courtsForDropdown = parentCourt
+              ? [parentCourt, ...allCourts.filter(c => c.parent_court_id === parentCourt.id)]
+              : [requestedCourt];
+          } else {
+            courtsForDropdown = [requestedCourt];
+          }
+          courtsToProcess = courtsForDropdown;
         }
-        courtsToProcess = courtsForDropdown;
       }
     } else {
       courtsForDropdown = allCourts;
