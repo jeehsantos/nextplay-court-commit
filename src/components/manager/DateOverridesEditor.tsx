@@ -7,7 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, CalendarX, CalendarClock, Clock, XCircle } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Plus, Trash2, CalendarX, CalendarClock, Clock, XCircle, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, isBefore, parseISO } from "date-fns";
@@ -28,6 +32,8 @@ export function DateOverridesEditor({ venueId, courtId, onOverridesUpdated }: Da
   const [overrides, setOverrides] = useState<DateOverride[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newOverride, setNewOverride] = useState({ start_date: format(new Date(), "yyyy-MM-dd"), end_date: "", is_closed: true, custom_start_time: "", custom_end_time: "", note: "" });
+  const [conflictWarningOpen, setConflictWarningOpen] = useState(false);
+  const [conflictCount, setConflictCount] = useState(0);
 
   useEffect(() => { fetchOverrides(); }, [venueId, courtId]);
 
@@ -39,7 +45,56 @@ export function DateOverridesEditor({ venueId, courtId, onOverridesUpdated }: Da
     } catch (error) { console.error("Error fetching overrides:", error); } finally { setLoading(false); }
   };
 
+  const checkOverrideConflicts = async (): Promise<number> => {
+    const startDate = newOverride.start_date;
+    const endDate = newOverride.end_date || startDate;
+
+    let query = supabase
+      .from("court_availability")
+      .select("id, start_time, end_time")
+      .eq("court_id", courtId)
+      .eq("is_booked", true)
+      .gte("available_date", startDate)
+      .lte("available_date", endDate);
+
+    const { data: bookings } = await query;
+    if (!bookings || bookings.length === 0) return 0;
+
+    if (newOverride.is_closed) return bookings.length;
+
+    // For custom hours, check if bookings fall outside the new window
+    let conflicts = 0;
+    for (const b of bookings) {
+      if (
+        (newOverride.custom_start_time && b.start_time < newOverride.custom_start_time) ||
+        (newOverride.custom_end_time && b.end_time > newOverride.custom_end_time)
+      ) {
+        conflicts++;
+      }
+    }
+    return conflicts;
+  };
+
   const handleAddOverride = async () => {
+    // Client-side validation for custom hours
+    if (!newOverride.is_closed && newOverride.custom_start_time && newOverride.custom_end_time) {
+      if (newOverride.custom_start_time >= newOverride.custom_end_time) {
+        toast({ title: "Invalid time range", description: "Opening time must be before closing time.", variant: "destructive" });
+        return;
+      }
+    }
+
+    const conflicts = await checkOverrideConflicts();
+    if (conflicts > 0) {
+      setConflictCount(conflicts);
+      setConflictWarningOpen(true);
+      return;
+    }
+
+    await performAddOverride();
+  };
+
+  const performAddOverride = async () => {
     setSaving(true);
     try {
       const { error } = await supabase.from("venue_date_overrides").insert({
@@ -82,89 +137,112 @@ export function DateOverridesEditor({ venueId, courtId, onOverridesUpdated }: Da
   }
 
   return (
-    <Card className="border-border/40 md:border-border bg-transparent md:bg-card shadow-none md:shadow-sm">
-      <CardHeader className="flex flex-row items-start justify-between gap-3">
-        <div>
-          <CardTitle className="flex items-center gap-2"><CalendarX className="h-5 w-5" />{t("dateOverrides.title")}</CardTitle>
-          <CardDescription>{t("dateOverrides.subtitle")}</CardDescription>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button size="sm" className="gap-1 shrink-0"><Plus className="h-4 w-4" />{t("dateOverrides.addException")}</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>{t("dateOverrides.addDateException")}</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label htmlFor="start_date">{t("dateOverrides.startDate")}</Label><Input id="start_date" type="date" value={newOverride.start_date} onChange={(e) => setNewOverride(prev => ({ ...prev, start_date: e.target.value }))} className="mt-1" /></div>
-                <div><Label htmlFor="end_date">{t("dateOverrides.endDate")}</Label><Input id="end_date" type="date" value={newOverride.end_date} onChange={(e) => setNewOverride(prev => ({ ...prev, end_date: e.target.value }))} className="mt-1" min={newOverride.start_date} /></div>
-              </div>
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">{t("dateOverrides.exceptionType")}</Label>
-                <RadioGroup value={newOverride.is_closed ? "closed" : "custom"} onValueChange={(val) => setNewOverride(prev => ({ ...prev, is_closed: val === "closed" }))} className="space-y-3">
-                  <div className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer ${newOverride.is_closed ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`} onClick={() => setNewOverride(prev => ({ ...prev, is_closed: true }))}>
-                    <RadioGroupItem value="closed" id="closed" className="mt-0.5" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2"><XCircle className="h-4 w-4 text-destructive" /><Label htmlFor="closed" className="font-medium cursor-pointer">{t("dateOverrides.closedLabel")}</Label></div>
-                      <p className="text-sm text-muted-foreground mt-1">{t("dateOverrides.closedDesc")}</p>
-                    </div>
-                  </div>
-                  <div className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer ${!newOverride.is_closed ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`} onClick={() => setNewOverride(prev => ({ ...prev, is_closed: false }))}>
-                    <RadioGroupItem value="custom" id="custom" className="mt-0.5" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /><Label htmlFor="custom" className="font-medium cursor-pointer">{t("dateOverrides.customHours")}</Label></div>
-                      <p className="text-sm text-muted-foreground mt-1">{t("dateOverrides.customHoursDesc")}</p>
-                    </div>
-                  </div>
-                </RadioGroup>
-              </div>
-              {!newOverride.is_closed && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label htmlFor="custom_start">{t("dateOverrides.customOpenTime")}</Label><Input id="custom_start" type="time" value={newOverride.custom_start_time} onChange={(e) => setNewOverride(prev => ({ ...prev, custom_start_time: e.target.value }))} className="mt-1" /></div>
-                  <div><Label htmlFor="custom_end">{t("dateOverrides.customCloseTime")}</Label><Input id="custom_end" type="time" value={newOverride.custom_end_time} onChange={(e) => setNewOverride(prev => ({ ...prev, custom_end_time: e.target.value }))} className="mt-1" /></div>
-                </div>
-              )}
-              <div><Label htmlFor="note">{t("dateOverrides.note")}</Label><Textarea id="note" placeholder={t("dateOverrides.notePlaceholder")} value={newOverride.note} onChange={(e) => setNewOverride(prev => ({ ...prev, note: e.target.value }))} className="mt-1" rows={2} /></div>
-              <Button onClick={handleAddOverride} disabled={saving} className="w-full">
-                {saving ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("dateOverrides.adding")}</>) : t("dateOverrides.addException")}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        {activeOverrides.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground"><CalendarClock className="h-8 w-8 mx-auto mb-2 opacity-50" /><p>{t("dateOverrides.noUpcomingExceptions")}</p></div>
-        ) : (
-          <div className="space-y-2">
-            {activeOverrides.map(override => (
-              <div key={override.id} className="flex items-center justify-between p-3 rounded-lg border">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <div className="font-medium">{formatDateRange(override)}</div>
-                    {override.note && <p className="text-sm text-muted-foreground">{override.note}</p>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {override.is_closed ? <Badge variant="destructive">{t("dateOverrides.closedLabel")}</Badge> : <Badge variant="secondary">{override.custom_start_time?.slice(0, 5)} - {override.custom_end_time?.slice(0, 5)}</Badge>}
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteOverride(override.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                </div>
-              </div>
-            ))}
+    <>
+      <Card className="border-border/40 md:border-border bg-transparent md:bg-card shadow-none md:shadow-sm">
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2"><CalendarX className="h-5 w-5" />{t("dateOverrides.title")}</CardTitle>
+            <CardDescription>{t("dateOverrides.subtitle")}</CardDescription>
           </div>
-        )}
-        {pastOverrides.length > 0 && (
-          <div className="mt-6 pt-4 border-t">
-            <p className="text-sm text-muted-foreground mb-2">{t("dateOverrides.pastExceptions")} ({pastOverrides.length})</p>
-            <div className="space-y-1 opacity-50">
-              {pastOverrides.slice(0, 3).map(override => (
-                <div key={override.id} className="flex items-center justify-between p-2 rounded text-sm">
-                  <span>{formatDateRange(override)}</span>
-                  <Badge variant="outline" className="text-xs">{override.is_closed ? t("dateOverrides.closedLabel") : t("dateOverrides.customHours")}</Badge>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild><Button size="sm" className="gap-1 shrink-0"><Plus className="h-4 w-4" />{t("dateOverrides.addException")}</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>{t("dateOverrides.addDateException")}</DialogTitle></DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label htmlFor="start_date">{t("dateOverrides.startDate")}</Label><Input id="start_date" type="date" value={newOverride.start_date} onChange={(e) => setNewOverride(prev => ({ ...prev, start_date: e.target.value }))} className="mt-1" /></div>
+                  <div><Label htmlFor="end_date">{t("dateOverrides.endDate")}</Label><Input id="end_date" type="date" value={newOverride.end_date} onChange={(e) => setNewOverride(prev => ({ ...prev, end_date: e.target.value }))} className="mt-1" min={newOverride.start_date} /></div>
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">{t("dateOverrides.exceptionType")}</Label>
+                  <RadioGroup value={newOverride.is_closed ? "closed" : "custom"} onValueChange={(val) => setNewOverride(prev => ({ ...prev, is_closed: val === "closed" }))} className="space-y-3">
+                    <div className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer ${newOverride.is_closed ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`} onClick={() => setNewOverride(prev => ({ ...prev, is_closed: true }))}>
+                      <RadioGroupItem value="closed" id="closed" className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2"><XCircle className="h-4 w-4 text-destructive" /><Label htmlFor="closed" className="font-medium cursor-pointer">{t("dateOverrides.closedLabel")}</Label></div>
+                        <p className="text-sm text-muted-foreground mt-1">{t("dateOverrides.closedDesc")}</p>
+                      </div>
+                    </div>
+                    <div className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer ${!newOverride.is_closed ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`} onClick={() => setNewOverride(prev => ({ ...prev, is_closed: false }))}>
+                      <RadioGroupItem value="custom" id="custom" className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /><Label htmlFor="custom" className="font-medium cursor-pointer">{t("dateOverrides.customHours")}</Label></div>
+                        <p className="text-sm text-muted-foreground mt-1">{t("dateOverrides.customHoursDesc")}</p>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+                {!newOverride.is_closed && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><Label htmlFor="custom_start">{t("dateOverrides.customOpenTime")}</Label><Input id="custom_start" type="time" value={newOverride.custom_start_time} onChange={(e) => setNewOverride(prev => ({ ...prev, custom_start_time: e.target.value }))} className="mt-1" /></div>
+                    <div><Label htmlFor="custom_end">{t("dateOverrides.customCloseTime")}</Label><Input id="custom_end" type="time" value={newOverride.custom_end_time} onChange={(e) => setNewOverride(prev => ({ ...prev, custom_end_time: e.target.value }))} className="mt-1" /></div>
+                  </div>
+                )}
+                <div><Label htmlFor="note">{t("dateOverrides.note")}</Label><Textarea id="note" placeholder={t("dateOverrides.notePlaceholder")} value={newOverride.note} onChange={(e) => setNewOverride(prev => ({ ...prev, note: e.target.value }))} className="mt-1" rows={2} /></div>
+                <Button onClick={handleAddOverride} disabled={saving} className="w-full">
+                  {saving ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("dateOverrides.adding")}</>) : t("dateOverrides.addException")}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          {activeOverrides.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground"><CalendarClock className="h-8 w-8 mx-auto mb-2 opacity-50" /><p>{t("dateOverrides.noUpcomingExceptions")}</p></div>
+          ) : (
+            <div className="space-y-2">
+              {activeOverrides.map(override => (
+                <div key={override.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="font-medium">{formatDateRange(override)}</div>
+                      {override.note && <p className="text-sm text-muted-foreground">{override.note}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {override.is_closed ? <Badge variant="destructive">{t("dateOverrides.closedLabel")}</Badge> : <Badge variant="secondary">{override.custom_start_time?.slice(0, 5)} - {override.custom_end_time?.slice(0, 5)}</Badge>}
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteOverride(override.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+          {pastOverrides.length > 0 && (
+            <div className="mt-6 pt-4 border-t">
+              <p className="text-sm text-muted-foreground mb-2">{t("dateOverrides.pastExceptions")} ({pastOverrides.length})</p>
+              <div className="space-y-1 opacity-50">
+                {pastOverrides.slice(0, 3).map(override => (
+                  <div key={override.id} className="flex items-center justify-between p-2 rounded text-sm">
+                    <span>{formatDateRange(override)}</span>
+                    <Badge variant="outline" className="text-xs">{override.is_closed ? t("dateOverrides.closedLabel") : t("dateOverrides.customHours")}</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={conflictWarningOpen} onOpenChange={setConflictWarningOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Existing Bookings Detected
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {conflictCount} existing booking{conflictCount !== 1 ? "s" : ""} fall{conflictCount === 1 ? "s" : ""} within this period.
+              These bookings will <strong>not</strong> be cancelled or modified. Only future availability will be affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConflictWarningOpen(false); performAddOverride(); }}>
+              Save Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
