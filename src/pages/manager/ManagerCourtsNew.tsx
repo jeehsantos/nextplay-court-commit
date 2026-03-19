@@ -717,6 +717,48 @@ export default function ManagerCourtsNew() {
                 />
               </div>
 
+              {/* Location Fields */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t("courts.venueCity")} *</Label>
+                  <Select value={editVenueCity} onValueChange={(value) => { setEditVenueCity(value); setEditVenueSuburb(""); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("courts.selectCity")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {nzCities.map((city) => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t("courts.venueSuburb")}</Label>
+                  <Select
+                    value={editVenueSuburb}
+                    onValueChange={setEditVenueSuburb}
+                    disabled={!editVenueCity || editAvailableSuburbs.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={editVenueCity ? t("courts.selectSuburb") : t("courts.selectCityFirst")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {editAvailableSuburbs.map((suburb) => (
+                        <SelectItem key={suburb} value={suburb}>{suburb}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t("courts.venueAddress")} *</Label>
+                  <Input
+                    value={editVenueAddress}
+                    onChange={(e) => setEditVenueAddress(e.target.value)}
+                    placeholder={t("courts.venueAddressPlaceholder")}
+                  />
+                </div>
+              </div>
+
               {/* Venue Facilities */}
               <VenueDetailsEditor
                 amenities={editVenueAmenities}
