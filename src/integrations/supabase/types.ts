@@ -1407,6 +1407,7 @@ export type Database = {
       }
       venue_date_overrides: {
         Row: {
+          court_id: string
           created_at: string
           custom_end_time: string | null
           custom_start_time: string | null
@@ -1419,6 +1420,7 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          court_id: string
           created_at?: string
           custom_end_time?: string | null
           custom_start_time?: string | null
@@ -1431,6 +1433,7 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          court_id?: string
           created_at?: string
           custom_end_time?: string | null
           custom_start_time?: string | null
@@ -1443,6 +1446,13 @@ export type Database = {
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "venue_date_overrides_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "venue_date_overrides_venue_id_fkey"
             columns: ["venue_id"]
@@ -1515,6 +1525,7 @@ export type Database = {
       }
       venue_weekly_rules: {
         Row: {
+          court_id: string
           created_at: string
           day_of_week: number
           end_time: string
@@ -1525,6 +1536,7 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          court_id: string
           created_at?: string
           day_of_week: number
           end_time: string
@@ -1535,6 +1547,7 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          court_id?: string
           created_at?: string
           day_of_week?: number
           end_time?: string
@@ -1545,6 +1558,13 @@ export type Database = {
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "venue_weekly_rules_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "venue_weekly_rules_venue_id_fkey"
             columns: ["venue_id"]
