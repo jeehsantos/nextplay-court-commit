@@ -1,76 +1,61 @@
 
+Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-## Problem
+What I found (already verified):
+1) Data inconsistency exists now:
+   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
+   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
+2) `ManagerCourtFormNew` root causes:
+   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
+   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
+   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
+3) Backend side effect confirmed:
+   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
 
-The `venue_weekly_rules` table has a Postgres CHECK constraint: `(start_time < end_time) OR (is_closed = true)`. When the manager sets the same start and end time (e.g., both 6:00 PM), the constraint fails because `start_time = end_time` doesn't satisfy `start_time < end_time`.
+Implementation plan (execute in this order):
+1. Database integrity hardening + backfill (migration)
+   - Backfill: set `is_multi_court=true` for any court that already has children.
+   - Add DB validation trigger(s) on `courts` to enforce:
+     - child cannot reference itself
+     - child parent must be in same venue
+     - parent cannot be set `is_multi_court=false` while children exist
+     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
+   - This guarantees the bug cannot recur from any client path.
 
-Additionally, the user wants:
-1. When schedule/overrides change, existing bookings must NOT be affected
-2. If a manager tries to close or shorten hours that overlap existing bookings, show a warning popup but still save the schedule — bookings remain untouched
+2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
+   - Remove direct `window.history.replaceState` usage.
+   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
+   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
+   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
 
-## Solution
+3. Multi-court UI behavior safeguards
+   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
+   - Disable/harden turning off multi-court when children exist (with clear message).
+   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
 
-### 1. Database migration
-- Replace the CHECK constraint with a validation trigger (as per project guidelines, triggers are preferred over CHECK constraints)
-- The trigger validates `start_time < end_time` only when `is_closed = false`
-- This also handles the edge case where both times are equal more gracefully with a clear error
+4. Availability resilience (backend function)
+   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
+   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
 
-### 2. Frontend validation (WeeklyScheduleEditor.tsx)
-- Add client-side validation before saving: if a day is open, `start_time` must be before `end_time`
-- Show a toast error if validation fails, preventing the DB call
-- When saving, check if any existing bookings fall outside the new schedule window for that day — if so, show a warning dialog informing the manager that existing bookings won't be affected
+5. Verification I will perform (not asking you to test manually)
+   - DB checks:
+     - verify parent `57e11168...` becomes `is_multi_court=true`
+     - verify child links remain unchanged
+     - verify no rows exist with `children > 0 AND is_multi_court=false`
+   - Functional checks:
+     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
+   - UI checks:
+     - exercise add-sub-court flow and confirm:
+       - main court remains main
+       - child appears as child tab
+       - subsequent saves update correct court record
+       - no panel collapse/desync
 
-### 3. Frontend validation (DateOverridesEditor.tsx)
-- When adding an override (closure or custom hours), check if bookings exist on the target dates for this court
-- If bookings exist that conflict, show a warning popup: "There are existing bookings during this period. They will not be cancelled or modified."
-- Still allow saving the override — it only affects future availability, not existing bookings
-
-### 4. Edge function handling (get-availability)
-- No changes needed — the availability function already checks bookings separately from schedule windows. Existing booked slots remain booked regardless of schedule changes.
-
-### Files to change
-
-| File | Change |
-|------|--------|
-| DB migration | Drop `valid_time_range` CHECK constraint, add validation trigger that rejects `start_time >= end_time` when `is_closed = false` |
-| `src/components/manager/WeeklyScheduleEditor.tsx` | Add client-side time validation before save. Query `court_availability` for conflicting bookings and show warning dialog if any exist. |
-| `src/components/manager/DateOverridesEditor.tsx` | Before adding override, check `court_availability` for bookings on the target date(s). Show warning popup if conflicts exist but allow save. |
-
-### Technical details
-
-**Migration SQL:**
-```sql
-ALTER TABLE public.venue_weekly_rules DROP CONSTRAINT IF EXISTS valid_time_range;
-
-CREATE OR REPLACE FUNCTION public.validate_weekly_rule_time_range()
-RETURNS trigger LANGUAGE plpgsql SET search_path TO 'public' AS $$
-BEGIN
-  IF NEW.is_closed = false AND NEW.start_time >= NEW.end_time THEN
-    RAISE EXCEPTION 'Opening time must be before closing time';
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_validate_weekly_rule_time_range
-  BEFORE INSERT OR UPDATE ON public.venue_weekly_rules
-  FOR EACH ROW EXECUTE FUNCTION public.validate_weekly_rule_time_range();
-```
-
-**Booking conflict check (WeeklyScheduleEditor):**
-```typescript
-// Before saving, check for bookings outside new window
-const { data: conflicts } = await supabase
-  .from("court_availability")
-  .select("id, available_date, start_time, end_time")
-  .eq("court_id", courtId)
-  .eq("is_booked", true)
-  .gte("available_date", new Date().toISOString().split("T")[0]);
-// Filter conflicts where booking falls outside new schedule
-// Show warning dialog listing affected bookings
-```
-
-**Warning dialog content:**
-- "Some existing bookings fall outside the updated schedule. These bookings will not be cancelled or modified. Only future availability will be affected."
-- Two buttons: "Save Anyway" / "Cancel"
-
+Technical details:
+- Files to update:
+  - `supabase/migrations/<new>.sql`
+  - `src/pages/manager/ManagerCourtFormNew.tsx`
+  - `supabase/functions/get-availability/index.ts`
+- No money/payment logic touched.
+- No auth model changes.
+- Existing routing and form schema preserved; this is a consistency + state synchronization fix.

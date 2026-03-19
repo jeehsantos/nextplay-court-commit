@@ -6,7 +6,11 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Clock, Copy } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Save, Clock, Copy, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -57,6 +61,8 @@ export function WeeklyScheduleEditor({ venueId, courtId, onScheduleUpdated }: We
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rules, setRules] = useState<Record<number, WeeklyRule>>({});
+  const [conflictWarningOpen, setConflictWarningOpen] = useState(false);
+  const [conflictCount, setConflictCount] = useState(0);
 
   useEffect(() => { fetchRules(); }, [venueId, courtId]);
 
@@ -80,7 +86,62 @@ export function WeeklyScheduleEditor({ venueId, courtId, onScheduleUpdated }: We
     setRules(prev => ({ ...prev, [dayOfWeek]: { ...prev[dayOfWeek], [field]: value } }));
   };
 
+  const validateRules = (): boolean => {
+    for (const day of DAYS_OF_WEEK) {
+      const rule = rules[day.value];
+      if (!rule.is_closed && rule.start_time >= rule.end_time) {
+        toast({
+          title: "Invalid schedule",
+          description: `${DAY_LABELS[day.labelKey]}: Opening time must be before closing time.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const checkBookingConflicts = async (): Promise<number> => {
+    const today = new Date().toISOString().split("T")[0];
+    const { data: bookings } = await supabase
+      .from("court_availability")
+      .select("available_date, start_time, end_time")
+      .eq("court_id", courtId)
+      .eq("is_booked", true)
+      .gte("available_date", today);
+
+    if (!bookings || bookings.length === 0) return 0;
+
+    let conflicts = 0;
+    for (const booking of bookings) {
+      const bookingDate = new Date(booking.available_date);
+      const dayOfWeek = bookingDate.getDay();
+      const rule = rules[dayOfWeek];
+      if (!rule) continue;
+
+      if (rule.is_closed) {
+        conflicts++;
+      } else if (booking.start_time < rule.start_time || booking.end_time > rule.end_time) {
+        conflicts++;
+      }
+    }
+    return conflicts;
+  };
+
   const handleSave = async () => {
+    if (!validateRules()) return;
+
+    const conflicts = await checkBookingConflicts();
+    if (conflicts > 0) {
+      setConflictCount(conflicts);
+      setConflictWarningOpen(true);
+      return;
+    }
+
+    await performSave();
+  };
+
+  const performSave = async () => {
     setSaving(true);
     try {
       for (const day of DAYS_OF_WEEK) {
@@ -127,56 +188,79 @@ export function WeeklyScheduleEditor({ venueId, courtId, onScheduleUpdated }: We
   }
 
   return (
-    <Card className="border-border/40 md:border-border bg-transparent md:bg-card shadow-none md:shadow-sm">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" />{t("weeklySchedule.title")}</CardTitle>
-        <CardDescription>{t("weeklySchedule.subtitle")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 pt-0">
-        {DAYS_OF_WEEK.map(day => {
-          const rule = rules[day.value];
-          const isOpen = !rule.is_closed;
-          return (
-            <div key={day.value} className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border transition-colors ${isOpen ? "bg-primary/5 border-primary/20" : "bg-muted/30 border-muted"}`}>
-              <div className="flex items-center justify-between sm:justify-start gap-3 min-w-[140px]">
-                <span className="font-medium w-24">
-                  <span className="hidden sm:inline">{DAY_LABELS[day.labelKey]}</span>
-                  <span className="sm:hidden">{day.short}</span>
-                </span>
-                <div className="flex items-center gap-2">
-                  <Switch checked={isOpen} onCheckedChange={(checked) => handleRuleChange(day.value, "is_closed", !checked)} />
-                  <Label className={`text-sm ${isOpen ? "text-primary font-medium" : "text-muted-foreground"}`}>
-                    {isOpen ? t("weeklySchedule.open") : t("weeklySchedule.closed")}
-                  </Label>
-                </div>
-              </div>
-              {isOpen && (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 w-full">
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 w-full">
-                    <Select value={rule.start_time} onValueChange={(value) => handleRuleChange(day.value, "start_time", value)}>
-                      <SelectTrigger className="w-full min-w-0 bg-background"><SelectValue>{formatTimeDisplay(rule.start_time)}</SelectValue></SelectTrigger>
-                      <SelectContent className="max-h-[280px]">{TIME_OPTIONS.map((option) => (<SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>))}</SelectContent>
-                    </Select>
-                    <span className="text-muted-foreground text-sm">{t("weeklySchedule.to")}</span>
-                    <Select value={rule.end_time} onValueChange={(value) => handleRuleChange(day.value, "end_time", value)}>
-                      <SelectTrigger className="w-full min-w-0 bg-background"><SelectValue>{formatTimeDisplay(rule.end_time)}</SelectValue></SelectTrigger>
-                      <SelectContent className="max-h-[280px]">{TIME_OPTIONS.map((option) => (<SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>))}</SelectContent>
-                    </Select>
+    <>
+      <Card className="border-border/40 md:border-border bg-transparent md:bg-card shadow-none md:shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" />{t("weeklySchedule.title")}</CardTitle>
+          <CardDescription>{t("weeklySchedule.subtitle")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 pt-0">
+          {DAYS_OF_WEEK.map(day => {
+            const rule = rules[day.value];
+            const isOpen = !rule.is_closed;
+            return (
+              <div key={day.value} className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border transition-colors ${isOpen ? "bg-primary/5 border-primary/20" : "bg-muted/30 border-muted"}`}>
+                <div className="flex items-center justify-between sm:justify-start gap-3 min-w-[140px]">
+                  <span className="font-medium w-24">
+                    <span className="hidden sm:inline">{DAY_LABELS[day.labelKey]}</span>
+                    <span className="sm:hidden">{day.short}</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={isOpen} onCheckedChange={(checked) => handleRuleChange(day.value, "is_closed", !checked)} />
+                    <Label className={`text-sm ${isOpen ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                      {isOpen ? t("weeklySchedule.open") : t("weeklySchedule.closed")}
+                    </Label>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => handleCopyToAll(day.value)} className="text-xs gap-1 ml-auto self-end sm:self-auto">
-                    <Copy className="h-3 w-3" />
-                    <span className="hidden sm:inline">{t("weeklySchedule.copyToAll")}</span>
-                    <span className="sm:hidden">{t("weeklySchedule.copy")}</span>
-                  </Button>
                 </div>
-              )}
-            </div>
-          );
-        })}
-        <Button onClick={handleSave} disabled={saving} className="w-full mt-4">
-          {saving ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("weeklySchedule.saving")}</>) : (<><Save className="h-4 w-4 mr-2" />{t("weeklySchedule.saveSchedule")}</>)}
-        </Button>
-      </CardContent>
-    </Card>
+                {isOpen && (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 w-full">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 w-full">
+                      <Select value={rule.start_time} onValueChange={(value) => handleRuleChange(day.value, "start_time", value)}>
+                        <SelectTrigger className="w-full min-w-0 bg-background"><SelectValue>{formatTimeDisplay(rule.start_time)}</SelectValue></SelectTrigger>
+                        <SelectContent className="max-h-[280px]">{TIME_OPTIONS.map((option) => (<SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>))}</SelectContent>
+                      </Select>
+                      <span className="text-muted-foreground text-sm">{t("weeklySchedule.to")}</span>
+                      <Select value={rule.end_time} onValueChange={(value) => handleRuleChange(day.value, "end_time", value)}>
+                        <SelectTrigger className="w-full min-w-0 bg-background"><SelectValue>{formatTimeDisplay(rule.end_time)}</SelectValue></SelectTrigger>
+                        <SelectContent className="max-h-[280px]">{TIME_OPTIONS.map((option) => (<SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>))}</SelectContent>
+                      </Select>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleCopyToAll(day.value)} className="text-xs gap-1 ml-auto self-end sm:self-auto">
+                      <Copy className="h-3 w-3" />
+                      <span className="hidden sm:inline">{t("weeklySchedule.copyToAll")}</span>
+                      <span className="sm:hidden">{t("weeklySchedule.copy")}</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <Button onClick={handleSave} disabled={saving} className="w-full mt-4">
+            {saving ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("weeklySchedule.saving")}</>) : (<><Save className="h-4 w-4 mr-2" />{t("weeklySchedule.saveSchedule")}</>)}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={conflictWarningOpen} onOpenChange={setConflictWarningOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Existing Bookings Detected
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {conflictCount} existing booking{conflictCount !== 1 ? "s" : ""} fall{conflictCount === 1 ? "s" : ""} outside the updated schedule.
+              These bookings will <strong>not</strong> be cancelled or modified. Only future availability will be affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConflictWarningOpen(false); performSave(); }}>
+              Save Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
