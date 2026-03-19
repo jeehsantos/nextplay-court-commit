@@ -55,6 +55,7 @@ interface Venue {
   id: string;
   name: string;
   city: string;
+  suburb: string | null;
   address: string;
   amenities: string[] | null;
 }
@@ -92,6 +93,9 @@ export default function ManagerCourtsNew() {
   // Venue Edit Dialog state
   const [editVenue, setEditVenue] = useState<{ venue: Venue; courts: Court[] } | null>(null);
   const [editVenueName, setEditVenueName] = useState("");
+  const [editVenueCity, setEditVenueCity] = useState("");
+  const [editVenueSuburb, setEditVenueSuburb] = useState("");
+  const [editVenueAddress, setEditVenueAddress] = useState("");
   const [editMainCourtId, setEditMainCourtId] = useState<string | null>(null);
   const [editVenueAmenities, setEditVenueAmenities] = useState<string[]>([]);
   const [savingVenueEdit, setSavingVenueEdit] = useState(false);
@@ -132,7 +136,7 @@ export default function ManagerCourtsNew() {
           owner_id: user!.id,
           amenities: newVenueAmenities.length > 0 ? newVenueAmenities : null,
         })
-        .select("id, name, city, address, amenities")
+        .select("id, name, city, suburb, address, amenities")
         .single();
       if (error) throw error;
       setVenueGroups(prev => [{ venue: data, courts: [] }, ...prev]);
@@ -150,8 +154,13 @@ export default function ManagerCourtsNew() {
     }
   };
 
+  const editAvailableSuburbs = editVenueCity ? getSuburbsForCity(editVenueCity) : [];
+
   const openVenueEditDialog = (venue: Venue, courts: Court[]) => {
     setEditVenueName(venue.name);
+    setEditVenueCity(venue.city);
+    setEditVenueSuburb(venue.suburb || "");
+    setEditVenueAddress(venue.address);
     setEditVenueAmenities(venue.amenities || []);
     // Find the current main court (is_multi_court=true and no parent)
     const mainCourt = courts.find(c => c.is_multi_court && !c.parent_court_id);
@@ -162,21 +171,32 @@ export default function ManagerCourtsNew() {
   const saveVenueEdit = async () => {
     if (!editVenue) return;
     const trimmed = editVenueName.trim();
+    const trimmedAddress = editVenueAddress.trim();
     if (!trimmed) {
       toast({ title: t("courts.venueNameEmpty"), variant: "destructive" });
       return;
     }
+    if (!trimmedAddress || !editVenueCity) {
+      toast({ title: t("courts.fillAllFields"), variant: "destructive" });
+      return;
+    }
     setSavingVenueEdit(true);
     try {
-      // 1. Update venue name and amenities
+      // 1. Update venue details
       const { error: venueError } = await supabase
         .from("venues")
-        .update({ name: trimmed, amenities: editVenueAmenities.length > 0 ? editVenueAmenities : null } as any)
+        .update({
+          name: trimmed,
+          city: editVenueCity,
+          suburb: editVenueSuburb || null,
+          address: trimmedAddress,
+          amenities: editVenueAmenities.length > 0 ? editVenueAmenities : null,
+        } as any)
         .eq("id", editVenue.venue.id);
       if (venueError) throw venueError;
 
-      // 2. Update main court designation if changed and venue has multiple courts
-      if (editMainCourtId && editVenue.courts.length > 1) {
+      // 2. Update main court designation if selected
+      if (editMainCourtId) {
         // Promote selected court: clear parent, set is_multi_court=true
         const { error: mainError } = await supabase
           .from("courts")
@@ -202,7 +222,7 @@ export default function ManagerCourtsNew() {
       setVenueGroups(prev =>
         prev.map(g =>
           g.venue.id === editVenue.venue.id
-            ? { ...g, venue: { ...g.venue, name: trimmed } }
+            ? { ...g, venue: { ...g.venue, name: trimmed, city: editVenueCity, suburb: editVenueSuburb || null, address: trimmedAddress } }
             : g
         )
       );
@@ -296,7 +316,7 @@ export default function ManagerCourtsNew() {
     try {
       const { data: venues, error: venuesError } = await supabase
         .from("venues")
-        .select("id, name, city, address, amenities")
+        .select("id, name, city, suburb, address, amenities")
         .eq("owner_id", user?.id)
         .order("created_at", { ascending: false });
 
@@ -695,6 +715,48 @@ export default function ManagerCourtsNew() {
                   onChange={(e) => setEditVenueName(e.target.value)}
                   placeholder="Venue name"
                 />
+              </div>
+
+              {/* Location Fields */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t("courts.venueCity")} *</Label>
+                  <Select value={editVenueCity} onValueChange={(value) => { setEditVenueCity(value); setEditVenueSuburb(""); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("courts.selectCity")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {nzCities.map((city) => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t("courts.venueSuburb")}</Label>
+                  <Select
+                    value={editVenueSuburb}
+                    onValueChange={setEditVenueSuburb}
+                    disabled={!editVenueCity || editAvailableSuburbs.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={editVenueCity ? t("courts.selectSuburb") : t("courts.selectCityFirst")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {editAvailableSuburbs.map((suburb) => (
+                        <SelectItem key={suburb} value={suburb}>{suburb}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t("courts.venueAddress")} *</Label>
+                  <Input
+                    value={editVenueAddress}
+                    onChange={(e) => setEditVenueAddress(e.target.value)}
+                    placeholder={t("courts.venueAddressPlaceholder")}
+                  />
+                </div>
               </div>
 
               {/* Venue Facilities */}
