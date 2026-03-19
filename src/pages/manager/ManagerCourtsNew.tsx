@@ -171,21 +171,32 @@ export default function ManagerCourtsNew() {
   const saveVenueEdit = async () => {
     if (!editVenue) return;
     const trimmed = editVenueName.trim();
+    const trimmedAddress = editVenueAddress.trim();
     if (!trimmed) {
       toast({ title: t("courts.venueNameEmpty"), variant: "destructive" });
       return;
     }
+    if (!trimmedAddress || !editVenueCity) {
+      toast({ title: t("courts.fillAllFields"), variant: "destructive" });
+      return;
+    }
     setSavingVenueEdit(true);
     try {
-      // 1. Update venue name and amenities
+      // 1. Update venue details
       const { error: venueError } = await supabase
         .from("venues")
-        .update({ name: trimmed, amenities: editVenueAmenities.length > 0 ? editVenueAmenities : null } as any)
+        .update({
+          name: trimmed,
+          city: editVenueCity,
+          suburb: editVenueSuburb || null,
+          address: trimmedAddress,
+          amenities: editVenueAmenities.length > 0 ? editVenueAmenities : null,
+        } as any)
         .eq("id", editVenue.venue.id);
       if (venueError) throw venueError;
 
-      // 2. Update main court designation if changed and venue has multiple courts
-      if (editMainCourtId && editVenue.courts.length > 1) {
+      // 2. Update main court designation if selected
+      if (editMainCourtId) {
         // Promote selected court: clear parent, set is_multi_court=true
         const { error: mainError } = await supabase
           .from("courts")
@@ -211,7 +222,7 @@ export default function ManagerCourtsNew() {
       setVenueGroups(prev =>
         prev.map(g =>
           g.venue.id === editVenue.venue.id
-            ? { ...g, venue: { ...g.venue, name: trimmed } }
+            ? { ...g, venue: { ...g.venue, name: trimmed, city: editVenueCity, suburb: editVenueSuburb || null, address: trimmedAddress } }
             : g
         )
       );
