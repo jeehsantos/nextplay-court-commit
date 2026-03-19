@@ -14,13 +14,13 @@ import { format, isBefore, parseISO } from "date-fns";
 import { useTranslation } from "react-i18next";
 
 interface DateOverride {
-  id: string; venue_id: string; start_date: string; end_date: string | null;
+  id: string; venue_id: string; court_id: string; start_date: string; end_date: string | null;
   is_closed: boolean; custom_start_time: string | null; custom_end_time: string | null; note: string | null;
 }
 
-interface DateOverridesEditorProps { venueId: string; onOverridesUpdated?: () => void; }
+interface DateOverridesEditorProps { venueId: string; courtId: string; onOverridesUpdated?: () => void; }
 
-export function DateOverridesEditor({ venueId, onOverridesUpdated }: DateOverridesEditorProps) {
+export function DateOverridesEditor({ venueId, courtId, onOverridesUpdated }: DateOverridesEditorProps) {
   const { toast } = useToast();
   const { t } = useTranslation("manager");
   const [loading, setLoading] = useState(true);
@@ -29,11 +29,11 @@ export function DateOverridesEditor({ venueId, onOverridesUpdated }: DateOverrid
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newOverride, setNewOverride] = useState({ start_date: format(new Date(), "yyyy-MM-dd"), end_date: "", is_closed: true, custom_start_time: "", custom_end_time: "", note: "" });
 
-  useEffect(() => { fetchOverrides(); }, [venueId]);
+  useEffect(() => { fetchOverrides(); }, [venueId, courtId]);
 
   const fetchOverrides = async () => {
     try {
-      const { data, error } = await supabase.from("venue_date_overrides").select("*").eq("venue_id", venueId).order("start_date", { ascending: true });
+      const { data, error } = await supabase.from("venue_date_overrides").select("*").eq("court_id", courtId).order("start_date", { ascending: true });
       if (error) throw error;
       setOverrides(data || []);
     } catch (error) { console.error("Error fetching overrides:", error); } finally { setLoading(false); }
@@ -43,7 +43,7 @@ export function DateOverridesEditor({ venueId, onOverridesUpdated }: DateOverrid
     setSaving(true);
     try {
       const { error } = await supabase.from("venue_date_overrides").insert({
-        venue_id: venueId, start_date: newOverride.start_date, end_date: newOverride.end_date || null,
+        venue_id: venueId, court_id: courtId, start_date: newOverride.start_date, end_date: newOverride.end_date || null,
         is_closed: newOverride.is_closed, custom_start_time: newOverride.is_closed ? null : (newOverride.custom_start_time || null),
         custom_end_time: newOverride.is_closed ? null : (newOverride.custom_end_time || null), note: newOverride.note || null,
       });

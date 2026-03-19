@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 interface WeeklyRule {
   id?: string;
   venue_id: string;
+  court_id: string;
   day_of_week: number;
   start_time: string;
   end_time: string;
@@ -22,6 +23,7 @@ interface WeeklyRule {
 
 interface WeeklyScheduleEditorProps {
   venueId: string;
+  courtId: string;
   onScheduleUpdated?: () => void;
 }
 
@@ -49,23 +51,23 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   return { value: time, label: `${displayHours}:${minutes} ${amPm}` };
 });
 
-export function WeeklyScheduleEditor({ venueId, onScheduleUpdated }: WeeklyScheduleEditorProps) {
+export function WeeklyScheduleEditor({ venueId, courtId, onScheduleUpdated }: WeeklyScheduleEditorProps) {
   const { toast } = useToast();
   const { t } = useTranslation("manager");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rules, setRules] = useState<Record<number, WeeklyRule>>({});
 
-  useEffect(() => { fetchRules(); }, [venueId]);
+  useEffect(() => { fetchRules(); }, [venueId, courtId]);
 
   const fetchRules = async () => {
     try {
-      const { data, error } = await supabase.from("venue_weekly_rules").select("*").eq("venue_id", venueId);
+      const { data, error } = await supabase.from("venue_weekly_rules").select("*").eq("court_id", courtId);
       if (error) throw error;
       const rulesMap: Record<number, WeeklyRule> = {};
       DAYS_OF_WEEK.forEach(day => {
         const existingRule = data?.find(r => r.day_of_week === day.value);
-        rulesMap[day.value] = existingRule || { venue_id: venueId, day_of_week: day.value, start_time: "09:00", end_time: "21:00", is_closed: true };
+        rulesMap[day.value] = existingRule || { venue_id: venueId, court_id: courtId, day_of_week: day.value, start_time: "09:00", end_time: "21:00", is_closed: true };
       });
       setRules(rulesMap);
     } catch (error) {
@@ -87,7 +89,7 @@ export function WeeklyScheduleEditor({ venueId, onScheduleUpdated }: WeeklySched
           const { error } = await supabase.from("venue_weekly_rules").update({ start_time: rule.start_time, end_time: rule.end_time, is_closed: rule.is_closed }).eq("id", rule.id);
           if (error) throw error;
         } else if (!rule.is_closed) {
-          const { error } = await supabase.from("venue_weekly_rules").insert({ venue_id: venueId, day_of_week: day.value, start_time: rule.start_time, end_time: rule.end_time, is_closed: rule.is_closed });
+          const { error } = await supabase.from("venue_weekly_rules").insert({ venue_id: venueId, court_id: courtId, day_of_week: day.value, start_time: rule.start_time, end_time: rule.end_time, is_closed: rule.is_closed });
           if (error) throw error;
         }
       }
