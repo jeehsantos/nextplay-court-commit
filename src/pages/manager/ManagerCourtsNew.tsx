@@ -154,8 +154,13 @@ export default function ManagerCourtsNew() {
     }
   };
 
+  const editAvailableSuburbs = editVenueCity ? getSuburbsForCity(editVenueCity) : [];
+
   const openVenueEditDialog = (venue: Venue, courts: Court[]) => {
     setEditVenueName(venue.name);
+    setEditVenueCity(venue.city);
+    setEditVenueSuburb(venue.suburb || "");
+    setEditVenueAddress(venue.address);
     setEditVenueAmenities(venue.amenities || []);
     // Find the current main court (is_multi_court=true and no parent)
     const mainCourt = courts.find(c => c.is_multi_court && !c.parent_court_id);
