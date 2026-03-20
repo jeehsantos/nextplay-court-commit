@@ -1,61 +1,47 @@
 
-Goal: fix Multi-Court so adding a sub-court never corrupts main-court state, and ensure court `57e11168-3d26-42dc-b86a-d5356cdddce4` is corrected.
 
-What I found (already verified):
-1) Data inconsistency exists now:
-   - Parent: `57e11168-3d26-42dc-b86a-d5356cdddce4` has `is_multi_court=false`
-   - Child exists: `6b1acfdb-4245-45c4-acc0-744697546a90` with `parent_court_id=57e11168-3d26-42dc-b86a-d5356cdddce4`
-2) `ManagerCourtFormNew` root causes:
-   - It uses `window.history.replaceState(...)` (bypasses router state sync), so route param and selected tab can diverge.
-   - Sub-court creation path inserts child but does not persist parent `is_multi_court=true`.
-   - Multi-court panel visibility depends on `is_multi_court`, so valid child relations can disappear from UI if parent flag is false.
-3) Backend side effect confirmed:
-   - `get-availability` currently relies on `requestedCourt.is_multi_court` to include children, so this bad state hides sub-courts from booking dropdowns.
+## Problem
 
-Implementation plan (execute in this order):
-1. Database integrity hardening + backfill (migration)
-   - Backfill: set `is_multi_court=true` for any court that already has children.
-   - Add DB validation trigger(s) on `courts` to enforce:
-     - child cannot reference itself
-     - child parent must be in same venue
-     - parent cannot be set `is_multi_court=false` while children exist
-     - when child is inserted/updated with `parent_court_id`, parent is automatically promoted to `is_multi_court=true`
-   - This guarantees the bug cannot recur from any client path.
+The payment success page is stuck in an infinite "Processing Payment" loop for the deferred `at_booking` flow. After Stripe redirects to `/payment-success?checkout_session_id=...&type=at_booking`, the page polls `verify-payment` every 2 seconds. The function returns `paid_but_waiting_for_webhook` or `pending`, but the page only accepts `completed` or `transferred` to show success. After 30 polls (60s) it shows an error.
 
-2. Fix manager form state model (`ManagerCourtFormNew.tsx`)
-   - Remove direct `window.history.replaceState` usage.
-   - Use a single active-court source (`selectedTabCourtId` fallback to route id), and derive panel state from active court + real child relationships.
-   - Ensure “Add Sub-Court” flow keeps parent context stable and never reclassifies child as main in panel state.
-   - Keep existing save paths intact, but guarantee parent multi-court state remains correct when creating children.
+**Root cause**: The `stripe-webhook` and `verify-payment` edge functions likely need redeployment after recent code changes (idempotency key fix, sport_category_id migration). The deployed versions may be stale, causing the webhook to either fail silently or not match the current database schema.
 
-3. Multi-court UI behavior safeguards
-   - Always show multi-court tabs when children exist (even for legacy inconsistent records).
-   - Disable/harden turning off multi-court when children exist (with clear message).
-   - Keep tab labeling deterministic: main court is always the root (no parent), sub-courts always children.
+## Solution
 
-4. Availability resilience (backend function)
-   - Update `get-availability` to include children when a requested court has child rows, even if `is_multi_court` flag is temporarily wrong.
-   - This prevents booking UX breakage from legacy/inconsistent data and makes behavior relationship-driven.
+### 1. Redeploy edge functions
+Redeploy `verify-payment`, `stripe-webhook`, and `create-payment` to ensure all deployed versions are in sync with the current codebase.
 
-5. Verification I will perform (not asking you to test manually)
-   - DB checks:
-     - verify parent `57e11168...` becomes `is_multi_court=true`
-     - verify child links remain unchanged
-     - verify no rows exist with `children > 0 AND is_multi_court=false`
-   - Functional checks:
-     - call `get-availability` for `57e11168...` and confirm `venue_courts` includes both main + child.
-   - UI checks:
-     - exercise add-sub-court flow and confirm:
-       - main court remains main
-       - child appears as child tab
-       - subsequent saves update correct court record
-       - no panel collapse/desync
+### 2. Add resilient handling in PaymentSuccess.tsx
+Even when functions are correctly deployed, webhook processing can be delayed. The page should handle this gracefully:
 
-Technical details:
-- Files to update:
-  - `supabase/migrations/<new>.sql`
-  - `src/pages/manager/ManagerCourtFormNew.tsx`
-  - `supabase/functions/get-availability/index.ts`
-- No money/payment logic touched.
-- No auth model changes.
-- Existing routing and form schema preserved; this is a consistency + state synchronization fix.
+- When `type=at_booking` is in the URL, increase the max poll count from 30 to 60 (giving 2 minutes for the webhook to process)
+- After max polls, if the status is `paid_but_waiting_for_webhook`, show a "Payment received" message instead of an error — inform the user their payment was successful and the booking is being finalized, with a link to check "My Games" later
+- Log the verify-payment response data on each poll to aid debugging
+
+### 3. Add webhook failure fallback in verify-payment
+If `paid_but_waiting_for_webhook` persists for too long, the verify-payment function should attempt to process the deferred booking itself as a fallback (similar to what the webhook does). This prevents the user from being stuck if the webhook fails.
+
+| File | Change |
+|------|--------|
+| `src/pages/PaymentSuccess.tsx` | Read `type` param; increase poll limit for deferred flows; show "payment received, finalizing" state instead of error when Stripe confirms paid but webhook hasn't processed |
+| Edge function deployments | Redeploy `verify-payment`, `stripe-webhook`, `create-payment` |
+
+### Technical details
+
+**PaymentSuccess.tsx changes:**
+```typescript
+const bookingType = searchParams.get("type");
+const isDeferred = bookingType === "at_booking";
+const maxPolls = isDeferred ? 60 : 30; // 2 min for deferred, 1 min for standard
+
+// In poll handler, also check for webhook-waiting status after timeout
+if (pollCount.current >= maxPolls) {
+  if (lastStatus === "paid_but_waiting_for_webhook") {
+    // Stripe confirmed paid — show partial success
+    setStatus("success"); 
+  } else {
+    setStatus("error");
+  }
+}
+```
+
