@@ -471,7 +471,7 @@ export default function GroupDetail() {
               {/* Quick Stats */}
               <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">{members.length + 1}</p>
+                  <p className="text-2xl font-bold text-primary">{members.length}</p>
                   <p className="text-xs text-muted-foreground">Members</p>
                 </div>
                 <div className="text-center">

@@ -98,7 +98,7 @@ export default function Groups() {
           
           return {
             ...group,
-            memberCount: (count || 0) + 1,
+            memberCount: count || 0,
           };
         })
       );
