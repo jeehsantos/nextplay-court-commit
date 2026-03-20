@@ -3,22 +3,28 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, XCircle, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "react-i18next";
+
+type PaymentStatus = "loading" | "success" | "error" | "payment_received";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [status, setStatus] = useState<PaymentStatus>("loading");
   const [countdown, setCountdown] = useState(5);
   const pollCount = useRef(0);
+  const lastPollStatus = useRef<string | null>(null);
   const { t } = useTranslation("payment");
 
   const urlSessionId = searchParams.get("session_id");
   const checkoutSessionId = searchParams.get("checkout_session_id");
+  const bookingType = searchParams.get("type");
+  const isDeferred = bookingType === "at_booking";
+  const maxPolls = isDeferred ? 60 : 30;
 
   const [resolvedSessionId, setResolvedSessionId] = useState<string | null>(urlSessionId);
 
@@ -39,27 +45,41 @@ export default function PaymentSuccess() {
 
         if (error) throw error;
 
+        console.log(`[verify-payment] poll #${pollCount.current}:`, data?.status, data);
+
+        if (data?.status) {
+          lastPollStatus.current = data.status;
+        }
+
         if (data?.success && (data?.status === "completed" || data?.status === "transferred")) {
           clearInterval(pollInterval);
           if (data.sessionId) {
             setResolvedSessionId(data.sessionId);
           }
           setStatus("success");
-        } else if (pollCount.current >= 30) {
+        } else if (pollCount.current >= maxPolls) {
           clearInterval(pollInterval);
-          setStatus("error");
+          if (lastPollStatus.current === "paid_but_waiting_for_webhook") {
+            setStatus("payment_received");
+          } else {
+            setStatus("error");
+          }
         }
       } catch (err) {
         console.error("Poll error:", err);
-        if (pollCount.current >= 30) {
+        if (pollCount.current >= maxPolls) {
           clearInterval(pollInterval);
-          setStatus("error");
+          if (lastPollStatus.current === "paid_but_waiting_for_webhook") {
+            setStatus("payment_received");
+          } else {
+            setStatus("error");
+          }
         }
       }
     }, 2000);
 
     return () => clearInterval(pollInterval);
-  }, [urlSessionId, checkoutSessionId, user]);
+  }, [urlSessionId, checkoutSessionId, user, maxPolls]);
 
   useEffect(() => {
     if (status === "success") {
@@ -118,6 +138,21 @@ export default function PaymentSuccess() {
                 <div className="pt-4 space-y-3">
                   <p className="text-sm text-muted-foreground">{t("redirecting", { count: countdown })}</p>
                   <Button onClick={handleContinue} className="w-full">{t("continueNow")}</Button>
+                </div>
+              </>
+            )}
+
+            {status === "payment_received" && (
+              <>
+                <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto animate-in zoom-in duration-300">
+                  <Clock className="h-10 w-10 text-amber-500" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-amber-600 dark:text-amber-400 mb-2">{t("paymentReceived")}</h2>
+                  <p className="text-muted-foreground">{t("paymentReceivedDesc")}</p>
+                </div>
+                <div className="pt-4 space-y-3">
+                  <Button onClick={() => navigate("/home")} className="w-full">{t("goToMyGames")}</Button>
                 </div>
               </>
             )}
