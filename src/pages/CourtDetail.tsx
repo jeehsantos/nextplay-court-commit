@@ -1665,7 +1665,11 @@ export default function CourtDetail() {
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
-                  disabled={(date) => date < new Date()}
+                  disabled={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return date < today;
+                  }}
                   className="w-full"
                   classNames={{
                     months: "flex flex-col w-full",
