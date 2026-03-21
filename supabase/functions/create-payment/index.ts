@@ -336,6 +336,7 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
     durationMinutes, paymentType, splitPlayers, sportCategoryId,
     equipment, courtCapacity, courtPrice, holdId,
     returnUrl, origin, useCredits, creditsAmount, attempt,
+    organizerPlays = true,
   } = body;
 
   if (!groupId || !courtId || !sessionDate || !startTime || !endTime || !durationMinutes) {
