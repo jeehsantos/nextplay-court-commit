@@ -78,7 +78,7 @@ export default function PaymentSuccess() {
           }
         }
       }
-    }, 2000);
+    }, pollIntervalMs);
 
     return () => clearInterval(pollInterval);
   }, [urlSessionId, checkoutSessionId, user, maxPolls]);
