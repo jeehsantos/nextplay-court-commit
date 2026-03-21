@@ -98,6 +98,7 @@ serve(async (req) => {
       sportCategoryId,
       equipment = [],
       holdId,
+      organizerPlays = true,
     } = await req.json();
 
     if (!groupId || !courtId || !sessionDate || !startTime || !durationMinutes || !paymentType || !sportCategoryId) {
