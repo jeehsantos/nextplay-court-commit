@@ -513,6 +513,40 @@ export default function GroupDetail() {
                   />
                 </div>
 
+                {/* Organizer Plays Toggle */}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="organizer-plays-toggle">I play in sessions</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {(group as any).organizer_plays !== false
+                        ? "You're automatically added as a player when booking"
+                        : "You won't be added as a player when booking"}
+                    </p>
+                  </div>
+                  <Switch
+                    id="organizer-plays-toggle"
+                    checked={(group as any).organizer_plays !== false}
+                    onCheckedChange={async (checked) => {
+                      try {
+                        const { error } = await supabase
+                          .from("groups")
+                          .update({ organizer_plays: checked } as any)
+                          .eq("id", group.id);
+                        if (error) throw error;
+                        setGroup({ ...group, organizer_plays: checked } as any);
+                        toast({
+                          title: checked ? "You'll be added as a player" : "You won't be added as a player",
+                          description: checked
+                            ? "You'll automatically join sessions when booking"
+                            : "You'll only organize sessions without playing",
+                        });
+                      } catch (error) {
+                        console.error("Error updating organizer plays:", error);
+                      }
+                    }}
+                  />
+                </div>
+
                 {/* Invite Link (for private groups) */}
                 {!group.is_public && (
                   <div className="pt-2 border-t space-y-3">

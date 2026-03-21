@@ -819,6 +819,7 @@ export default function CourtDetail() {
     equipment: SelectedEquipment[];
     sportCategoryId: string;
     splitPlayers?: number;
+    organizerPlays?: boolean;
   }) => {
     const { groupId, isNewGroup, paymentType, equipment, sportCategoryId } = data;
     setSelectedEquipment(equipment);
@@ -847,6 +848,7 @@ export default function CourtDetail() {
           sportCategoryId,
           equipment,
           holdId: holdId || undefined,
+          organizerPlays: data.organizerPlays,
         },
       });
 

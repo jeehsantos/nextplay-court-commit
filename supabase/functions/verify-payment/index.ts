@@ -318,13 +318,16 @@ async function createDeferredRecordsFallback(
   const sessionId = session.id;
   console.log("[fallback] Session created:", sessionId);
 
-  // Create session_player
-  await supabaseAdmin.from("session_players").insert({
-    session_id: sessionId,
-    user_id: userId,
-    is_confirmed: true,
-    confirmed_at: new Date().toISOString(),
-  });
+  // Create session_player — only if organizer plays
+  const organizerPlays = metadata.organizer_plays !== "false";
+  if (organizerPlays) {
+    await supabaseAdmin.from("session_players").insert({
+      session_id: sessionId,
+      user_id: userId,
+      is_confirmed: true,
+      confirmed_at: new Date().toISOString(),
+    });
+  }
 
   // Create court_availability
   const { data: bookingRecord } = await supabaseAdmin

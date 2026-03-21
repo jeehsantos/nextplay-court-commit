@@ -59,6 +59,7 @@ interface BookingWizardProps {
     equipment: SelectedEquipment[];
     sportCategoryId: string;
     splitPlayers?: number;
+    organizerPlays?: boolean;
   }) => void;
   allowedSports?: string[];
   courtPrice: number;
@@ -255,16 +256,20 @@ export function BookingWizard({
           paymentType,
           equipment: selectedEquipment,
           sportCategoryId: selectedSportCategoryId,
-          splitPlayers: paymentType === "split" ? splitPlayers : undefined
+          splitPlayers: paymentType === "split" ? splitPlayers : undefined,
+          organizerPlays: true, // new groups default to organizer plays
         });
       } else {
+        // Find the selected group to read organizer_plays
+        const selectedGroup = userGroups.find(g => g.id === selectedGroupId);
         onConfirm({
           groupId: selectedGroupId,
           isNewGroup: false,
           paymentType,
           equipment: selectedEquipment,
           sportCategoryId: selectedSportCategoryId,
-          splitPlayers: paymentType === "split" ? splitPlayers : undefined
+          splitPlayers: paymentType === "split" ? splitPlayers : undefined,
+          organizerPlays: (selectedGroup as any)?.organizer_plays !== false,
         });
       }
     } catch (error: any) {

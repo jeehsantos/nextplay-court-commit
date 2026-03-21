@@ -638,18 +638,21 @@ async function handleDeferredSessionPayment(
   const sessionId = session.id;
   console.log("Deferred session created:", sessionId);
 
-  // Create session_player
-  const { error: spError } = await supabaseAdmin.from("session_players").insert({
-    session_id: sessionId,
-    user_id: userId,
-    is_confirmed: true,
-    confirmed_at: new Date().toISOString(),
-  });
-  if (spError) {
-    throw new WebhookProcessingError("Failed to create session player", {
-      operation: "session_players.insert",
-      error: spError,
+  // Create session_player — only if organizer plays
+  const organizerPlays = metadata.organizer_plays !== "false";
+  if (organizerPlays) {
+    const { error: spError } = await supabaseAdmin.from("session_players").insert({
+      session_id: sessionId,
+      user_id: userId,
+      is_confirmed: true,
+      confirmed_at: new Date().toISOString(),
     });
+    if (spError) {
+      throw new WebhookProcessingError("Failed to create session player", {
+        operation: "session_players.insert",
+        error: spError,
+      });
+    }
   }
 
   // Create court_availability

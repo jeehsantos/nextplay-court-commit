@@ -98,6 +98,7 @@ serve(async (req) => {
       sportCategoryId,
       equipment = [],
       holdId,
+      organizerPlays = true,
     } = await req.json();
 
     if (!groupId || !courtId || !sessionDate || !startTime || !durationMinutes || !paymentType || !sportCategoryId) {
@@ -212,6 +213,7 @@ serve(async (req) => {
             courtCapacity: court.capacity,
             courtPrice: courtAmountWithEquipment,
             holdId: holdId || null,
+            organizerPlays,
           },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
@@ -244,13 +246,16 @@ serve(async (req) => {
       .single();
     if (sessionError || !session) throw sessionError ?? new Error("Failed to create session");
 
-    const { error: sessionPlayerError } = await supabaseAdmin.from("session_players").insert({
-      session_id: session.id,
-      user_id: user.id,
-      is_confirmed: true,
-      confirmed_at: new Date().toISOString(),
-    });
-    if (sessionPlayerError) throw sessionPlayerError;
+    // Only add organizer as player if they chose to play
+    if (organizerPlays !== false) {
+      const { error: sessionPlayerError } = await supabaseAdmin.from("session_players").insert({
+        session_id: session.id,
+        user_id: user.id,
+        is_confirmed: true,
+        confirmed_at: new Date().toISOString(),
+      });
+      if (sessionPlayerError) throw sessionPlayerError;
+    }
 
     const { data: bookingRecord, error: bookingError } = await supabaseAdmin
       .from("court_availability")

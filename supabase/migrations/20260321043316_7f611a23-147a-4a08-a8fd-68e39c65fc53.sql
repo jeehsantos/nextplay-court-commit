@@ -1,0 +1,1 @@
+ALTER TABLE public.groups ADD COLUMN organizer_plays boolean NOT NULL DEFAULT true;
