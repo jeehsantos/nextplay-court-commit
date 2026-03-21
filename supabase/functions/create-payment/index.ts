@@ -537,6 +537,7 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
       stripe_fee_coverage_cents: stripeFeeCoverageCents.toString(),
       venue_stripe_account_id: deferredVenueStripeAccountId || "",
       destination_charge: deferredVenueStripeAccountId ? "true" : "false",
+      organizer_plays: organizerPlays === false ? "false" : "true",
     },
   };
 
