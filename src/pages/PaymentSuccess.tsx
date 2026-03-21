@@ -81,7 +81,7 @@ export default function PaymentSuccess() {
     }, pollIntervalMs);
 
     return () => clearInterval(pollInterval);
-  }, [urlSessionId, checkoutSessionId, user, maxPolls]);
+  }, [urlSessionId, checkoutSessionId, user, maxPolls, pollIntervalMs]);
 
   useEffect(() => {
     if (status === "success") {
