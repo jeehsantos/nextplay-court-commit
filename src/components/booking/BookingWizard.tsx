@@ -59,6 +59,7 @@ interface BookingWizardProps {
     equipment: SelectedEquipment[];
     sportCategoryId: string;
     splitPlayers?: number;
+    organizerPlays?: boolean;
   }) => void;
   allowedSports?: string[];
   courtPrice: number;
