@@ -40,6 +40,7 @@ export default function PaymentSuccess() {
             sessionId: urlSessionId || null,
             userId: user.id,
             checkoutSessionId,
+            pollCount: pollCount.current,
           },
         });
 
