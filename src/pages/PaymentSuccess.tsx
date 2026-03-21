@@ -24,7 +24,8 @@ export default function PaymentSuccess() {
   const checkoutSessionId = searchParams.get("checkout_session_id");
   const bookingType = searchParams.get("type");
   const isDeferred = bookingType === "at_booking";
-  const maxPolls = isDeferred ? 60 : 30;
+  const maxPolls = isDeferred ? 40 : 20;
+  const pollIntervalMs = 1500;
 
   const [resolvedSessionId, setResolvedSessionId] = useState<string | null>(urlSessionId);
 
@@ -77,10 +78,10 @@ export default function PaymentSuccess() {
           }
         }
       }
-    }, 2000);
+    }, pollIntervalMs);
 
     return () => clearInterval(pollInterval);
-  }, [urlSessionId, checkoutSessionId, user, maxPolls]);
+  }, [urlSessionId, checkoutSessionId, user, maxPolls, pollIntervalMs]);
 
   useEffect(() => {
     if (status === "success") {
