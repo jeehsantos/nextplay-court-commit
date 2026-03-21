@@ -2,46 +2,43 @@
 
 ## Problem
 
-The payment success page is stuck in an infinite "Processing Payment" loop for the deferred `at_booking` flow. After Stripe redirects to `/payment-success?checkout_session_id=...&type=at_booking`, the page polls `verify-payment` every 2 seconds. The function returns `paid_but_waiting_for_webhook` or `pending`, but the page only accepts `completed` or `transferred` to show success. After 30 polls (60s) it shows an error.
+After Stripe confirms payment in the deferred (`at_booking`) flow, the webhook never fires (no webhook logs exist), so no session/payment records are created. The `verify-payment` function keeps returning `paid_but_waiting_for_webhook`, and after 2 minutes the page shows "Payment Received" — but no game exists. The message is misleading and the booking is lost.
 
-**Root cause**: The `stripe-webhook` and `verify-payment` edge functions likely need redeployment after recent code changes (idempotency key fix, sport_category_id migration). The deployed versions may be stale, causing the webhook to either fail silently or not match the current database schema.
+## Root Cause
+
+The Stripe webhook is not reaching the edge function (likely a webhook endpoint configuration issue on the Stripe dashboard, or the deployed function is stale). The `verify-payment` function has no fallback — it only reads data, never creates records.
 
 ## Solution
 
-### 1. Redeploy edge functions
-Redeploy `verify-payment`, `stripe-webhook`, and `create-payment` to ensure all deployed versions are in sync with the current codebase.
+Add a **fallback record-creation path** inside `verify-payment` for the deferred flow. When Stripe confirms `payment_status === "paid"` but no payment row exists after several polls, `verify-payment` will create the session, player, court_availability, and payment records itself — exactly like `handleDeferredSessionPayment` in the webhook does.
 
-### 2. Add resilient handling in PaymentSuccess.tsx
-Even when functions are correctly deployed, webhook processing can be delayed. The page should handle this gracefully:
-
-- When `type=at_booking` is in the URL, increase the max poll count from 30 to 60 (giving 2 minutes for the webhook to process)
-- After max polls, if the status is `paid_but_waiting_for_webhook`, show a "Payment received" message instead of an error — inform the user their payment was successful and the booking is being finalized, with a link to check "My Games" later
-- Log the verify-payment response data on each poll to aid debugging
-
-### 3. Add webhook failure fallback in verify-payment
-If `paid_but_waiting_for_webhook` persists for too long, the verify-payment function should attempt to process the deferred booking itself as a fallback (similar to what the webhook does). This prevents the user from being stuck if the webhook fails.
+### Changes
 
 | File | Change |
 |------|--------|
-| `src/pages/PaymentSuccess.tsx` | Read `type` param; increase poll limit for deferred flows; show "payment received, finalizing" state instead of error when Stripe confirms paid but webhook hasn't processed |
-| Edge function deployments | Redeploy `verify-payment`, `stripe-webhook`, `create-payment` |
+| `supabase/functions/verify-payment/index.ts` | In `handleDeferredVerification`, after confirming Stripe shows `paid` and no DB record exists, extract metadata from the checkout session and create all deferred records (session, session_player, court_availability, payment). Return `completed` status so the frontend redirects to the game. |
+| `src/pages/PaymentSuccess.tsx` | Pass a `pollCount` in the request body so `verify-payment` knows when to trigger the fallback (e.g., after poll #10 = 20 seconds). Update `payment_received` status handler to also try navigating to the game if a `sessionId` was resolved. |
+| Redeploy | Redeploy `verify-payment` and `stripe-webhook` to ensure both are in sync. |
 
-### Technical details
+### Technical Details
 
-**PaymentSuccess.tsx changes:**
-```typescript
-const bookingType = searchParams.get("type");
-const isDeferred = bookingType === "at_booking";
-const maxPolls = isDeferred ? 60 : 30; // 2 min for deferred, 1 min for standard
-
-// In poll handler, also check for webhook-waiting status after timeout
-if (pollCount.current >= maxPolls) {
-  if (lastStatus === "paid_but_waiting_for_webhook") {
-    // Stripe confirmed paid — show partial success
-    setStatus("success"); 
-  } else {
-    setStatus("error");
-  }
-}
+**verify-payment fallback logic (handleDeferredVerification):**
+```text
+1. Retrieve Stripe checkout session
+2. If payment_status === "paid" AND no payment row in DB:
+   a. Check if pollCount >= 10 (client passes this)
+   b. Read metadata from checkout session (group_id, court_id, etc.)
+   c. Use advisory lock on court_id to prevent double-creation
+   d. Re-check for existing payment (idempotency)
+   e. Create session, session_player, court_availability, payment
+   f. Process referral, recalculate session
+   g. Return { status: "completed", sessionId }
+3. If pollCount < 10, return paid_but_waiting_for_webhook (give webhook a chance first)
 ```
+
+This ensures:
+- The webhook still has priority (first 20 seconds)
+- If the webhook fails/never arrives, verify-payment creates the records as fallback
+- Idempotency is maintained via payment_intent_id checks
+- The user sees "Payment Successful" and gets redirected to their game
 
