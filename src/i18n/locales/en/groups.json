@@ -43,5 +43,10 @@
   "joined": "Joined",
   "joinSession": "Join",
   "full": "Full",
-  "viewGame": "View Game"
+  "viewGame": "View Game",
+  "organizerPlays": "I play in sessions",
+  "organizerPlaysOn": "You're automatically added as a player when booking",
+  "organizerPlaysOff": "You won't be added as a player when booking",
+  "leaveAsPlayer": "Leave as Player",
+  "leaveAsPlayerDesc": "You'll be removed from the player list but will remain the organizer."
 }

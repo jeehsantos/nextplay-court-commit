@@ -43,5 +43,10 @@
   "joined": "Participando",
   "joinSession": "Entrar",
   "full": "Lotado",
-  "viewGame": "Ver Jogo"
+  "viewGame": "Ver Jogo",
+  "organizerPlays": "Eu jogo nas sessões",
+  "organizerPlaysOn": "Você é adicionado automaticamente como jogador ao reservar",
+  "organizerPlaysOff": "Você não será adicionado como jogador ao reservar",
+  "leaveAsPlayer": "Sair como Jogador",
+  "leaveAsPlayerDesc": "Você será removido da lista de jogadores mas continuará como organizador."
 }
