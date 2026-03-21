@@ -213,6 +213,7 @@ serve(async (req) => {
             courtCapacity: court.capacity,
             courtPrice: courtAmountWithEquipment,
             holdId: holdId || null,
+            organizerPlays,
           },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
