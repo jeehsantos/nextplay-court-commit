@@ -419,6 +419,7 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
       durationMinutes, paymentType, splitPlayers, sportCategoryId,
       equipment: equipmentItems, courtCapacity: courtCapacity || court.capacity,
       courtPrice: fullCourtPriceDollars, holdId,
+      organizerPlays,
     });
 
     await supabaseAdmin.from("payments").insert({
