@@ -497,6 +497,7 @@ export type Database = {
           min_players: number
           name: string
           organizer_id: string
+          organizer_plays: boolean
           payment_deadline_hours: number
           photo_url: string | null
           sport_category_id: string
@@ -518,6 +519,7 @@ export type Database = {
           min_players?: number
           name: string
           organizer_id: string
+          organizer_plays?: boolean
           payment_deadline_hours?: number
           photo_url?: string | null
           sport_category_id: string
@@ -539,6 +541,7 @@ export type Database = {
           min_players?: number
           name?: string
           organizer_id?: string
+          organizer_plays?: boolean
           payment_deadline_hours?: number
           photo_url?: string | null
           sport_category_id?: string
