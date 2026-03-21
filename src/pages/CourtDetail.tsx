@@ -848,6 +848,7 @@ export default function CourtDetail() {
           sportCategoryId,
           equipment,
           holdId: holdId || undefined,
+          organizerPlays: data.organizerPlays,
         },
       });
 
