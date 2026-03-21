@@ -200,8 +200,8 @@ async function handleDeferredVerification(
 
   // Stripe shows paid but webhook hasn't processed yet
   if (checkoutSession.payment_status === "paid") {
-    // After 10 polls (20 seconds), attempt fallback record creation
-    if (pollCount >= 10) {
+    // After 5 polls (~7.5 seconds), attempt fallback record creation
+    if (pollCount >= 5) {
       console.log(`[verify-payment] Fallback triggered at pollCount=${pollCount} for checkout ${checkoutSessionId}`);
       try {
         const sessionId = await createDeferredRecordsFallback(
