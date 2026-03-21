@@ -1673,6 +1673,75 @@ const getGoogleMapsUrl = (address: string): string => {
               </AlertDialog>
             </div>
           )}
+
+          {/* Leave as Player Button - Only for organizers who are in the player list */}
+          {!isGamePast && isOrganizer && isPlayerInGame && (
+            <div className="pb-4">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    disabled={actionLoading}
+                  >
+                    <UserMinus className="h-4 w-4 mr-2" />
+                    Leave as Player
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Stop playing in this session?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You'll be removed from the player list but will remain the organizer with full control over this session.
+                      {currentPlayerPayment?.isPaid && " Your court payment will be refunded as credits. Service fee is non-refundable."}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Stay as Player</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        if (!id || !user) return;
+                        setActionLoading(true);
+                        try {
+                          if (currentPlayerPayment?.isPaid) {
+                            const { data, error } = await supabase.functions.invoke("cancel-player-participation", {
+                              body: { sessionId: id },
+                            });
+                            if (error) throw error;
+                            if (data?.creditsAwarded) {
+                              toast({
+                                title: "Left as player",
+                                description: `Refund of $${Number(data.creditsAwarded).toFixed(2)} issued as credits.`,
+                              });
+                              refetchCredits();
+                            } else {
+                              toast({ title: "Left as player", description: "You've been removed from the player list." });
+                            }
+                          } else {
+                            const { error } = await supabase
+                              .from("session_players")
+                              .delete()
+                              .eq("session_id", id)
+                              .eq("user_id", user.id);
+                            if (error) throw error;
+                            toast({ title: "Left as player", description: "You've been removed from the player list." });
+                          }
+                          fetchGameData();
+                        } catch (error) {
+                          console.error("Error leaving as player:", error);
+                          toast({ title: "Error", description: "Failed to leave as player.", variant: "destructive" });
+                        } finally {
+                          setActionLoading(false);
+                        }
+                      }}
+                    >
+                      Leave as Player
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
         </div>
 
         {/* Profile Completion Alert Modal */}
