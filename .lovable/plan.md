@@ -2,43 +2,49 @@
 
 ## Problem
 
-After Stripe confirms payment in the deferred (`at_booking`) flow, the webhook never fires (no webhook logs exist), so no session/payment records are created. The `verify-payment` function keeps returning `paid_but_waiting_for_webhook`, and after 2 minutes the page shows "Payment Received" — but no game exists. The message is misleading and the booking is lost.
+Currently, when an organizer books a session, the system always adds them as a player (`session_players` insert). Some organizers only manage sessions without playing, but there's no way to opt out. Two scenarios need support:
 
-## Root Cause
-
-The Stripe webhook is not reaching the edge function (likely a webhook endpoint configuration issue on the Stripe dashboard, or the deployed function is stale). The `verify-payment` function has no fallback — it only reads data, never creates records.
+1. **Group-level default**: Organizer sets a preference in Group Settings to not be auto-added as a player on new bookings
+2. **Per-session opt-out**: On an existing session's Game Detail page, the organizer can remove themselves from the player list without cancelling the session
 
 ## Solution
 
-Add a **fallback record-creation path** inside `verify-payment` for the deferred flow. When Stripe confirms `payment_status === "paid"` but no payment row exists after several polls, `verify-payment` will create the session, player, court_availability, and payment records itself — exactly like `handleDeferredSessionPayment` in the webhook does.
+### Part 1: Group-level "Organizer plays" setting
+
+Add a new column `organizer_plays` (boolean, default `true`) to the `groups` table. Show a toggle in the Group Settings section on the GroupDetail page. Pass this flag through the booking flow so edge functions skip adding the organizer as a session player when `false`.
+
+### Part 2: Per-session organizer opt-out
+
+On the Game Detail page, when the organizer is in the player list, show a "Leave as player" button that removes them from `session_players` without cancelling the session. The organizer remains the group organizer with full control.
 
 ### Changes
 
 | File | Change |
 |------|--------|
-| `supabase/functions/verify-payment/index.ts` | In `handleDeferredVerification`, after confirming Stripe shows `paid` and no DB record exists, extract metadata from the checkout session and create all deferred records (session, session_player, court_availability, payment). Return `completed` status so the frontend redirects to the game. |
-| `src/pages/PaymentSuccess.tsx` | Pass a `pollCount` in the request body so `verify-payment` knows when to trigger the fallback (e.g., after poll #10 = 20 seconds). Update `payment_received` status handler to also try navigating to the game if a `sessionId` was resolved. |
-| Redeploy | Redeploy `verify-payment` and `stripe-webhook` to ensure both are in sync. |
+| **Database migration** | `ALTER TABLE groups ADD COLUMN organizer_plays boolean NOT NULL DEFAULT true;` |
+| **GroupDetail.tsx** | Add "I play in sessions" toggle in Group Settings, wired to update `groups.organizer_plays` |
+| **create-booking/index.ts** | Accept `organizerPlays` param; skip `session_players` insert for the organizer in the `before_session` flow when `false` |
+| **CourtDetail.tsx** | Fetch `organizer_plays` from the selected group and pass it to `create-booking` |
+| **GroupSelectionModal.tsx** | Fetch `organizer_plays` from the selected group and include it in the confirm callback data |
+| **create-payment/index.ts** | Read `organizerPlays` from metadata; skip session_player insert in deferred record creation when `false` |
+| **verify-payment/index.ts** | Read `organizerPlays` from checkout metadata; skip session_player insert in fallback creation when `false` |
+| **stripe-webhook/index.ts** | Read `organizerPlays` from checkout metadata; skip session_player insert in deferred handler when `false` |
+| **GameDetail.tsx** | For organizers who are in the player list: show "Leave as player" button that deletes their `session_players` row (reusing existing leave logic but without navigating away), keeping the session active |
+| **i18n files** | Add translation keys for the new toggle and button labels |
 
-### Technical Details
+### Technical details
 
-**verify-payment fallback logic (handleDeferredVerification):**
+**Database**: Single column addition with safe default — no data migration needed.
+
+**Booking flow data path**:
 ```text
-1. Retrieve Stripe checkout session
-2. If payment_status === "paid" AND no payment row in DB:
-   a. Check if pollCount >= 10 (client passes this)
-   b. Read metadata from checkout session (group_id, court_id, etc.)
-   c. Use advisory lock on court_id to prevent double-creation
-   d. Re-check for existing payment (idempotency)
-   e. Create session, session_player, court_availability, payment
-   f. Process referral, recalculate session
-   g. Return { status: "completed", sessionId }
-3. If pollCount < 10, return paid_but_waiting_for_webhook (give webhook a chance first)
+GroupSelectionModal (reads organizer_plays from group)
+  → CourtDetail.handleBookingConfirm (passes to create-booking)
+    → create-booking (passes in booking_details metadata)
+      → create-payment (stores in Stripe metadata)
+        → stripe-webhook / verify-payment / create-payment deferred handler
+          → conditionally skip session_players insert
 ```
 
-This ensures:
-- The webhook still has priority (first 20 seconds)
-- If the webhook fails/never arrives, verify-payment creates the records as fallback
-- Idempotency is maintained via payment_intent_id checks
-- The user sees "Payment Successful" and gets redirected to their game
+**Per-session opt-out** (GameDetail): A simple button visible only to the organizer when they are in the players list. Clicking it deletes their `session_players` row and refreshes data. The session continues normally — only the organizer's participation changes.
 
