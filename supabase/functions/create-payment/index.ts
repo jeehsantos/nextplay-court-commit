@@ -612,14 +612,16 @@ async function createDeferredRecords(supabaseAdmin: any, details: any): Promise<
 
   if (sessionError || !session) throw sessionError ?? new Error("Failed to create session");
 
-  // Create session_player (confirmed since payment is done)
-  const { error: spError } = await supabaseAdmin.from("session_players").insert({
-    session_id: session.id,
-    user_id: details.userId,
-    is_confirmed: true,
-    confirmed_at: new Date().toISOString(),
-  });
-  if (spError) throw spError;
+  // Create session_player (confirmed since payment is done) — only if organizer plays
+  if (details.organizerPlays !== false) {
+    const { error: spError } = await supabaseAdmin.from("session_players").insert({
+      session_id: session.id,
+      user_id: details.userId,
+      is_confirmed: true,
+      confirmed_at: new Date().toISOString(),
+    });
+    if (spError) throw spError;
+  }
 
   // Create court_availability
   const { data: bookingRecord, error: caError } = await supabaseAdmin
