@@ -7,15 +7,15 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from
+"@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from
+"@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { SportIcon, getSportLabel } from "@/components/ui/sport-icon";
 import { PaymentTypeSelector } from "@/components/booking/PaymentTypeSelector";
@@ -26,11 +26,11 @@ import { usePlatformFee } from "@/hooks/usePlatformFee";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
-import { 
-  FileText, 
-  Users, 
-  CreditCard, 
-  ChevronLeft, 
+import {
+  FileText,
+  Users,
+  CreditCard,
+  ChevronLeft,
   ChevronRight,
   Loader2,
   Calendar,
@@ -40,8 +40,8 @@ import {
   Plus,
   Package,
   AlertCircle,
-  CheckCircle2
-} from "lucide-react";
+  CheckCircle2 } from
+"lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type Group = Database["public"]["Tables"]["groups"]["Row"];
@@ -78,10 +78,10 @@ interface BookingWizardProps {
 }
 
 const STEPS = [
-  { id: 1, title: "Terms & Rules", icon: FileText },
-  { id: 2, title: "Session Config", icon: Users },
-  { id: 3, title: "Payment", icon: CreditCard },
-];
+{ id: 1, title: "Terms & Rules", icon: FileText },
+{ id: 2, title: "Session Config", icon: Users },
+{ id: 3, title: "Payment", icon: CreditCard }];
+
 
 export function BookingWizard({
   open,
@@ -101,12 +101,12 @@ export function BookingWizard({
   equipment,
   selectedEquipment,
   onEquipmentChange,
-  paymentTiming,
+  paymentTiming
 }: BookingWizardProps) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [rulesAccepted, setRulesAccepted] = useState(false);
-  
+
   // Step 2: Session Configuration
   const [userGroups, setUserGroups] = useState<Group[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
@@ -117,26 +117,26 @@ export function BookingWizard({
   const [paymentType, setPaymentType] = useState<BookingPaymentType>("single");
   const [splitPlayers, setSplitPlayers] = useState(6);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Fetch sport categories from database, filtered by preferred sports
   const { data: allSportCategories = [], isLoading: loadingSports } = useSportCategories();
   const { preferredSports } = useUserProfile();
-  
+
   const sportCategories = useMemo(() => {
     // Filter by court's allowed sports first
     let filtered = allSportCategories;
     if (allowedSports && allowedSports.length > 0) {
-      const courtFiltered = allSportCategories.filter(cat => allowedSports.includes(cat.name));
+      const courtFiltered = allSportCategories.filter((cat) => allowedSports.includes(cat.name));
       if (courtFiltered.length > 0) filtered = courtFiltered;
     }
     // Then filter by user's preferred sports
     if (preferredSports.length > 0) {
-      const prefFiltered = filtered.filter(cat => preferredSports.includes(cat.name));
+      const prefFiltered = filtered.filter((cat) => preferredSports.includes(cat.name));
       if (prefFiltered.length > 0) filtered = prefFiltered;
     }
     return filtered;
   }, [allSportCategories, preferredSports, allowedSports]);
-   // Fetch admin-configured platform fee (read-only display)
+  // Fetch admin-configured platform fee (read-only display)
   const { playerFee: platformFee } = usePlatformFee();
 
   const isNewGroup = selectedGroupId === "new";
@@ -154,7 +154,7 @@ export function BookingWizard({
       fetchUserGroups();
     }
   }, [open]);
-  
+
   // Auto-select first sport category when loaded
   useEffect(() => {
     if (sportCategories.length > 0 && !selectedSportCategoryId) {
@@ -164,18 +164,18 @@ export function BookingWizard({
 
   const fetchUserGroups = async () => {
     if (!user) return;
-    
+
     setLoadingGroups(true);
     try {
-      const { data, error } = await supabase
-        .from("groups")
-        .select("*")
-        .eq("organizer_id", user.id)
-        .eq("is_active", true);
+      const { data, error } = await supabase.
+      from("groups").
+      select("*").
+      eq("organizer_id", user.id).
+      eq("is_active", true);
 
       if (error) throw error;
       setUserGroups(data || []);
-      
+
       // Auto-select if only one group exists
       if (data && data.length === 1) {
         setSelectedGroupId(data[0].id);
@@ -206,11 +206,11 @@ export function BookingWizard({
         return;
       }
     }
-    setCurrentStep(prev => Math.min(prev + 1, 3));
+    setCurrentStep((prev) => Math.min(prev + 1, 3));
   };
 
   const handleBack = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleConfirm = async () => {
@@ -225,28 +225,28 @@ export function BookingWizard({
     try {
       if (isNewGroup) {
         // Create new group
-        const { data, error } = await supabase
-          .from("groups")
-          .insert({
-            name: newGroupName.trim(),
-            organizer_id: user!.id,
-            sport_category_id: selectedSportCategoryId,
-            city: city,
-            default_day_of_week: dayOfWeek,
-            default_start_time: startTime,
-            weekly_court_price: courtPrice,
-            is_public: false,
-          })
-          .select()
-          .single();
+        const { data, error } = await supabase.
+        from("groups").
+        insert({
+          name: newGroupName.trim(),
+          organizer_id: user!.id,
+          sport_category_id: selectedSportCategoryId,
+          city: city,
+          default_day_of_week: dayOfWeek,
+          default_start_time: startTime,
+          weekly_court_price: courtPrice,
+          is_public: false
+        }).
+        select().
+        single();
 
         if (error) throw error;
-        
+
         // Add organizer as group member
         await supabase.from("group_members").insert({
           group_id: data.id,
           user_id: user!.id,
-          is_admin: true,
+          is_admin: true
         });
 
         onConfirm({
@@ -255,7 +255,7 @@ export function BookingWizard({
           paymentType,
           equipment: selectedEquipment,
           sportCategoryId: selectedSportCategoryId,
-          splitPlayers: paymentType === "split" ? splitPlayers : undefined,
+          splitPlayers: paymentType === "split" ? splitPlayers : undefined
         });
       } else {
         onConfirm({
@@ -264,7 +264,7 @@ export function BookingWizard({
           paymentType,
           equipment: selectedEquipment,
           sportCategoryId: selectedSportCategoryId,
-          splitPlayers: paymentType === "split" ? splitPlayers : undefined,
+          splitPlayers: paymentType === "split" ? splitPlayers : undefined
         });
       }
     } catch (error: any) {
@@ -277,10 +277,10 @@ export function BookingWizard({
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", { 
+    return date.toLocaleDateString("en-US", {
       weekday: "long",
-      month: "short", 
-      day: "numeric" 
+      month: "short",
+      day: "numeric"
     });
   };
 
@@ -294,17 +294,17 @@ export function BookingWizard({
 
   // Calculate equipment total
   const equipmentTotal = selectedEquipment.reduce(
-    (sum, item) => sum + item.quantity * item.pricePerUnit, 
+    (sum, item) => sum + item.quantity * item.pricePerUnit,
     0
   );
   const courtTotal = courtPrice + equipmentTotal;
   // Service fee is calculated by the backend at checkout — not displayed here
   const totalPrice = courtTotal;
-  const perPlayerPrice = paymentType === "split" && splitPlayers > 0
-    ? Math.ceil((courtTotal / splitPlayers) * 100) / 100
-    : null;
+  const perPlayerPrice = paymentType === "split" && splitPlayers > 0 ?
+  Math.ceil(courtTotal / splitPlayers * 100) / 100 :
+  null;
 
-  const progress = (currentStep / STEPS.length) * 100;
+  const progress = currentStep / STEPS.length * 100;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -324,34 +324,34 @@ export function BookingWizard({
               const Icon = step.icon;
               const isActive = currentStep === step.id;
               const isCompleted = currentStep > step.id;
-              
+
               return (
-                <div 
+                <div
                   key={step.id}
                   className={`flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm ${
-                    isActive 
-                      ? "text-primary font-medium" 
-                      : isCompleted 
-                        ? "text-primary/70" 
-                        : "text-muted-foreground"
-                  }`}
-                >
+                  isActive ?
+                  "text-primary font-medium" :
+                  isCompleted ?
+                  "text-primary/70" :
+                  "text-muted-foreground"}`
+                  }>
+                  
                   <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shrink-0 ${
-                    isActive 
-                      ? "bg-primary text-primary-foreground" 
-                      : isCompleted 
-                        ? "bg-primary/20 text-primary" 
-                        : "bg-muted text-muted-foreground"
-                  }`}>
-                    {isCompleted ? (
-                      <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                    ) : (
-                      <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                    )}
+                  isActive ?
+                  "bg-primary text-primary-foreground" :
+                  isCompleted ?
+                  "bg-primary/20 text-primary" :
+                  "bg-muted text-muted-foreground"}`
+                  }>
+                    {isCompleted ?
+                    <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" /> :
+
+                    <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                    }
                   </div>
                   <span className="hidden sm:inline">{step.title}</span>
-                </div>
-              );
+                </div>);
+
             })}
           </div>
         </div>
@@ -384,22 +384,22 @@ export function BookingWizard({
                 <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                 <div className="text-right">
                   <span className="text-base sm:text-lg">${totalPrice.toFixed(2)}</span>
-                  {perPlayerPrice !== null && (
-                    <p className="text-[10px] sm:text-xs font-normal text-muted-foreground">
+                  {perPlayerPrice !== null &&
+                  <p className="text-[10px] sm:text-xs font-normal text-muted-foreground">
                       ${perPlayerPrice.toFixed(2)}/player
                     </p>
-                  )}
+                  }
                 </div>
               </div>
             </div>
           </div>
 
           {/* Step 1: Terms & Rules */}
-          {currentStep === 1 && (
-            <div className="space-y-4 animate-in fade-in duration-200">
+          {currentStep === 1 &&
+          <div className="space-y-4 animate-in fade-in duration-200">
               {/* Payment Timing Alert */}
-              {paymentTiming === "at_booking" && (
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              {paymentTiming === "at_booking" &&
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
                   <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <p className="font-medium text-amber-900 dark:text-amber-100">Payment Required at Booking</p>
@@ -408,7 +408,7 @@ export function BookingWizard({
                     </p>
                   </div>
                 </div>
-              )}
+            }
 
               <div className="space-y-3">
                 <h4 className="font-semibold flex items-center gap-2">
@@ -416,12 +416,12 @@ export function BookingWizard({
                   Court Rules & Guidelines
                 </h4>
                 
-                {courtRules ? (
-                  <div className="bg-muted/50 rounded-xl p-4 text-sm text-muted-foreground whitespace-pre-wrap border border-border max-h-48 overflow-y-auto">
+                {courtRules ?
+              <div className="bg-muted/50 rounded-xl p-4 text-sm text-muted-foreground whitespace-pre-wrap border border-border max-h-48 overflow-y-auto">
                     {courtRules}
-                  </div>
-                ) : (
-                  <div className="bg-muted/50 rounded-xl p-4 text-sm text-muted-foreground border border-border">
+                  </div> :
+
+              <div className="bg-muted/50 rounded-xl p-4 text-sm text-muted-foreground border border-border">
                     <p>General venue guidelines apply:</p>
                     <ul className="list-disc list-inside mt-2 space-y-1">
                       <li>Arrive 10 minutes before your booking time</li>
@@ -431,26 +431,26 @@ export function BookingWizard({
                       <li>Report any damages or issues immediately</li>
                     </ul>
                   </div>
-                )}
+              }
 
                 <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
-                  <Checkbox 
-                    id="rules-accepted" 
-                    checked={rulesAccepted}
-                    onCheckedChange={(checked) => setRulesAccepted(checked === true)}
-                    className="mt-0.5"
-                  />
+                  <Checkbox
+                  id="rules-accepted"
+                  checked={rulesAccepted}
+                  onCheckedChange={(checked) => setRulesAccepted(checked === true)}
+                  className="mt-0.5" />
+                
                   <Label htmlFor="rules-accepted" className="text-sm leading-relaxed cursor-pointer">
                     I have read and agree to the court rules and guidelines. I understand that failure to comply may result in booking cancellation.
                   </Label>
                 </div>
               </div>
             </div>
-          )}
+          }
 
           {/* Step 2: Session Configuration */}
-          {currentStep === 2 && (
-            <div className="space-y-5 animate-in fade-in duration-200">
+          {currentStep === 2 &&
+          <div className="space-y-5 animate-in fade-in duration-200">
               {/* Group Selection */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium flex items-center gap-2">
@@ -458,27 +458,27 @@ export function BookingWizard({
                   Select Group
                 </Label>
                 
-                {loadingGroups ? (
-                  <div className="flex items-center gap-2 text-muted-foreground py-4">
+                {loadingGroups ?
+              <div className="flex items-center gap-2 text-muted-foreground py-4">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading your groups...
-                  </div>
-                ) : (
-                  <Select
-                    value={selectedGroupId}
-                    onValueChange={setSelectedGroupId}
-                  >
+                  </div> :
+
+              <Select
+                value={selectedGroupId}
+                onValueChange={setSelectedGroupId}>
+                
                     <SelectTrigger className="w-full h-12">
                       <SelectValue placeholder="Choose a group..." />
                     </SelectTrigger>
                     <SelectContent className="bg-popover border border-border shadow-lg">
-                      {userGroups.map((group) => (
-                      <SelectItem key={group.id} value={group.id} className="py-3">
+                      {userGroups.map((group) =>
+                  <SelectItem key={group.id} value={group.id} className="py-3">
                           <div className="flex items-center gap-2">
                             <span>{group.name}</span>
                           </div>
                         </SelectItem>
-                      ))}
+                  )}
                       <SelectItem value="new" className="py-3">
                         <div className="flex items-center gap-2 text-primary">
                           <Plus className="h-4 w-4" />
@@ -487,23 +487,23 @@ export function BookingWizard({
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                )}
+              }
 
-                {isNewGroup && (
-                  <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                {isNewGroup &&
+              <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
                     <Input
-                      placeholder="Enter group name (e.g., Wednesday Legends)"
-                      value={newGroupName}
-                      onChange={(e) => setNewGroupName(e.target.value)}
-                      className="h-12"
-                      autoFocus
-                    />
+                  placeholder="Enter group name (e.g., Wednesday Legends)"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  className="h-12"
+                  autoFocus />
+                
                     <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                       <Users className="h-3.5 w-3.5" />
                       You'll be the organizer. Invite players after booking.
                     </p>
                   </div>
-                )}
+              }
               </div>
 
               {/* Sport Category Selection */}
@@ -512,74 +512,74 @@ export function BookingWizard({
                   Sport Category
                 </Label>
                 
-                {loadingSports ? (
-                  <div className="flex items-center gap-2 text-muted-foreground py-4">
+                {loadingSports ?
+              <div className="flex items-center gap-2 text-muted-foreground py-4">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading categories...
-                  </div>
-                ) : (
-                  <Select
-                    value={selectedSportCategoryId}
-                    onValueChange={setSelectedSportCategoryId}
-                  >
+                  </div> :
+
+              <Select
+                value={selectedSportCategoryId}
+                onValueChange={setSelectedSportCategoryId}>
+                
                     <SelectTrigger className="w-full h-12">
                       <SelectValue placeholder="Choose a sport category..." />
                     </SelectTrigger>
                     <SelectContent className="bg-popover border border-border shadow-lg">
-                      {sportCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.id} className="py-3">
+                      {sportCategories.map((category) =>
+                  <SelectItem key={category.id} value={category.id} className="py-3">
                           <div className="flex items-center gap-2">
                             {category.icon && <span>{category.icon}</span>}
                             <span>{category.display_name}</span>
                           </div>
                         </SelectItem>
-                      ))}
+                  )}
                     </SelectContent>
                   </Select>
-                )}
+              }
               </div>
 
               {/* Equipment Rental */}
-              {equipment.length > 0 && (
-                <div className="space-y-3">
+              {equipment.length > 0 &&
+            <div className="space-y-3">
                   <Label className="text-sm font-medium flex items-center gap-2">
                     <Package className="h-4 w-4" />
                     Equipment Rental (Optional)
                   </Label>
                   <EquipmentSelector
-                    equipment={equipment}
-                    selectedEquipment={selectedEquipment}
-                    onSelectionChange={onEquipmentChange}
-                    disabled={submitting}
-                  />
+                equipment={equipment}
+                selectedEquipment={selectedEquipment}
+                onSelectionChange={onEquipmentChange}
+                disabled={submitting} />
+              
                 </div>
-              )}
+            }
             </div>
-          )}
+          }
 
           {/* Step 3: Payment & Finalization */}
-          {currentStep === 3 && (
-            <div className="space-y-5 animate-in fade-in duration-200">
+          {currentStep === 3 &&
+          <div className="space-y-5 animate-in fade-in duration-200">
               {/* Payment timing override notice */}
-              {paymentTiming === "at_booking" && (
-                <div className="flex gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning-foreground">
+              {paymentTiming === "at_booking" &&
+            <div className="flex gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-primary-foreground">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-warning" />
                   <p>
                     <span className="font-semibold">Immediate payment required.</span>{" "}
                     This slot is within the court's payment window, so payment must be completed now to secure your booking.
                   </p>
                 </div>
-              )}
+            }
               {/* Rules confirmation check */}
-              {!rulesAccepted && (
-                <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
+              {!rulesAccepted &&
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
                   <AlertCircle className="h-5 w-5 shrink-0" />
                   <div>
                     <p className="font-medium">Rules not accepted</p>
                     <p className="text-sm">Please go back and accept the court rules first.</p>
                   </div>
                 </div>
-              )}
+            }
 
               {/* Price Summary */}
               <div className="space-y-3">
@@ -589,12 +589,12 @@ export function BookingWizard({
                     <span>Court rental</span>
                     <span>${courtPrice.toFixed(2)}</span>
                   </div>
-                  {selectedEquipment.map(item => (
-                    <div key={item.equipmentId} className="flex justify-between text-sm text-muted-foreground">
+                  {selectedEquipment.map((item) =>
+                <div key={item.equipmentId} className="flex justify-between text-sm text-muted-foreground">
                       <span>{item.name} × {item.quantity}</span>
                       <span>${(item.quantity * item.pricePerUnit).toFixed(2)}</span>
                     </div>
-                  ))}
+                )}
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Service fee</span>
                     <span className="italic">calculated at checkout</span>
@@ -611,34 +611,34 @@ export function BookingWizard({
 
               {/* Payment Type Selection */}
               <PaymentTypeSelector
-                paymentType={paymentType}
-                onPaymentTypeChange={(type) => {
-                  setPaymentType(type);
-                  if (type === "single") setSplitPlayers(6);
-                }}
-                courtPrice={totalPrice}
-                paymentTiming={paymentTiming}
-              />
+              paymentType={paymentType}
+              onPaymentTypeChange={(type) => {
+                setPaymentType(type);
+                if (type === "single") setSplitPlayers(6);
+              }}
+              courtPrice={totalPrice}
+              paymentTiming={paymentTiming} />
+            
 
               {/* Number of players - only when split is selected */}
-              {paymentType === "split" && (
-                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              {paymentType === "split" &&
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                   <Label className="text-sm font-medium flex items-center gap-2">
                     <Users className="h-4 w-4" />
                     Number of Players
                   </Label>
                   <Input
-                    type="number"
-                    min={2}
-                    value={splitPlayers}
-                    onChange={(e) => setSplitPlayers(Math.max(2, Number(e.target.value)))}
-                    className="h-12"
-                  />
+                type="number"
+                min={2}
+                value={splitPlayers}
+                onChange={(e) => setSplitPlayers(Math.max(2, Number(e.target.value)))}
+                className="h-12" />
+              
                   <p className="text-xs text-muted-foreground">
                     This sets the minimum players required. Each player pays their share to confirm.
                   </p>
-                  {perPlayerPrice !== null && (
-                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-1">
+                  {perPlayerPrice !== null &&
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-1">
                       <div className="flex justify-between text-sm">
                         <span>Court share per player</span>
                         <span>${perPlayerPrice.toFixed(2)}</span>
@@ -648,85 +648,85 @@ export function BookingWizard({
                         <span className="italic">at checkout</span>
                       </div>
                     </div>
-                  )}
+              }
                 </div>
-              )}
+            }
 
               {/* Group info */}
-              {selectedGroupId && selectedGroupId !== "new" && (
-                <div className="text-sm text-muted-foreground">
+              {selectedGroupId && selectedGroupId !== "new" &&
+            <div className="text-sm text-muted-foreground">
                   <span>Booking for: </span>
                   <span className="font-medium text-foreground">
-                    {userGroups.find(g => g.id === selectedGroupId)?.name}
+                    {userGroups.find((g) => g.id === selectedGroupId)?.name}
                   </span>
                 </div>
-              )}
-              {isNewGroup && newGroupName && (
-                <div className="text-sm text-muted-foreground">
+            }
+              {isNewGroup && newGroupName &&
+            <div className="text-sm text-muted-foreground">
                   <span>Creating new group: </span>
                   <span className="font-medium text-foreground">{newGroupName}</span>
                 </div>
-              )}
+            }
             </div>
-          )}
+          }
         </div>
 
         {/* Footer with navigation - always visible */}
-        <div 
+        <div
           className="shrink-0 bg-background border-t border-border p-3 sm:p-4 flex gap-2 sm:gap-3"
-          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}
-        >
-          {currentStep > 1 ? (
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={submitting}
-              className="flex-1 h-11 sm:h-12 text-sm sm:text-base min-w-0"
-            >
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}>
+          
+          {currentStep > 1 ?
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            disabled={submitting}
+            className="flex-1 h-11 sm:h-12 text-sm sm:text-base min-w-0">
+            
               <ChevronLeft className="h-4 w-4 mr-1 shrink-0" />
               <span className="truncate">Back</span>
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={submitting}
-              className="flex-1 h-11 sm:h-12 text-sm sm:text-base min-w-0"
-            >
+            </Button> :
+
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={submitting}
+            className="flex-1 h-11 sm:h-12 text-sm sm:text-base min-w-0">
+            
               <span className="truncate">Cancel</span>
             </Button>
-          )}
+          }
           
-          {currentStep < 3 ? (
-            <Button
-              onClick={handleNext}
-              className="flex-1 h-11 sm:h-12 text-sm sm:text-base min-w-0"
-              disabled={currentStep === 1 && !rulesAccepted}
-            >
+          {currentStep < 3 ?
+          <Button
+            onClick={handleNext}
+            className="flex-1 h-11 sm:h-12 text-sm sm:text-base min-w-0"
+            disabled={currentStep === 1 && !rulesAccepted}>
+            
               <span className="truncate">Continue</span>
               <ChevronRight className="h-4 w-4 ml-1 shrink-0" />
-            </Button>
-          ) : (
-            <Button
-              onClick={handleConfirm}
-              disabled={submitting || !rulesAccepted}
-              className="flex-1 h-11 sm:h-12 text-sm sm:text-base min-w-0"
-            >
-              {submitting ? (
-                <>
+            </Button> :
+
+          <Button
+            onClick={handleConfirm}
+            disabled={submitting || !rulesAccepted}
+            className="flex-1 h-11 sm:h-12 text-sm sm:text-base min-w-0">
+            
+              {submitting ?
+            <>
                   <Loader2 className="h-4 w-4 animate-spin mr-1.5 shrink-0" />
                   <span className="truncate">Processing...</span>
-                </>
-              ) : (
-                <>
+                </> :
+
+            <>
                   <CheckCircle2 className="h-4 w-4 mr-1.5 shrink-0" />
                   <span className="truncate">Confirm</span>
                 </>
-              )}
+            }
             </Button>
-          )}
+          }
         </div>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>);
+
 }
