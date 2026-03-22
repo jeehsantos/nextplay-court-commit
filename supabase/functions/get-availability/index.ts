@@ -126,6 +126,8 @@ function courtToDropdownEntry(c: Court) {
     rules: c.rules,
     photo_urls: c.photo_urls || (c.photo_url ? [c.photo_url] : []),
     allowed_sports: c.allowed_sports || [],
+    payment_timing: c.payment_timing,
+    payment_hours_before: c.payment_hours_before,
   };
 }
 
