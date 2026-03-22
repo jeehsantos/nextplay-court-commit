@@ -76,6 +76,8 @@ interface AvailableCourt {
   rules: string | null;
   photo_urls: string[] | null;
   allowed_sports?: string[] | null;
+  payment_timing?: string | null;
+  payment_hours_before?: number | null;
 }
 
 type SlotStatus = "AVAILABLE" | "HELD" | "CONFIRMED";
