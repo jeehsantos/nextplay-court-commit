@@ -49,6 +49,8 @@ interface Court {
   photo_urls: string[] | null;
   photo_url: string | null;
   allowed_sports: string[] | null;
+  payment_timing: string | null;
+  payment_hours_before: number | null;
 }
 
 type SlotStatus = "AVAILABLE" | "HELD" | "CONFIRMED";
@@ -124,6 +126,8 @@ function courtToDropdownEntry(c: Court) {
     rules: c.rules,
     photo_urls: c.photo_urls || (c.photo_url ? [c.photo_url] : []),
     allowed_sports: c.allowed_sports || [],
+    payment_timing: c.payment_timing,
+    payment_hours_before: c.payment_hours_before,
   };
 }
 
@@ -162,7 +166,7 @@ serve(async (req) => {
 
     const courtsPromise = supabase
       .from("courts")
-      .select("id, name, hourly_rate, is_active, is_multi_court, parent_court_id, ground_type, rules, photo_urls, photo_url, allowed_sports")
+      .select("id, name, hourly_rate, is_active, is_multi_court, parent_court_id, ground_type, rules, photo_urls, photo_url, allowed_sports, payment_timing, payment_hours_before")
       .eq("venue_id", venueId)
       .eq("is_active", true)
       .order("name", { ascending: true });

@@ -76,6 +76,8 @@ interface AvailableCourt {
   rules: string | null;
   photo_urls: string[] | null;
   allowed_sports?: string[] | null;
+  payment_timing?: string | null;
+  payment_hours_before?: number | null;
 }
 
 type SlotStatus = "AVAILABLE" | "HELD" | "CONFIRMED";
@@ -1401,17 +1403,19 @@ export default function CourtDetail() {
 
   const totalDuration = getTotalDuration();
 
-  // Compute effective payment timing: if court uses 'before_session' but we're already
-  // within the payment window (deadline has passed), force 'at_booking'.
+  // Compute effective payment timing: prefer selected sub-court's config over parent court
   const effectivePaymentTiming = (() => {
-    if (!court || court.payment_timing !== "before_session" || !selectedDate) {
-      return court?.payment_timing ?? "at_booking";
+    const selectedCourtData = getSelectedCourt();
+    const timing = selectedCourtData?.payment_timing ?? court?.payment_timing ?? "at_booking";
+    const hoursBefore = selectedCourtData?.payment_hours_before ?? court?.payment_hours_before ?? 24;
+
+    if (timing !== "before_session" || !selectedDate) {
+      return timing;
     }
     const dateStr = format(selectedDate, "yyyy-MM-dd");
     const startTime = getStartTime();
     const sessionStart = new Date(`${dateStr}T${startTime}`);
-    const hoursBeforeSession = court.payment_hours_before ?? 24;
-    const deadline = new Date(sessionStart.getTime() - hoursBeforeSession * 60 * 60 * 1000);
+    const deadline = new Date(sessionStart.getTime() - hoursBefore * 60 * 60 * 1000);
     return new Date() >= deadline ? "at_booking" : "before_session";
   })() as "at_booking" | "before_session";
 
