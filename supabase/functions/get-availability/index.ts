@@ -166,7 +166,7 @@ serve(async (req) => {
 
     const courtsPromise = supabase
       .from("courts")
-      .select("id, name, hourly_rate, is_active, is_multi_court, parent_court_id, ground_type, rules, photo_urls, photo_url, allowed_sports")
+      .select("id, name, hourly_rate, is_active, is_multi_court, parent_court_id, ground_type, rules, photo_urls, photo_url, allowed_sports, payment_timing, payment_hours_before")
       .eq("venue_id", venueId)
       .eq("is_active", true)
       .order("name", { ascending: true });
