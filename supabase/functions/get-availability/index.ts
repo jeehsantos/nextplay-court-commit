@@ -49,6 +49,8 @@ interface Court {
   photo_urls: string[] | null;
   photo_url: string | null;
   allowed_sports: string[] | null;
+  payment_timing: string | null;
+  payment_hours_before: number | null;
 }
 
 type SlotStatus = "AVAILABLE" | "HELD" | "CONFIRMED";
