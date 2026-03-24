@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import Stripe from "https://esm.sh/stripe@20.4.1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -132,7 +132,7 @@ serve(async (req) => {
 
     if (checkoutSessionId) {
       const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-        apiVersion: "2024-12-18.acacia",
+        apiVersion: "2026-02-25.clover",
       });
 
       const checkoutSession = await stripe.checkout.sessions.retrieve(checkoutSessionId);
@@ -165,7 +165,7 @@ async function handleDeferredVerification(
   pollCount: number
 ) {
   const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-    apiVersion: "2024-12-18.acacia",
+    apiVersion: "2026-02-25.clover",
   });
 
   const checkoutSession = await stripe.checkout.sessions.retrieve(checkoutSessionId);
@@ -370,7 +370,7 @@ async function createDeferredRecordsFallback(
   let stripeFeeActual: number | null = null;
   try {
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2024-12-18.acacia",
+      apiVersion: "2026-02-25.clover",
     });
     const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
       expand: ["latest_charge.balance_transaction"],

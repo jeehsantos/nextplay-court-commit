@@ -1,4 +1,4 @@
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import Stripe from "https://esm.sh/stripe@20.4.1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { calculateGrossUp } from "../_shared/feeCalc.ts";
 
@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
 
     // Create Stripe checkout
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2024-12-18.acacia",
+      apiVersion: "2026-02-25.clover",
     });
 
     const baseUrl = origin || "https://sportarenaxp.lovable.app";

@@ -1,4 +1,4 @@
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import Stripe from "https://esm.sh/stripe@20.4.1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 class HttpError extends Error {
@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
     // For destination-charge payments: Stripe already transferred to connected account.
     // Just mark them as transferred in our DB without creating manual transfers.
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2024-12-18.acacia",
+      apiVersion: "2026-02-25.clover",
     });
 
     for (const payment of destinationChargePayments) {
