@@ -2,59 +2,65 @@
 
 ## Problem
 
-The `effectivePaymentTiming` computation in `CourtDetail.tsx` (line 1406) always reads from `court.payment_timing` — the **parent** multi-court loaded from the URL. When a user selects a sub-court (e.g., Court B with `before_session`), the wizard still shows "Payment Required at Booking" warnings because it uses the parent's `at_booking` setting.
-
-The sub-court's `payment_timing` is never sent from the backend or used in the frontend.
+All 11 edge functions use Stripe SDK `v18.5.0` with `apiVersion: "2024-12-18.acacia"`, but the Stripe account is now on API version `"2026-02-25.clover"`. Webhook events arrive in the `clover` format, causing the SDK to fail when parsing responses — resulting in HTTP 500 on `checkout.session.completed` events.
 
 ## Solution
 
-Propagate each sub-court's `payment_timing` and `payment_hours_before` through the availability API, then use the **selected sub-court's** values when computing effective payment timing.
+Upgrade the Stripe SDK import and API version across all 11 edge functions. The latest Stripe npm version is `20.4.1`, which supports `"2026-02-25.clover"`.
+
+Additionally, fix the frontend visibility issue so users returning from Stripe can see their challenge, and add a verify fallback for resilience.
 
 ### Changes
 
-| File | Change |
-|------|--------|
-| `supabase/functions/get-availability/index.ts` | Add `payment_timing` and `payment_hours_before` to `courtToDropdownEntry` output |
-| `src/pages/CourtDetail.tsx` | Add `payment_timing` and `payment_hours_before` to `AvailableCourt` interface; update `effectivePaymentTiming` to prefer the selected sub-court's values over the parent court's |
+| # | File | Change |
+|---|------|--------|
+| 1 | All 11 edge functions (listed below) | Update import from `stripe@18.5.0` → `stripe@20.4.1` and `apiVersion` from `"2024-12-18.acacia"` → `"2026-02-25.clover"` |
+| 2 | `supabase/functions/verify-quick-challenge-payment/index.ts` | Add fallback: if Stripe says paid but player is still pending, complete the payment (mark paid, insert snapshot, update court, update challenge status) |
+| 3 | `src/hooks/useQuickChallenges.ts` | Expand default status filter to include `pending_payment` |
+| 4 | Database migration | Add RLS policy: players who joined a challenge can view it regardless of status |
 
-### Technical Details
+### Files to update (Stripe version)
 
-**get-availability** `courtToDropdownEntry`:
-```typescript
-function courtToDropdownEntry(c: Court) {
-  return {
-    ...existing fields,
-    payment_timing: c.payment_timing,
-    payment_hours_before: c.payment_hours_before,
-  };
-}
+1. `supabase/functions/stripe-webhook/index.ts`
+2. `supabase/functions/create-payment/index.ts`
+3. `supabase/functions/create-payment-for-players/index.ts`
+4. `supabase/functions/create-quick-challenge-payment/index.ts`
+5. `supabase/functions/verify-payment/index.ts`
+6. `supabase/functions/verify-quick-challenge-payment/index.ts`
+7. `supabase/functions/transfer-payment/index.ts`
+8. `supabase/functions/payout-session/index.ts`
+9. `supabase/functions/stripe-connect-onboard/index.ts`
+10. `supabase/functions/stripe-connect-status/index.ts`
+11. `supabase/functions/stripe-connect-dashboard/index.ts`
+
+Each file gets two changes:
+```
+// Import line
+- import Stripe from "https://esm.sh/stripe@18.5.0";
++ import Stripe from "https://esm.sh/stripe@20.4.1";
+
+// apiVersion
+- apiVersion: "2024-12-18.acacia",
++ apiVersion: "2026-02-25.clover",
 ```
 
-**CourtDetail.tsx** `AvailableCourt` interface:
-```typescript
-interface AvailableCourt {
-  ...existing fields,
-  payment_timing?: string | null;
-  payment_hours_before?: number | null;
-}
+### Verify fallback (resilience)
+
+The `verify-quick-challenge-payment` function will gain fallback logic: when Stripe confirms `payment_status: "paid"` but the player record is still `pending`, it will complete the payment flow (mark player paid, insert payment snapshot, update court availability, update challenge status). This ensures payments are confirmed even if the webhook was delayed.
+
+### Frontend + RLS
+
+```sql
+CREATE POLICY "Players can view their challenges"
+ON public.quick_challenges FOR SELECT TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM public.quick_challenge_players qcp
+    WHERE qcp.challenge_id = quick_challenges.id
+      AND qcp.user_id = auth.uid()
+  )
+);
 ```
 
-**CourtDetail.tsx** `effectivePaymentTiming` (line ~1406):
-```typescript
-const effectivePaymentTiming = (() => {
-  const selectedCourt = getSelectedCourt();
-  const timing = selectedCourt?.payment_timing ?? court?.payment_timing ?? "at_booking";
-  const hoursBefore = selectedCourt?.payment_hours_before ?? court?.payment_hours_before ?? 24;
-  
-  if (timing !== "before_session" || !selectedDate) return timing;
-  
-  const dateStr = format(selectedDate, "yyyy-MM-dd");
-  const startTime = getStartTime();
-  const sessionStart = new Date(`${dateStr}T${startTime}`);
-  const deadline = new Date(sessionStart.getTime() - hoursBefore * 60 * 60 * 1000);
-  return new Date() >= deadline ? "at_booking" : "before_session";
-})() as "at_booking" | "before_session";
-```
-
-This ensures the wizard shows the correct payment warnings matching the actual sub-court configuration, and the backend `create-booking` (which already inherits parent timing for sub-courts) stays consistent.
+The `useQuickChallenges` default filter expands from `['open', 'full']` to `['open', 'full', 'pending_payment']`.
 
