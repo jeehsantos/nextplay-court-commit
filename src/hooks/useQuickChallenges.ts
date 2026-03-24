@@ -96,7 +96,7 @@ export function useQuickChallenges(filters?: {
       if (filters?.status) {
         queryBuilder = queryBuilder.eq("status", filters.status);
       } else {
-        queryBuilder = queryBuilder.in("status", ["open", "full"]);
+        queryBuilder = queryBuilder.in("status", ["open", "full", "pending_payment"]);
       }
 
       const { data, error } = await queryBuilder;
