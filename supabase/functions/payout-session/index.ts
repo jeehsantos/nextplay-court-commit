@@ -1,4 +1,4 @@
-import Stripe from "https://esm.sh/stripe@20.4.1";
+import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 class HttpError extends Error {

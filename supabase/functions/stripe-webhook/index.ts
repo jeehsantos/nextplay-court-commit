@@ -854,21 +854,35 @@ async function handleQuickChallengePayment(
       paid_at: paidAt,
     };
 
-    const { error: quickPaymentUpsertError } = await supabaseAdmin
+    // Use select-then-insert/update instead of fragile composite upsert
+    const { data: existingQP } = await supabaseAdmin
       .from("quick_challenge_payments")
-      .upsert(quickPaymentPayload, {
-        onConflict: "challenge_id,user_id,stripe_payment_intent_id",
-      });
+      .select("id")
+      .eq("challenge_id", challengeId)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    if (quickPaymentUpsertError) {
-      throw new WebhookProcessingError("Failed to upsert quick challenge payment snapshot", {
-        operation: "quick_challenge_payments.upsert",
-        table: "quick_challenge_payments",
-        challengeId,
-        userId,
-        stripePaymentIntentId: paymentIntentId,
-        error: quickPaymentUpsertError,
-      });
+    if (existingQP) {
+      const { error: updateErr } = await supabaseAdmin
+        .from("quick_challenge_payments")
+        .update(quickPaymentPayload)
+        .eq("id", existingQP.id);
+      if (updateErr) {
+        throw new WebhookProcessingError("Failed to update quick challenge payment snapshot", {
+          operation: "quick_challenge_payments.update",
+          challengeId, userId, error: updateErr,
+        });
+      }
+    } else {
+      const { error: insertErr } = await supabaseAdmin
+        .from("quick_challenge_payments")
+        .insert(quickPaymentPayload);
+      if (insertErr) {
+        throw new WebhookProcessingError("Failed to insert quick challenge payment snapshot", {
+          operation: "quick_challenge_payments.insert",
+          challengeId, userId, error: insertErr,
+        });
+      }
     }
   }
 
