@@ -34,6 +34,12 @@ export default function PaymentSuccess() {
     if (!user || (!urlSessionId && !checkoutSessionId)) return;
 
     const pollInterval = setInterval(async () => {
+      // Guard: skip if already resolved
+      if (successHandled.current) {
+        clearInterval(pollInterval);
+        return;
+      }
+
       pollCount.current += 1;
 
       try {
@@ -55,6 +61,8 @@ export default function PaymentSuccess() {
         }
 
         if (data?.success && (data?.status === "completed" || data?.status === "transferred")) {
+          if (successHandled.current) return; // double-check after await
+          successHandled.current = true;
           clearInterval(pollInterval);
           if (data.sessionId) {
             setResolvedSessionId(data.sessionId);
