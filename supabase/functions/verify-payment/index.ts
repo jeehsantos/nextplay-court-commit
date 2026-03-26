@@ -244,15 +244,7 @@ async function createDeferredRecordsFallback(
     throw new Error("Not a deferred checkout session");
   }
 
-  // ─── Advisory lock to serialize concurrent fallback attempts ───
-  const lockKey = Math.abs(hashCode(paymentIntentId));
-  const { data: lockResult } = await supabaseAdmin.rpc("pg_try_advisory_xact_lock", undefined);
-  // Use a raw SQL approach via a simple query
-  const { error: lockError } = await supabaseAdmin
-    .from("payments")
-    .select("id")
-    .limit(0);
-  // Actually we need to use advisory lock properly - let's use the idempotency check instead
+  // Idempotency guard: unique index on stripe_payment_intent_id prevents duplicates at DB level
 
   // Idempotency: re-check if payment was created between polls
   const { data: existingPayment } = await supabaseAdmin
