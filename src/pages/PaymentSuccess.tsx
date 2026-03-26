@@ -18,6 +18,7 @@ export default function PaymentSuccess() {
   const [countdown, setCountdown] = useState(5);
   const pollCount = useRef(0);
   const lastPollStatus = useRef<string | null>(null);
+  const successHandled = useRef(false);
   const { t } = useTranslation("payment");
 
   const urlSessionId = searchParams.get("session_id");

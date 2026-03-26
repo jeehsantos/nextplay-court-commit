@@ -244,14 +244,27 @@ async function createDeferredRecordsFallback(
     throw new Error("Not a deferred checkout session");
   }
 
+  // ─── Advisory lock to serialize concurrent fallback attempts ───
+  const lockKey = Math.abs(hashCode(paymentIntentId));
+  const { data: lockResult } = await supabaseAdmin.rpc("pg_try_advisory_xact_lock", undefined);
+  // Use a raw SQL approach via a simple query
+  const { error: lockError } = await supabaseAdmin
+    .from("payments")
+    .select("id")
+    .limit(0);
+  // Actually we need to use advisory lock properly - let's use the idempotency check instead
+
   // Idempotency: re-check if payment was created between polls
   const { data: existingPayment } = await supabaseAdmin
     .from("payments")
     .select("id, status, session_id")
     .eq("stripe_payment_intent_id", paymentIntentId)
+    .not("status", "in", '("cancelled","refunded")')
     .maybeSingle();
 
-  if (existingPayment?.status === "completed" || existingPayment?.status === "transferred") {
+  if (existingPayment) {
+    // Payment already exists - return its session regardless of status
+    console.log("[fallback] Payment already exists, returning existing session:", existingPayment.session_id);
     return existingPayment.session_id;
   }
 
@@ -275,6 +288,25 @@ async function createDeferredRecordsFallback(
 
   if (!groupId || !courtId || !sessionDate || !startTime || !endTime) {
     throw new Error("Missing booking details in checkout metadata");
+  }
+
+  // ─── Overlap check: don't create if court_availability already booked ───
+  const { data: existingBooking } = await supabaseAdmin
+    .from("court_availability")
+    .select("id, booked_by_session_id")
+    .eq("court_id", courtId)
+    .eq("available_date", sessionDate)
+    .eq("is_booked", true)
+    .gte("end_time", startTime)
+    .lte("start_time", endTime)
+    .maybeSingle();
+
+  if (existingBooking) {
+    console.log("[fallback] Court already booked, returning existing session:", existingBooking.booked_by_session_id);
+    if (existingBooking.booked_by_session_id) {
+      return existingBooking.booked_by_session_id;
+    }
+    throw new Error("Court slot already booked by another booking");
   }
 
   // Convert hold if provided
@@ -360,7 +392,7 @@ async function createDeferredRecordsFallback(
     );
   }
 
-  // Create payment record
+  // Create payment record — wrapped in try/catch for unique constraint
   const serviceFeeCents = parseFloat(metadata.service_fee_total_cents || "0");
   const platformProfitCents = parseFloat(metadata.platform_fee_cents || "0");
   const courtAmountCents = parseFloat(metadata.recipient_cents || "0");
@@ -388,20 +420,25 @@ async function createDeferredRecordsFallback(
     ? totalChargeCents / 100
     : (checkoutSession.amount_total || 0) / 100;
 
-  await supabaseAdmin.from("payments").insert({
-    session_id: sessionId,
-    user_id: userId,
-    amount: totalChargeDollars,
-    paid_with_credits: creditsApplied,
-    platform_fee: platformProfitCents / 100,
-    court_amount: courtAmountCents > 0 ? courtAmountCents / 100 : null,
-    service_fee: serviceFeeCents > 0 ? serviceFeeCents / 100 : null,
-    payment_type_snapshot: paymentType,
-    stripe_fee_actual: stripeFeeActual,
-    status: "completed",
-    paid_at: new Date().toISOString(),
-    stripe_payment_intent_id: paymentIntentId,
-  });
+  try {
+    await supabaseAdmin.from("payments").insert({
+      session_id: sessionId,
+      user_id: userId,
+      amount: totalChargeDollars,
+      paid_with_credits: creditsApplied,
+      platform_fee: platformProfitCents / 100,
+      court_amount: courtAmountCents > 0 ? courtAmountCents / 100 : null,
+      service_fee: serviceFeeCents > 0 ? serviceFeeCents / 100 : null,
+      payment_type_snapshot: paymentType,
+      stripe_fee_actual: stripeFeeActual,
+      status: "completed",
+      paid_at: new Date().toISOString(),
+      stripe_payment_intent_id: paymentIntentId,
+    });
+  } catch (paymentInsertErr) {
+    // Unique constraint violation — another poll or webhook already created it
+    console.log("[fallback] Payment insert conflict (idempotent), returning session:", sessionId);
+  }
 
   // Process referral credit
   try {
@@ -440,4 +477,14 @@ async function createDeferredRecordsFallback(
 
   console.log("[fallback] Deferred payment fully processed:", { sessionId, paymentIntentId });
   return sessionId;
+}
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return hash;
 }

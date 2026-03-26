@@ -551,16 +551,36 @@ async function handleDeferredSessionPayment(
     });
   }
 
-  // Idempotency: check if payment already exists for this PI
+  // Idempotency: check if payment already exists for this PI (exclude cancelled/refunded)
   const { data: existing } = await supabaseAdmin
     .from("payments")
     .select("id, status, session_id")
     .eq("stripe_payment_intent_id", paymentIntentId)
+    .not("status", "in", '("cancelled","refunded")')
     .maybeSingle();
 
   if (existing?.status === "completed" || existing?.status === "transferred") {
     console.log("Deferred payment already processed, skipping:", paymentIntentId);
     return true;
+  }
+
+  // Also check if a session already exists for this court/date/time to prevent duplicates
+  const courtId_check = metadata.court_id;
+  const sessionDate_check = metadata.session_date;
+  const startTime_check = metadata.start_time;
+  if (courtId_check && sessionDate_check && startTime_check) {
+    const { data: existingCA } = await supabaseAdmin
+      .from("court_availability")
+      .select("booked_by_session_id")
+      .eq("court_id", courtId_check)
+      .eq("available_date", sessionDate_check)
+      .eq("start_time", startTime_check)
+      .eq("is_booked", true)
+      .maybeSingle();
+    if (existingCA?.booked_by_session_id) {
+      console.log("Deferred booking already exists for this slot, skipping. Session:", existingCA.booked_by_session_id);
+      return true;
+    }
   }
 
   // Extract booking details from metadata
