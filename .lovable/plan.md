@@ -2,85 +2,67 @@
 
 ## Problem
 
-The `stripe-webhook` function (and likely all 11 edge functions) crash at boot time — zero logs are recorded. This means the `import Stripe from "https://esm.sh/stripe@20.4.1"` statement itself is failing in the Deno edge runtime. The function never reaches any handler code.
+4 duplicate sessions exist for the same court, date, and time — all created within ~2 seconds by the `verify-payment` fallback. The same Stripe `payment_intent_id` is linked to all 4.
 
-This is a known Supabase/Deno issue: certain npm packages don't transpile correctly via esm.sh. Supabase's own docs now recommend using `npm:` specifiers instead of esm.sh URLs.
+### Root Cause
 
-The previous fix (upgrading from `stripe@18.5.0` to `stripe@20.4.1`) introduced this boot crash because `stripe@20.4.1` doesn't work via esm.sh in edge-runtime.
+When the `stripe-webhook` was crashing (boot failure), the `PaymentSuccess` page polled `verify-payment` repeatedly. After 5 polls, the fallback triggered `createDeferredRecordsFallback()`. But multiple polls fired concurrently and each created a new session because:
 
-## Root Cause
-
-- `https://esm.sh/stripe@20.4.1` fails to load in Supabase edge-runtime (Deno)
-- The function crashes before any code executes — hence zero logs
-- ALL `checkout.session.completed` events return 500 because the function never boots
-- Normal bookings and quick challenges are both affected
-- The `verify-payment` and `verify-quick-challenge-payment` fallbacks are working because they were redeployed and happened to boot successfully (or they use a cached working version)
+1. The idempotency check (`payments` table lookup by `stripe_payment_intent_id`) uses `.maybeSingle()` — which returns the first match, but by the time it runs, the previous poll's insert may not have committed yet.
+2. There is **no unique constraint** on `payments.stripe_payment_intent_id`, so duplicate inserts succeed.
+3. There is **no overlap check** in the fallback before inserting into `sessions` or `court_availability`.
 
 ## Solution
 
-Switch all 11 edge functions from esm.sh to the `npm:` specifier, which is the **recommended** approach per current Supabase documentation. Use a known-working Stripe version.
+### 1. Add database-level idempotency guard
 
-### Changes
+Create a migration to add a unique partial index on `payments.stripe_payment_intent_id` (where not null). This prevents duplicate payment rows for the same Stripe transaction at the database level.
 
-| # | File | Change |
-|---|------|--------|
-| 1 | All 11 Stripe edge functions | Change import from `https://esm.sh/stripe@20.4.1` to `npm:stripe@17.7.0` |
-| 2 | All 11 Stripe edge functions | Keep `apiVersion: "2026-02-25.clover"` (this is just a request header, works with any SDK version) |
-| 3 | `stripe-webhook/index.ts` | Additionally: replace the `quick_challenge_payments` upsert with select-then-insert/update pattern (fix the secondary issue) |
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_stripe_pi_unique
+ON public.payments (stripe_payment_intent_id)
+WHERE stripe_payment_intent_id IS NOT NULL;
+```
+
+### 2. Fix the verify-payment fallback with advisory lock
+
+In `supabase/functions/verify-payment/index.ts`, wrap `createDeferredRecordsFallback` with:
+- A Postgres advisory lock (keyed on `payment_intent_id`) to serialize concurrent fallback attempts
+- An overlap check before inserting `court_availability`
+- A try/catch on the payment insert to handle the new unique constraint gracefully
+
+### 3. Fix the webhook handler similarly
+
+In `supabase/functions/stripe-webhook/index.ts`, add an early idempotency check for deferred sessions: if a `completed` payment already exists for the `stripe_payment_intent_id`, return success immediately.
+
+### 4. Clean up the 3 duplicate sessions
+
+Run a cleanup migration to cancel the 3 extra sessions (keep the one linked to `court_availability`) and delete orphan payments:
+
+```sql
+-- Cancel duplicates (keep the one with the court_availability link)
+UPDATE sessions SET is_cancelled = true
+WHERE id IN (
+  '44e2c711-5639-4cd6-9908-7fedcdf0cca0',
+  '7338581e-3074-42da-a753-b0560617fef5',
+  '4da2290f-7a92-4f95-bff4-bdab59b3a925'
+);
+
+-- Also handle the Mar 26 duplicates
+UPDATE sessions SET is_cancelled = true
+WHERE id = '8fe967c6-d561-4051-a855-5551d73c05a5';
+```
+
+### 5. Frontend: prevent concurrent polls from triggering multiple fallbacks
+
+In `PaymentSuccess.tsx`, add a `ref` flag (`fallbackTriggered`) that is set to `true` once a poll returns `success`. Skip further polls once success is received — the current `clearInterval` may not prevent an in-flight request from completing.
 
 ### Files to update
 
-1. `supabase/functions/stripe-webhook/index.ts`
-2. `supabase/functions/create-payment/index.ts`
-3. `supabase/functions/create-payment-for-players/index.ts`
-4. `supabase/functions/create-quick-challenge-payment/index.ts`
-5. `supabase/functions/verify-payment/index.ts`
-6. `supabase/functions/verify-quick-challenge-payment/index.ts`
-7. `supabase/functions/transfer-payment/index.ts`
-8. `supabase/functions/payout-session/index.ts`
-9. `supabase/functions/stripe-connect-onboard/index.ts`
-10. `supabase/functions/stripe-connect-status/index.ts`
-11. `supabase/functions/stripe-connect-dashboard/index.ts`
-
-### Technical details
-
-**Import change** (all 11 files):
-```typescript
-// Before (crashes at boot)
-import Stripe from "https://esm.sh/stripe@20.4.1";
-
-// After (npm: specifier, recommended by Supabase)
-import Stripe from "npm:stripe@17.7.0";
-```
-
-The `apiVersion: "2026-02-25.clover"` stays the same — it's just a header sent to Stripe and is independent of the SDK version.
-
-**Webhook upsert fix** (stripe-webhook only, lines 857-861):
-```typescript
-// Before: fragile upsert with 3-column onConflict
-.upsert(quickPaymentPayload, { onConflict: "challenge_id,user_id,stripe_payment_intent_id" });
-
-// After: explicit check-then-insert/update
-const { data: existing } = await supabaseAdmin
-  .from("quick_challenge_payments")
-  .select("id")
-  .eq("challenge_id", challengeId)
-  .eq("user_id", userId)
-  .maybeSingle();
-
-if (existing) {
-  await supabaseAdmin.from("quick_challenge_payments")
-    .update(quickPaymentPayload).eq("id", existing.id);
-} else {
-  await supabaseAdmin.from("quick_challenge_payments")
-    .insert(quickPaymentPayload);
-}
-```
-
-### Why this fixes both normal bookings and quick challenges
-
-The 500 error affects ALL `checkout.session.completed` events because the function can't even boot. Once the import is fixed:
-- Normal booking webhooks will process through `handleSessionPayment` / `handleDeferredSessionPayment`
-- Quick challenge webhooks will process through `handleQuickChallengePayment`
-- `payment_intent.succeeded` events (which capture Stripe fees) will also work
+| File | Change |
+|------|--------|
+| New migration SQL | Unique index on `payments.stripe_payment_intent_id`, cleanup duplicates |
+| `supabase/functions/verify-payment/index.ts` | Advisory lock + overlap check in fallback |
+| `supabase/functions/stripe-webhook/index.ts` | Early idempotency return for deferred payments |
+| `src/pages/PaymentSuccess.tsx` | Guard against concurrent fallback triggers |
 
