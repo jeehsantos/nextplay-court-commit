@@ -116,7 +116,9 @@ export function LiveCourtStatus({ courts, loading }: LiveCourtStatusProps) {
                     <div>
                       <span className="font-medium">{item.nextBooking.bookerName}</span>
                       <p className="text-xs text-muted-foreground">
-                        {t("dashboard.startsIn")} {item.nextBooking.startsInMinutes}m
+                        {t("dashboard.startsIn")} {item.nextBooking.startsInMinutes >= 60
+                          ? `${Math.floor(item.nextBooking.startsInMinutes / 60)}h${item.nextBooking.startsInMinutes % 60 > 0 ? ` ${item.nextBooking.startsInMinutes % 60}m` : ""}`
+                          : `${item.nextBooking.startsInMinutes}m`}
                       </p>
                     </div>
                   </div>
