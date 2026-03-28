@@ -234,7 +234,7 @@ serve(async (req) => {
         .from("court_availability")
         .select("court_id, start_time, end_time")
         .eq("available_date", date)
-        .or("is_booked.eq.true,booked_by_user_id.not.is.null")
+        .eq("is_booked", true)
         .in("court_id", courtIds),
       supabase
         .from("booking_holds")
