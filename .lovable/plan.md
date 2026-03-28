@@ -2,67 +2,52 @@
 
 ## Problem
 
-4 duplicate sessions exist for the same court, date, and time — all created within ~2 seconds by the `verify-payment` fallback. The same Stripe `payment_intent_id` is linked to all 4.
+Two distinct issues cause the symptoms you're seeing:
 
-### Root Cause
+### Issue 1: Ghost booking record (orphan data)
+The `court_availability` row for **Futsal A** at 18:00–19:00 on March 28 has `booked_by_user_id` set but `is_booked = false` and `booked_by_session_id = NULL`. There is no session or payment associated with it — it's an orphan from the earlier duplicate booking bug. Because the availability query uses `booked_by_user_id IS NOT NULL` as a booking indicator, this ghost record is treated as "booked."
 
-When the `stripe-webhook` was crashing (boot failure), the `PaymentSuccess` page polled `verify-payment` repeatedly. After 5 polls, the fallback triggered `createDeferredRecordsFallback()`. But multiple polls fired concurrently and each created a new session because:
+This is why the booking doesn't appear in the manager's bookings page or the user's "My Games" — there's no actual session, just a dangling `court_availability` row.
 
-1. The idempotency check (`payments` table lookup by `stripe_payment_intent_id`) uses `.maybeSingle()` — which returns the first match, but by the time it runs, the previous poll's insert may not have committed yet.
-2. There is **no unique constraint** on `payments.stripe_payment_intent_id`, so duplicate inserts succeed.
-3. There is **no overlap check** in the fallback before inserting into `sessions` or `court_availability`.
+### Issue 2: Cross-court slot contamination
+When a user selects **Court B**, the `get-availability` function detects Court B is a sub-court of **Futsal A** (parent). It then loads BOTH courts into `courtsToProcess`. When building slot status, if ANY court in the group has a booking at a given time, the slot is marked as `CONFIRMED` (Booked) — even though Court B itself is completely free.
+
+The slot status should only reflect the **currently selected court**, not sibling/parent courts. The other courts should only appear in the `available_courts` list to show alternatives.
 
 ## Solution
 
-### 1. Add database-level idempotency guard
-
-Create a migration to add a unique partial index on `payments.stripe_payment_intent_id` (where not null). This prevents duplicate payment rows for the same Stripe transaction at the database level.
-
-```sql
-CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_stripe_pi_unique
-ON public.payments (stripe_payment_intent_id)
-WHERE stripe_payment_intent_id IS NOT NULL;
-```
-
-### 2. Fix the verify-payment fallback with advisory lock
-
-In `supabase/functions/verify-payment/index.ts`, wrap `createDeferredRecordsFallback` with:
-- A Postgres advisory lock (keyed on `payment_intent_id`) to serialize concurrent fallback attempts
-- An overlap check before inserting `court_availability`
-- A try/catch on the payment insert to handle the new unique constraint gracefully
-
-### 3. Fix the webhook handler similarly
-
-In `supabase/functions/stripe-webhook/index.ts`, add an early idempotency check for deferred sessions: if a `completed` payment already exists for the `stripe_payment_intent_id`, return success immediately.
-
-### 4. Clean up the 3 duplicate sessions
-
-Run a cleanup migration to cancel the 3 extra sessions (keep the one linked to `court_availability`) and delete orphan payments:
+### 1. Clean up the orphan court_availability record
+Run a migration to delete the ghost record that has no session and `is_booked = false`.
 
 ```sql
--- Cancel duplicates (keep the one with the court_availability link)
-UPDATE sessions SET is_cancelled = true
-WHERE id IN (
-  '44e2c711-5639-4cd6-9908-7fedcdf0cca0',
-  '7338581e-3074-42da-a753-b0560617fef5',
-  '4da2290f-7a92-4f95-bff4-bdab59b3a925'
-);
-
--- Also handle the Mar 26 duplicates
-UPDATE sessions SET is_cancelled = true
-WHERE id = '8fe967c6-d561-4051-a855-5551d73c05a5';
+DELETE FROM court_availability
+WHERE id = 'd4bb98ab-95ca-44ac-b944-b5603e485455';
 ```
 
-### 5. Frontend: prevent concurrent polls from triggering multiple fallbacks
+Also add a broader cleanup for any similar orphans (no session, not booked, but user_id set):
 
-In `PaymentSuccess.tsx`, add a `ref` flag (`fallbackTriggered`) that is set to `true` once a poll returns `success`. Skip further polls once success is received — the current `clearInterval` may not prevent an in-flight request from completing.
+```sql
+UPDATE court_availability
+SET booked_by_user_id = NULL, booked_by_group_id = NULL
+WHERE is_booked = false
+  AND booked_by_session_id IS NULL
+  AND booked_by_user_id IS NOT NULL;
+```
+
+### 2. Fix cross-court slot status contamination in `get-availability`
+
+In `supabase/functions/get-availability/index.ts`, change the slot-building logic so that the overall slot `status` is determined **only by the requested court** (when a specific `courtId` is provided), not by all sibling courts. The `available_courts` list already correctly shows which courts are free — the slot status badge should reflect whether the selected court specifically is available.
+
+The fix targets lines 355-364: when a slot is unavailable on a court that is NOT the requested court, skip setting `slotStatus = "CONFIRMED"`. Only set it when the unavailable court matches the user's selected `courtId`.
+
+### 3. Fix the booking query filter
+
+The availability query at line 237 uses `or("is_booked.eq.true,booked_by_user_id.not.is.null")`. The `booked_by_user_id.not.is.null` condition catches records that aren't actually booked (like the orphan). Change this to only use `is_booked.eq.true` since that's the authoritative booking flag.
 
 ### Files to update
 
-| File | Change |
-|------|--------|
-| New migration SQL | Unique index on `payments.stripe_payment_intent_id`, cleanup duplicates |
-| `supabase/functions/verify-payment/index.ts` | Advisory lock + overlap check in fallback |
-| `supabase/functions/stripe-webhook/index.ts` | Early idempotency return for deferred payments |
-| `src/pages/PaymentSuccess.tsx` | Guard against concurrent fallback triggers |
+| # | File | Change |
+|---|------|--------|
+| 1 | New migration | Clean orphan `court_availability` records |
+| 2 | `supabase/functions/get-availability/index.ts` | Fix slot status to only reflect requested court; fix booking query filter |
 
