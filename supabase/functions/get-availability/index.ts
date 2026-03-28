@@ -357,9 +357,19 @@ serve(async (req) => {
 
         if (!availSet.has(blockMin)) {
           // Block is outside window or booked on this court
-          const courtWindow = courtWindows.get(court.id);
-          if (courtWindow && blockMin >= courtWindow.startMin && blockEnd <= courtWindow.endMin) {
-            slotStatus = "CONFIRMED";
+          // Only mark slot as CONFIRMED if this is the specifically requested court
+          // (not a sibling/parent court in the group)
+          if (courtId && court.id === courtId) {
+            const courtWindow = courtWindows.get(court.id);
+            if (courtWindow && blockMin >= courtWindow.startMin && blockEnd <= courtWindow.endMin) {
+              slotStatus = "CONFIRMED";
+            }
+          } else if (!courtId) {
+            // No specific court requested (venue-wide view) — mark as confirmed
+            const courtWindow = courtWindows.get(court.id);
+            if (courtWindow && blockMin >= courtWindow.startMin && blockEnd <= courtWindow.endMin) {
+              slotStatus = "CONFIRMED";
+            }
           }
           continue;
         }
