@@ -84,6 +84,17 @@ function AdminPlatformFeesContent() {
           })
           .eq("id", settings.id);
         if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from("platform_settings")
+          .insert({
+            player_fee: fee,
+            manager_fee_percentage: managerPct,
+            stripe_percent: stripePct / 100,
+            stripe_fixed: stripeFix,
+            is_active: isActive,
+          });
+        if (error) throw error;
       }
 
       queryClient.invalidateQueries({ queryKey: ["admin-platform-settings"] });
