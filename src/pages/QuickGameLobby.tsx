@@ -1215,7 +1215,7 @@ export default function QuickGameLobby() {
                       You paid:
                     </span>
                     <span className="text-sm font-black uppercase tracking-widest text-primary">
-                      ${(challenge.price_per_player * challenge.total_slots).toFixed(2)}
+                      ${myPayment ? (myPayment.amount / 100).toFixed(2) : (challenge.price_per_player * challenge.total_slots).toFixed(2)}
                     </span>
                   </div>
                 ) : (
