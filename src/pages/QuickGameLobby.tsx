@@ -675,7 +675,12 @@ export default function QuickGameLobby() {
 
     if (checkoutSessionId && paymentStatus === "success" && id) {
       setIsVerifyingPayment(true);
-      verifyPayment(checkoutSessionId, id).finally(() => {
+      verifyPayment(checkoutSessionId, id).then((success) => {
+        if (success) {
+          queryClient.invalidateQueries({ queryKey: ["quick-challenges"] });
+          queryClient.invalidateQueries({ queryKey: ["quick-challenge-payment", id] });
+        }
+      }).finally(() => {
         setIsVerifyingPayment(false);
         // Clean up URL params
         setSearchParams({}, { replace: true });
