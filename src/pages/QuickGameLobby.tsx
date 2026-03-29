@@ -410,6 +410,21 @@ export default function QuickGameLobby() {
     return currentProfileId ? challenge.created_by === currentProfileId : false;
   }, [challenge, user, currentProfileId]);
 
+  // Fetch actual payment amount for current user
+  const { data: myPayment } = useQuery({
+    queryKey: ["quick-challenge-payment", id, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("quick_challenge_payments")
+        .select("amount")
+        .eq("challenge_id", id!)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id && !!user?.id,
+  });
+
   // Map players from backend to lobby format - deduplicate by user_id
   const players: LobbyPlayer[] = useMemo(() => {
     if (!challenge?.quick_challenge_players) return [];
