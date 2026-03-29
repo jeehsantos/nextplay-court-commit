@@ -3,6 +3,7 @@ import { toast } from "@/hooks/use-toast";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuickChallenges, useJoinChallenge, useCancelChallenge, useUpdateChallengeFormat, useLeaveChallenge } from "@/hooks/useQuickChallenges";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useQuickChallengePayment } from "@/hooks/useQuickChallengePayment";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/hooks/useTheme";
