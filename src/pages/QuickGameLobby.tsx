@@ -372,6 +372,7 @@ export default function QuickGameLobby() {
   const updateFormat = useUpdateChallengeFormat();
   const { isPaying, initiatePayment, verifyPayment } = useQuickChallengePayment();
   const { balance: credits, loading: loadingCredits, refetch: refetchCredits } = useUserCredits();
+  const queryClient = useQueryClient();
   
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
