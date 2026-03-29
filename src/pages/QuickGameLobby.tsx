@@ -3,6 +3,7 @@ import { toast } from "@/hooks/use-toast";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuickChallenges, useJoinChallenge, useCancelChallenge, useUpdateChallengeFormat, useLeaveChallenge } from "@/hooks/useQuickChallenges";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useQuickChallengePayment } from "@/hooks/useQuickChallengePayment";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/hooks/useTheme";
@@ -371,6 +372,7 @@ export default function QuickGameLobby() {
   const updateFormat = useUpdateChallengeFormat();
   const { isPaying, initiatePayment, verifyPayment } = useQuickChallengePayment();
   const { balance: credits, loading: loadingCredits, refetch: refetchCredits } = useUserCredits();
+  const queryClient = useQueryClient();
   
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -407,6 +409,21 @@ export default function QuickGameLobby() {
     if (challenge.created_by === user.id) return true;
     return currentProfileId ? challenge.created_by === currentProfileId : false;
   }, [challenge, user, currentProfileId]);
+
+  // Fetch actual payment amount for current user
+  const { data: myPayment } = useQuery({
+    queryKey: ["quick-challenge-payment", id, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("quick_challenge_payments")
+        .select("amount")
+        .eq("challenge_id", id!)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id && !!user?.id,
+  });
 
   // Map players from backend to lobby format - deduplicate by user_id
   const players: LobbyPlayer[] = useMemo(() => {
@@ -673,7 +690,12 @@ export default function QuickGameLobby() {
 
     if (checkoutSessionId && paymentStatus === "success" && id) {
       setIsVerifyingPayment(true);
-      verifyPayment(checkoutSessionId, id).finally(() => {
+      verifyPayment(checkoutSessionId, id).then((success) => {
+        if (success) {
+          queryClient.invalidateQueries({ queryKey: ["quick-challenges"] });
+          queryClient.invalidateQueries({ queryKey: ["quick-challenge-payment", id] });
+        }
+      }).finally(() => {
         setIsVerifyingPayment(false);
         // Clean up URL params
         setSearchParams({}, { replace: true });
@@ -1208,7 +1230,7 @@ export default function QuickGameLobby() {
                       You paid:
                     </span>
                     <span className="text-sm font-black uppercase tracking-widest text-primary">
-                      ${(challenge.price_per_player * challenge.total_slots).toFixed(2)}
+                      ${myPayment ? (myPayment.amount / 100).toFixed(2) : (challenge.price_per_player * challenge.total_slots).toFixed(2)}
                     </span>
                   </div>
                 ) : (
