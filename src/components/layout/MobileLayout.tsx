@@ -60,7 +60,7 @@ export function MobileLayout({
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex fixed top-0 left-0 z-50 h-full w-64 bg-card border-r border-border flex-col">
         {/* Logo */}
-        <div className="h-14 flex items-center px-4 border-b border-border">
+        <div className="h-14 flex items-center justify-center px-4 border-b border-border">
           <Link to="/" className="flex items-center" aria-label="Sport Arena home">
             <img
               src="/sportarena-logo.png"
