@@ -557,7 +557,8 @@ async function handleDeferredSessionPayment(
     .from("payments")
     .select("id, status, session_id")
     .eq("stripe_payment_intent_id", paymentIntentId)
-    .not("status", "in", '("cancelled","refunded")')
+    .not("status", "eq", "cancelled")
+    .not("status", "eq", "refunded")
     .maybeSingle();
 
   if (existing?.status === "completed" || existing?.status === "transferred") {
