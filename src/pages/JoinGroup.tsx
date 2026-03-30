@@ -71,6 +71,13 @@ export default function JoinGroup() {
       const groupData = rpcResult.group as GroupData;
       setGroup(groupData);
 
+      // Fetch member count
+      const { count } = await supabase
+        .from("group_members")
+        .select("*", { count: "exact", head: true })
+        .eq("group_id", groupData.id);
+      setMemberCount(count || 0);
+
       // Check if already a member
       const { data: existingMember } = await supabase
         .from("group_members")
