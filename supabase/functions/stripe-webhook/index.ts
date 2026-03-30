@@ -1,5 +1,5 @@
 import Stripe from "npm:stripe@17.7.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2026-02-25.clover",
@@ -72,13 +72,14 @@ Deno.serve(async (req) => {
     const error = err instanceof Error ? err : new Error(String(err));
     const details = err instanceof WebhookProcessingError ? err.details : {};
 
-    console.error("stripe_webhook_event_failed", {
+    console.error("stripe_webhook_event_failed", JSON.stringify({
       eventId: event.id,
       eventType: event.type,
       errorName: error.name,
       errorMessage: error.message,
+      errorStack: error.stack,
       details,
-    });
+    }));
 
     return new Response(
       JSON.stringify({
@@ -556,7 +557,8 @@ async function handleDeferredSessionPayment(
     .from("payments")
     .select("id, status, session_id")
     .eq("stripe_payment_intent_id", paymentIntentId)
-    .not("status", "in", '("cancelled","refunded")')
+    .not("status", "eq", "cancelled")
+    .not("status", "eq", "refunded")
     .maybeSingle();
 
   if (existing?.status === "completed" || existing?.status === "transferred") {
@@ -832,11 +834,19 @@ async function handleQuickChallengePayment(
   }
 
   // Idempotency: check if already paid
-  const { data: player } = await supabaseAdmin
+  const { data: player, error: playerLookupError } = await supabaseAdmin
     .from("quick_challenge_players")
     .select("payment_status")
     .eq("id", playerRecordId)
-    .single();
+    .maybeSingle();
+
+  if (playerLookupError) {
+    throw new WebhookProcessingError("Failed to look up quick challenge player", {
+      operation: "quick_challenge_players.select",
+      playerRecordId,
+      error: playerLookupError,
+    });
+  }
 
   const paidAt = new Date().toISOString();
   const courtAmountCents = Number(metadata.recipient_cents || metadata.court_amount || 0);
@@ -943,11 +953,15 @@ async function handleQuickChallengePayment(
   }
 
   // Check and update challenge status
-  const { data: challenge } = await supabaseAdmin
+  const { data: challenge, error: challengeLookupError } = await supabaseAdmin
     .from("quick_challenges")
     .select("status, total_slots, quick_challenge_players(payment_status)")
     .eq("id", challengeId)
-    .single();
+    .maybeSingle();
+
+  if (challengeLookupError) {
+    console.error("Failed to look up challenge for status update (non-fatal):", challengeLookupError);
+  }
 
   if (challenge) {
     const players = (challenge as any).quick_challenge_players || [];
