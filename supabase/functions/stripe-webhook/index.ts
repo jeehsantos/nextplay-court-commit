@@ -72,13 +72,14 @@ Deno.serve(async (req) => {
     const error = err instanceof Error ? err : new Error(String(err));
     const details = err instanceof WebhookProcessingError ? err.details : {};
 
-    console.error("stripe_webhook_event_failed", {
+    console.error("stripe_webhook_event_failed", JSON.stringify({
       eventId: event.id,
       eventType: event.type,
       errorName: error.name,
       errorMessage: error.message,
+      errorStack: error.stack,
       details,
-    });
+    }));
 
     return new Response(
       JSON.stringify({
