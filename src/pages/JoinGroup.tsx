@@ -35,6 +35,7 @@ export default function JoinGroup() {
   const [alreadyMember, setAlreadyMember] = useState(false);
   const [joined, setJoined] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
+  const [memberCount, setMemberCount] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
