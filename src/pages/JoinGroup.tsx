@@ -246,7 +246,7 @@ export default function JoinGroup() {
                 <div className="flex items-center gap-3">
                   <Users className="h-5 w-5 text-muted-foreground" />
                   <span className="text-sm">
-                    {group.min_players} - {group.max_players} players
+                    {memberCount} {memberCount === 1 ? "player" : "players"}
                   </span>
                 </div>
               </div>
