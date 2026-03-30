@@ -1,67 +1,57 @@
 
 
-## Problems
+## Problem
 
-### 1. Stale data on lobby load after Stripe redirect
-When the user returns from Stripe checkout, the `verifyPayment` function runs and updates the DB, but the lobby UI is rendered using `quickChallenges` data from the React Query cache — which was fetched BEFORE payment. The `verifyPayment` call does NOT invalidate the `["quick-challenges"]` query, so the UI shows stale "pending" status and the payment deadline warning until a manual refresh.
+The `stripe-webhook` edge function returns 500 for ALL `checkout.session.completed` events. The edge function logs are empty (not visible via tooling), so the exact error cannot be determined from logs alone. However, the function boots and runs correctly (confirmed by `payment_intent.succeeded` returning 200 and the POST test returning 400 "Missing signature").
 
-### 2. "YOU PAID" shows wrong amount
-Line 1211: `${(challenge.price_per_player * challenge.total_slots).toFixed(2)}` — this calculates price using the DB field `price_per_player` (the per-player split of court cost only, e.g., ~$8.34 for a $50 court / 6 players) multiplied by `total_slots` (6), giving ~$50.04. But the actual Stripe charge includes the gross-up (platform fee + Stripe fee coverage). The displayed amount should come from the actual payment record, not from a formula using `price_per_player`.
+The verify-payment fallback handles everything correctly, so payments and sessions work — the issue is isolated to the webhook.
+
+### Root Cause Analysis
+
+Since I cannot see the actual error logs, I need to add enhanced error logging to capture the specific failure. However, based on code analysis, the most likely causes are:
+
+1. **The `esm.sh` Supabase client import** (`@supabase/supabase-js@2.57.2`) — other edge functions that work use `npm:` specifiers for Stripe but `esm.sh` for Supabase. The `esm.sh` CDN can have intermittent issues or version resolution failures that cause subtle runtime errors during complex operations.
+
+2. **PostgREST `.not("status", "in", ...)` syntax** — the deferred idempotency check (line 559) uses `.not("status", "in", '("cancelled","refunded")')` which may behave differently across supabase-js versions, potentially returning unexpected results or throwing.
+
+3. **Uncaught error from `.single()` calls** — in `handleQuickChallengePayment`, the `.single()` call on `quick_challenge_players` (line 839) doesn't check the `error` property. If the row doesn't exist, PostgREST returns a 406 error which could propagate unexpectedly.
 
 ## Solution
 
-### Fix 1: Invalidate query cache after payment verification
-In the payment verification effect (line 670-710), after `verifyPayment` resolves successfully, invalidate the `["quick-challenges"]` query so the UI re-fetches fresh data with updated payment status.
+### 1. Stabilize the Supabase import
 
-**File**: `src/pages/QuickGameLobby.tsx`
+Change `https://esm.sh/@supabase/supabase-js@2.57.2` to `npm:@supabase/supabase-js@2` (consistent with how Stripe is imported via `npm:`). This eliminates esm.sh CDN issues.
 
-Import `useQueryClient` from `@tanstack/react-query` and call `queryClient.invalidateQueries({ queryKey: ["quick-challenges"] })` after `verifyPayment` completes.
+### 2. Add detailed error logging in the catch block
+
+Enhance the catch block (lines 71-93) to log the full error stack trace and stringify the error, making it possible to diagnose via Supabase function logs:
 
 ```typescript
-const queryClient = useQueryClient();
-
-// In the effect:
-verifyPayment(checkoutSessionId, id).then((success) => {
-  if (success) {
-    queryClient.invalidateQueries({ queryKey: ["quick-challenges"] });
-  }
-}).finally(() => {
-  setIsVerifyingPayment(false);
-  setSearchParams({}, { replace: true });
-});
+console.error("stripe_webhook_event_failed", JSON.stringify({
+  eventId: event.id,
+  eventType: event.type,
+  errorName: error.name,
+  errorMessage: error.message,
+  errorStack: error.stack,
+  details,
+}));
 ```
 
-### Fix 2: Show actual paid amount from payment records
-Instead of computing `price_per_player * total_slots`, fetch the actual payment amount from `quick_challenge_payments` for the organizer. Since this data may not be in the current query, the simplest approach is:
+### 3. Guard `.single()` calls with error checks
 
-- For the organizer "You paid" display, use a dedicated query or derive from `quick_challenge_payments`.
-- Alternatively, since the `quick_challenge_payments.amount` field stores the gross total in cents, fetch it and display it.
+In `handleQuickChallengePayment`, add error handling for the player lookup `.single()` call and the challenge lookup `.single()` call to prevent uncaught PostgREST errors from propagating.
 
-**Approach**: Add a small query in `QuickGameLobby.tsx` that fetches `quick_challenge_payments` for the current user + challenge, and use `amount / 100` for the "You paid" display. Fall back to the computed value if no payment record exists yet.
+### 4. Harden the `.not()` filter syntax
 
+Replace `.not("status", "in", '("cancelled","refunded")')` with a more reliable pattern:
 ```typescript
-const { data: myPayment } = useQuery({
-  queryKey: ["quick-challenge-payment", id, user?.id],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from("quick_challenge_payments")
-      .select("amount")
-      .eq("challenge_id", id!)
-      .eq("user_id", user!.id)
-      .maybeSingle();
-    return data;
-  },
-  enabled: !!id && !!user?.id && isOrganizer,
-});
-
-// In the template (line 1211):
-// Replace: ${(challenge.price_per_player * challenge.total_slots).toFixed(2)}
-// With:    ${myPayment ? (myPayment.amount / 100).toFixed(2) : (challenge.price_per_player * challenge.total_slots).toFixed(2)}
+.not("status", "eq", "cancelled")
+.not("status", "eq", "refunded")
 ```
 
 ### Files to change
 
 | File | Change |
 |------|--------|
-| `src/pages/QuickGameLobby.tsx` | 1. Import `useQueryClient`, invalidate cache after verify. 2. Add payment query, use actual amount for "You paid" |
+| `supabase/functions/stripe-webhook/index.ts` | 1. Switch import to `npm:@supabase/supabase-js@2`. 2. Enhanced error logging in catch block. 3. Guard `.single()` calls. 4. Fix `.not()` filter syntax. |
 
