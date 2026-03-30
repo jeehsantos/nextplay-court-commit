@@ -2,48 +2,81 @@
 
 ## Problem
 
-The `stripe-webhook` edge function returns 500 for ALL `checkout.session.completed` events. The edge function logs are empty (not visible via tooling), so the exact error cannot be determined from logs alone. However, the function boots and runs correctly (confirmed by `payment_intent.succeeded` returning 200 and the POST test returning 400 "Missing signature").
+The `checkout.session.completed` webhook returns 500 across **all** payment types (quick challenges AND regular/deferred session bookings). The root cause is a **race condition between the webhook and the verify-payment/verify-quick-challenge-payment fallback functions**.
 
-The verify-payment fallback handles everything correctly, so payments and sessions work — the issue is isolated to the webhook.
+### How the race works
 
-### Root Cause Analysis
+Both the Stripe webhook and the verify fallback run concurrently after payment. Both check for existing records, find none, then try to create the same records. The second writer hits a unique constraint violation and throws an uncaught error → 500.
 
-Since I cannot see the actual error logs, I need to add enhanced error logging to capture the specific failure. However, based on code analysis, the most likely causes are:
+**For deferred session bookings (`at_booking` payment timing):**
+1. Webhook `handleDeferredSessionPayment` checks for existing payment by `stripe_payment_intent_id` → finds none
+2. `verify-payment` fallback `createDeferredRecordsFallback` also checks → finds none
+3. Both create separate sessions, court_availability rows, and payment records
+4. The payment `INSERT` from whichever runs second fails on the unique partial index `idx_payments_stripe_pi_unique` → the webhook throws `WebhookProcessingError` → returns 500
 
-1. **The `esm.sh` Supabase client import** (`@supabase/supabase-js@2.57.2`) — other edge functions that work use `npm:` specifiers for Stripe but `esm.sh` for Supabase. The `esm.sh` CDN can have intermittent issues or version resolution failures that cause subtle runtime errors during complex operations.
+**For quick challenges:**
+1. Webhook `handleQuickChallengePayment` does SELECT on `quick_challenge_payments` → finds none
+2. `verify-quick-challenge-payment` fallback also runs → inserts payment first
+3. Webhook INSERT at line 907 fails on unique constraint `(challenge_id, user_id, stripe_payment_intent_id)` → throws → 500
 
-2. **PostgREST `.not("status", "in", ...)` syntax** — the deferred idempotency check (line 559) uses `.not("status", "in", '("cancelled","refunded")')` which may behave differently across supabase-js versions, potentially returning unexpected results or throwing.
+**For regular (non-deferred) session bookings:**
+- The `create-payment` function pre-creates a pending payment row
+- The webhook upserts on `(session_id, user_id)` which updates the existing row
+- `verify-payment` only reads, doesn't modify
+- **No race condition** — if the user reports 500 for "normal" bookings, these are actually deferred (`at_booking`) bookings
 
-3. **Uncaught error from `.single()` calls** — in `handleQuickChallengePayment`, the `.single()` call on `quick_challenge_players` (line 839) doesn't check the `error` property. If the row doesn't exist, PostgREST returns a 406 error which could propagate unexpectedly.
+### Why there are zero webhook logs
+The enhanced error logging was added, but if the log delivery system has lag or the function execution context terminates before logs flush, they may not appear in search results. The function does boot correctly (confirmed by POST test returning 400).
 
 ## Solution
 
-### 1. Stabilize the Supabase import
+Make the webhook's INSERT operations conflict-tolerant across all handlers. When a unique constraint violation occurs, treat it as an idempotent duplicate and return success instead of throwing.
 
-Change `https://esm.sh/@supabase/supabase-js@2.57.2` to `npm:@supabase/supabase-js@2` (consistent with how Stripe is imported via `npm:`). This eliminates esm.sh CDN issues.
+### Changes in `supabase/functions/stripe-webhook/index.ts`
 
-### 2. Add detailed error logging in the catch block
+**1. `handleDeferredSessionPayment` (line 744-763) — wrap payment INSERT:**
 
-Enhance the catch block (lines 71-93) to log the full error stack trace and stringify the error, making it possible to diagnose via Supabase function logs:
-
+Replace the throwing error handler with conflict-tolerant logic:
 ```typescript
-console.error("stripe_webhook_event_failed", JSON.stringify({
-  eventId: event.id,
-  eventType: event.type,
-  errorName: error.name,
-  errorMessage: error.message,
-  errorStack: error.stack,
-  details,
-}));
+const { error: paymentError } = await supabaseAdmin.from("payments").insert({...});
+if (paymentError) {
+  // Unique constraint on stripe_payment_intent_id = fallback already created it
+  if (paymentError.code === '23505') {
+    console.log("Deferred payment already created by fallback, skipping:", paymentIntentId);
+    return true;
+  }
+  throw new WebhookProcessingError("Failed to create deferred payment", {
+    operation: "payments.insert", error: paymentError,
+  });
+}
 ```
 
-### 3. Guard `.single()` calls with error checks
+Also wrap the `sessions.insert` (line 634) and `court_availability.insert` (line 681) to handle duplicates gracefully — if the payment insert is a duplicate, the session/CA were also already created by the fallback. The easiest approach: move the early-return for conflict AFTER the payment insert so that the already-created session/CA records from the fallback are simply left in place.
 
-In `handleQuickChallengePayment`, add error handling for the player lookup `.single()` call and the challenge lookup `.single()` call to prevent uncaught PostgREST errors from propagating.
+**2. `handleQuickChallengePayment` (line 906-916) — handle INSERT conflict:**
 
-### 4. Harden the `.not()` filter syntax
+```typescript
+} else {
+  const { error: insertErr } = await supabaseAdmin
+    .from("quick_challenge_payments")
+    .insert(quickPaymentPayload);
+  if (insertErr) {
+    if (insertErr.code === '23505') {
+      console.log("Quick challenge payment already created by fallback, skipping:", challengeId);
+      return true;  // Fallback already processed everything
+    }
+    throw new WebhookProcessingError(...);
+  }
+}
+```
 
-Replace `.not("status", "in", '("cancelled","refunded")')` with a more reliable pattern:
+**3. `handleSessionPayment` (non-deferred, line 428-443) — already uses upsert, no change needed.**
+
+**4. `handlePayForPlayersPayment` (line 249-266) — already uses upsert with onConflict, no change needed.**
+
+### Also fix `verify-payment/index.ts` stale `.not()` syntax
+
+Line 254 in verify-payment still uses the old `.not("status", "in", '("cancelled","refunded")')` syntax which may behave unpredictably. Change to:
 ```typescript
 .not("status", "eq", "cancelled")
 .not("status", "eq", "refunded")
@@ -53,5 +86,6 @@ Replace `.not("status", "in", '("cancelled","refunded")')` with a more reliable 
 
 | File | Change |
 |------|--------|
-| `supabase/functions/stripe-webhook/index.ts` | 1. Switch import to `npm:@supabase/supabase-js@2`. 2. Enhanced error logging in catch block. 3. Guard `.single()` calls. 4. Fix `.not()` filter syntax. |
+| `supabase/functions/stripe-webhook/index.ts` | Handle `23505` constraint violations gracefully in deferred + quick challenge handlers |
+| `supabase/functions/verify-payment/index.ts` | Fix `.not("in")` filter syntax on line 254 |
 
