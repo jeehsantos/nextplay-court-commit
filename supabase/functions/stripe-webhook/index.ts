@@ -834,11 +834,19 @@ async function handleQuickChallengePayment(
   }
 
   // Idempotency: check if already paid
-  const { data: player } = await supabaseAdmin
+  const { data: player, error: playerLookupError } = await supabaseAdmin
     .from("quick_challenge_players")
     .select("payment_status")
     .eq("id", playerRecordId)
-    .single();
+    .maybeSingle();
+
+  if (playerLookupError) {
+    throw new WebhookProcessingError("Failed to look up quick challenge player", {
+      operation: "quick_challenge_players.select",
+      playerRecordId,
+      error: playerLookupError,
+    });
+  }
 
   const paidAt = new Date().toISOString();
   const courtAmountCents = Number(metadata.recipient_cents || metadata.court_amount || 0);
