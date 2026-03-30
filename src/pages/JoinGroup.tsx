@@ -35,6 +35,7 @@ export default function JoinGroup() {
   const [alreadyMember, setAlreadyMember] = useState(false);
   const [joined, setJoined] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
+  const [memberCount, setMemberCount] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -69,6 +70,13 @@ export default function JoinGroup() {
 
       const groupData = rpcResult.group as GroupData;
       setGroup(groupData);
+
+      // Fetch member count
+      const { count } = await supabase
+        .from("group_members")
+        .select("*", { count: "exact", head: true })
+        .eq("group_id", groupData.id);
+      setMemberCount(count || 0);
 
       // Check if already a member
       const { data: existingMember } = await supabase
@@ -238,7 +246,7 @@ export default function JoinGroup() {
                 <div className="flex items-center gap-3">
                   <Users className="h-5 w-5 text-muted-foreground" />
                   <span className="text-sm">
-                    {group.min_players} - {group.max_players} players
+                    {memberCount} {memberCount === 1 ? "player" : "players"}
                   </span>
                 </div>
               </div>
