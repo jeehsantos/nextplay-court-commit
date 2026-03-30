@@ -953,11 +953,15 @@ async function handleQuickChallengePayment(
   }
 
   // Check and update challenge status
-  const { data: challenge } = await supabaseAdmin
+  const { data: challenge, error: challengeLookupError } = await supabaseAdmin
     .from("quick_challenges")
     .select("status, total_slots, quick_challenge_players(payment_status)")
     .eq("id", challengeId)
-    .single();
+    .maybeSingle();
+
+  if (challengeLookupError) {
+    console.error("Failed to look up challenge for status update (non-fatal):", challengeLookupError);
+  }
 
   if (challenge) {
     const players = (challenge as any).quick_challenge_players || [];
