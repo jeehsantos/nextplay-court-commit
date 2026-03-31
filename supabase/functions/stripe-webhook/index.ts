@@ -918,6 +918,11 @@ async function handleQuickChallengePayment(
         .from("quick_challenge_payments")
         .insert(quickPaymentPayload);
       if (insertErr) {
+        // Unique constraint violation = fallback already created it
+        if (insertErr.code === '23505') {
+          console.log("Quick challenge payment already created by fallback, skipping:", challengeId);
+          return true;
+        }
         throw new WebhookProcessingError("Failed to insert quick challenge payment snapshot", {
           operation: "quick_challenge_payments.insert",
           challengeId, userId, error: insertErr,
