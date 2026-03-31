@@ -651,6 +651,11 @@ async function handleDeferredSessionPayment(
     .single();
 
   if (sessionError || !session) {
+    // If session insert failed, the fallback may have already created everything
+    if (sessionError?.code === '23505') {
+      console.log("Deferred session already created by fallback, skipping:", paymentIntentId);
+      return true;
+    }
     throw new WebhookProcessingError("Failed to create deferred session", {
       operation: "sessions.insert",
       error: sessionError,
