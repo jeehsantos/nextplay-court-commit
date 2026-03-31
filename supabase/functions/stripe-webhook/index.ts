@@ -651,6 +651,11 @@ async function handleDeferredSessionPayment(
     .single();
 
   if (sessionError || !session) {
+    // If session insert failed, the fallback may have already created everything
+    if (sessionError?.code === '23505') {
+      console.log("Deferred session already created by fallback, skipping:", paymentIntentId);
+      return true;
+    }
     throw new WebhookProcessingError("Failed to create deferred session", {
       operation: "sessions.insert",
       error: sessionError,
@@ -757,6 +762,11 @@ async function handleDeferredSessionPayment(
   });
 
   if (paymentError) {
+    // Unique constraint on stripe_payment_intent_id = fallback already created it
+    if (paymentError.code === '23505') {
+      console.log("Deferred payment already created by fallback, skipping:", paymentIntentId);
+      return true;
+    }
     throw new WebhookProcessingError("Failed to create deferred payment", {
       operation: "payments.insert",
       error: paymentError,
@@ -908,6 +918,11 @@ async function handleQuickChallengePayment(
         .from("quick_challenge_payments")
         .insert(quickPaymentPayload);
       if (insertErr) {
+        // Unique constraint violation = fallback already created it
+        if (insertErr.code === '23505') {
+          console.log("Quick challenge payment already created by fallback, skipping:", challengeId);
+          return true;
+        }
         throw new WebhookProcessingError("Failed to insert quick challenge payment snapshot", {
           operation: "quick_challenge_payments.insert",
           challengeId, userId, error: insertErr,
