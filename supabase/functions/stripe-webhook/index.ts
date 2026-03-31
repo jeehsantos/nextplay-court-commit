@@ -762,6 +762,11 @@ async function handleDeferredSessionPayment(
   });
 
   if (paymentError) {
+    // Unique constraint on stripe_payment_intent_id = fallback already created it
+    if (paymentError.code === '23505') {
+      console.log("Deferred payment already created by fallback, skipping:", paymentIntentId);
+      return true;
+    }
     throw new WebhookProcessingError("Failed to create deferred payment", {
       operation: "payments.insert",
       error: paymentError,
