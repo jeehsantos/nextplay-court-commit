@@ -175,6 +175,22 @@ async function handleCheckoutCompleted(
   const session = event.data.object as Stripe.Checkout.Session;
   const metadata = session.metadata || {};
 
+  // Early idempotency guard for deferred payments — prevent race with verify-payment fallback
+  if (metadata.deferred === "true") {
+    const pi = session.payment_intent as string;
+    if (pi) {
+      const { data: existing } = await supabaseAdmin
+        .from("payments")
+        .select("id")
+        .eq("stripe_payment_intent_id", pi)
+        .maybeSingle();
+      if (existing) {
+        console.log("Deferred payment already exists (created by fallback), returning duplicate:", pi);
+        return true;
+      }
+    }
+  }
+
   if (metadata.type === "quick_challenge") {
     return await handleQuickChallengePayment(session, metadata, supabaseAdmin);
   } else if (metadata.type === "pay_for_players") {
