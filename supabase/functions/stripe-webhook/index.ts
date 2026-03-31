@@ -1,5 +1,5 @@
 import Stripe from "npm:stripe@17.7.0";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2026-02-25.clover",
@@ -174,6 +174,22 @@ async function handleCheckoutCompleted(
 ): Promise<boolean> {
   const session = event.data.object as Stripe.Checkout.Session;
   const metadata = session.metadata || {};
+
+  // Early idempotency guard for deferred payments — prevent race with verify-payment fallback
+  if (metadata.deferred === "true") {
+    const pi = session.payment_intent as string;
+    if (pi) {
+      const { data: existing } = await supabaseAdmin
+        .from("payments")
+        .select("id")
+        .eq("stripe_payment_intent_id", pi)
+        .maybeSingle();
+      if (existing) {
+        console.log("Deferred payment already exists (created by fallback), returning duplicate:", pi);
+        return true;
+      }
+    }
+  }
 
   if (metadata.type === "quick_challenge") {
     return await handleQuickChallengePayment(session, metadata, supabaseAdmin);
