@@ -85,6 +85,10 @@ Deno.serve(async (req) => {
       JSON.stringify({
         received: false,
         error: "Webhook event processing failed",
+        errorName: error.name,
+        errorMessage: error.message,
+        errorDetails: details,
+        errorStack: error.stack,
       }),
       {
         status: 500,
@@ -174,6 +178,13 @@ async function handleCheckoutCompleted(
 ): Promise<boolean> {
   const session = event.data.object as Stripe.Checkout.Session;
   const metadata = session.metadata || {};
+
+  // Normalize empty strings to undefined to prevent downstream issues
+  for (const key of Object.keys(metadata)) {
+    if ((metadata as any)[key] === "") {
+      (metadata as any)[key] = undefined;
+    }
+  }
 
   // Early idempotency guard for deferred payments — prevent race with verify-payment fallback
   if (metadata.deferred === "true") {
@@ -646,79 +657,93 @@ async function handleDeferredSessionPayment(
     }
   }
 
-  // Create session
-  const { data: session, error: sessionError } = await supabaseAdmin
-    .from("sessions")
-    .insert({
-      group_id: groupId,
-      court_id: courtId,
-      session_date: sessionDate,
-      start_time: startTime,
-      duration_minutes: durationMinutes,
-      court_price: courtPriceDollars,
-      min_players: paymentType === "split" && splitPlayers ? splitPlayers : 6,
-      max_players: courtCapacity,
-      payment_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      state: "protected",
-      payment_type: paymentType,
-      sport_category_id: sportCategoryId,
-    })
-    .select("id")
-    .single();
+  // STEP: Create session
+  let sessionId: string;
+  try {
+    const { data: sessionData, error: sessionError } = await supabaseAdmin
+      .from("sessions")
+      .insert({
+        group_id: groupId,
+        court_id: courtId,
+        session_date: sessionDate,
+        start_time: startTime,
+        duration_minutes: durationMinutes,
+        court_price: courtPriceDollars,
+        min_players: paymentType === "split" && splitPlayers ? splitPlayers : 6,
+        max_players: courtCapacity,
+        payment_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        state: "protected",
+        payment_type: paymentType,
+        sport_category_id: sportCategoryId || null,
+      })
+      .select("id")
+      .single();
 
-  if (sessionError || !session) {
-    // If session insert failed, the fallback may have already created everything
-    if (sessionError?.code === '23505') {
-      console.log("Deferred session already created by fallback, skipping:", paymentIntentId);
-      return true;
+    if (sessionError) {
+      if (sessionError.code === '23505') {
+        console.log("Deferred session already created by fallback, skipping:", paymentIntentId);
+        return true;
+      }
+      throw sessionError;
     }
-    throw new WebhookProcessingError("Failed to create deferred session", {
-      operation: "sessions.insert",
-      error: sessionError,
+    if (!sessionData) throw new Error("No session data returned");
+    sessionId = sessionData.id;
+    console.log("Deferred session created:", sessionId);
+  } catch (e: any) {
+    throw new WebhookProcessingError("STEP:session_insert: " + (e?.message || String(e)), {
+      step: "session_insert",
+      code: e?.code,
+      details: e?.details,
+      hint: e?.hint,
+      originalError: String(e),
     });
   }
 
-  const sessionId = session.id;
-  console.log("Deferred session created:", sessionId);
-
-  // Create session_player — only if organizer plays
+  // STEP: Create session_player — only if organizer plays
   const organizerPlays = metadata.organizer_plays !== "false";
   if (organizerPlays) {
-    const { error: spError } = await supabaseAdmin.from("session_players").insert({
-      session_id: sessionId,
-      user_id: userId,
-      is_confirmed: true,
-      confirmed_at: new Date().toISOString(),
-    });
-    if (spError) {
-      throw new WebhookProcessingError("Failed to create session player", {
-        operation: "session_players.insert",
-        error: spError,
+    try {
+      const { error: spError } = await supabaseAdmin.from("session_players").insert({
+        session_id: sessionId,
+        user_id: userId,
+        is_confirmed: true,
+        confirmed_at: new Date().toISOString(),
+      });
+      if (spError) throw spError;
+    } catch (e: any) {
+      throw new WebhookProcessingError("STEP:session_player_insert: " + (e?.message || String(e)), {
+        step: "session_player_insert",
+        code: e?.code,
+        originalError: String(e),
       });
     }
   }
 
-  // Create court_availability
-  const { data: bookingRecord, error: caError } = await supabaseAdmin
-    .from("court_availability")
-    .insert({
-      court_id: courtId,
-      available_date: sessionDate,
-      start_time: startTime,
-      end_time: endTime,
-      is_booked: true,
-      booked_by_user_id: userId,
-      booked_by_group_id: groupId,
-      booked_by_session_id: sessionId,
-      payment_status: "completed",
-    })
-    .select("id")
-    .single();
-
-  if (caError) {
-    throw new WebhookProcessingError("Failed to create court availability", {
-      operation: "court_availability.insert",
-      error: caError,
+  // STEP: Create court_availability
+  let bookingRecord: any = null;
+  try {
+    const { data: caData, error: caError } = await supabaseAdmin
+      .from("court_availability")
+      .insert({
+        court_id: courtId,
+        available_date: sessionDate,
+        start_time: startTime,
+        end_time: endTime,
+        is_booked: true,
+        booked_by_user_id: userId,
+        booked_by_group_id: groupId,
+        booked_by_session_id: sessionId,
+        payment_status: "completed",
+      })
+      .select("id")
+      .single();
+    if (caError) throw caError;
+    bookingRecord = caData;
+  } catch (e: any) {
+    throw new WebhookProcessingError("STEP:court_availability_insert: " + (e?.message || String(e)), {
+      step: "court_availability_insert",
+      code: e?.code,
+      originalError: String(e),
     });
   }
 
@@ -762,30 +787,39 @@ async function handleDeferredSessionPayment(
     ? totalChargeCents / 100
     : (stripeSession.amount_total || 0) / 100;
 
-  const { error: paymentError } = await supabaseAdmin.from("payments").insert({
-    session_id: sessionId,
-    user_id: userId,
-    amount: totalChargeDollars,
-    paid_with_credits: creditsApplied,
-    platform_fee: platformProfitCents / 100,
-    court_amount: courtAmountCents > 0 ? courtAmountCents / 100 : null,
-    service_fee: serviceFeeCents > 0 ? serviceFeeCents / 100 : null,
-    payment_type_snapshot: paymentType,
-    stripe_fee_actual: stripeFeeActual,
-    status: "completed",
-    paid_at: new Date().toISOString(),
-    stripe_payment_intent_id: paymentIntentId,
-  });
+  try {
+    const { error: paymentError } = await supabaseAdmin.from("payments").insert({
+      session_id: sessionId,
+      user_id: userId,
+      amount: totalChargeDollars,
+      paid_with_credits: creditsApplied,
+      platform_fee: platformProfitCents / 100,
+      court_amount: courtAmountCents > 0 ? courtAmountCents / 100 : null,
+      service_fee: serviceFeeCents > 0 ? serviceFeeCents / 100 : null,
+      payment_type_snapshot: paymentType,
+      stripe_fee_actual: stripeFeeActual,
+      status: "completed",
+      paid_at: new Date().toISOString(),
+      stripe_payment_intent_id: paymentIntentId,
+    });
 
-  if (paymentError) {
-    // Unique constraint on stripe_payment_intent_id = fallback already created it
-    if (paymentError.code === '23505') {
-      console.log("Deferred payment already created by fallback, skipping:", paymentIntentId);
+    if (paymentError) {
+      if (paymentError.code === '23505') {
+        console.log("Deferred payment already created by fallback, skipping:", paymentIntentId);
+        return true;
+      }
+      throw paymentError;
+    }
+  } catch (e: any) {
+    if (e instanceof WebhookProcessingError) throw e;
+    if (e?.code === '23505') {
+      console.log("Deferred payment already created by fallback (catch), skipping:", paymentIntentId);
       return true;
     }
-    throw new WebhookProcessingError("Failed to create deferred payment", {
-      operation: "payments.insert",
-      error: paymentError,
+    throw new WebhookProcessingError("STEP:payment_insert: " + (e?.message || String(e)), {
+      step: "payment_insert",
+      code: e?.code,
+      originalError: String(e),
     });
   }
 
