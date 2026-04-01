@@ -609,6 +609,7 @@ async function handleDeferredSessionPayment(
   const endTime = metadata.end_time;
   const durationMinutes = parseInt(metadata.duration_minutes || "60");
   const paymentType = metadata.payment_type || "single";
+  const splitPlayers = metadata.split_players ? parseInt(metadata.split_players) : null;
   const sportCategoryId = metadata.sport_category_id;
   const courtCapacity = parseInt(metadata.court_capacity || "10");
   const courtPriceDollars = parseFloat(metadata.court_price_dollars || "0");
@@ -645,49 +646,25 @@ async function handleDeferredSessionPayment(
     }
   }
 
-  const parsedSplitPlayers = Number.parseInt(metadata.split_players || "", 10);
-  const normalizedSplitPlayers = Number.isFinite(parsedSplitPlayers) && parsedSplitPlayers > 0
-    ? parsedSplitPlayers
-    : null;
-
-  const buildSessionInsertPayload = (sportCategoryIdOverride: string | null) => ({
-    group_id: groupId,
-    court_id: courtId,
-    session_date: sessionDate,
-    start_time: startTime,
-    duration_minutes: durationMinutes,
-    court_price: courtPriceDollars,
-    min_players: paymentType === "split" && normalizedSplitPlayers ? normalizedSplitPlayers : 6,
-    max_players: courtCapacity,
-    payment_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-    state: "protected",
-    payment_type: paymentType,
-    sport_category_id: sportCategoryIdOverride,
-  });
-
   // Create session
-  let { data: session, error: sessionError } = await supabaseAdmin
+  const { data: session, error: sessionError } = await supabaseAdmin
     .from("sessions")
-    .insert(buildSessionInsertPayload(sportCategoryId))
+    .insert({
+      group_id: groupId,
+      court_id: courtId,
+      session_date: sessionDate,
+      start_time: startTime,
+      duration_minutes: durationMinutes,
+      court_price: courtPriceDollars,
+      min_players: paymentType === "split" && splitPlayers ? splitPlayers : 6,
+      max_players: courtCapacity,
+      payment_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      state: "protected",
+      payment_type: paymentType,
+      sport_category_id: sportCategoryId,
+    })
     .select("id")
     .single();
-
-  // Stripe can complete payment after long checkout sessions; referenced sport category
-  // may no longer exist. Retry without sport_category_id so payment processing doesn't fail.
-  if (sessionError?.code === "23503" && sportCategoryId) {
-    console.warn("Deferred session insert failed due to sport category FK, retrying without category", {
-      paymentIntentId,
-      sportCategoryId,
-      error: sessionError,
-    });
-    const retry = await supabaseAdmin
-      .from("sessions")
-      .insert(buildSessionInsertPayload(null))
-      .select("id")
-      .single();
-    session = retry.data;
-    sessionError = retry.error;
-  }
 
   if (sessionError || !session) {
     // If session insert failed, the fallback may have already created everything

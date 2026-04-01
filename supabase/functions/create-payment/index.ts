@@ -589,47 +589,26 @@ async function createDeferredRecords(supabaseAdmin: any, details: any): Promise<
     }
   }
 
-  const parsedSplitPlayers = Number.parseInt((details.splitPlayers ?? "").toString(), 10);
-  const normalizedSplitPlayers = Number.isFinite(parsedSplitPlayers) && parsedSplitPlayers > 0
-    ? parsedSplitPlayers
-    : null;
-
-  const buildSessionInsertPayload = (sportCategoryIdOverride: string | null) => ({
-    group_id: details.groupId,
-    court_id: details.courtId,
-    session_date: details.sessionDate,
-    start_time: details.startTime,
-    duration_minutes: details.durationMinutes,
-    court_price: details.courtPrice,
-    min_players: details.paymentType === "split" && normalizedSplitPlayers ? normalizedSplitPlayers : 6,
-    max_players: details.courtCapacity,
-    // Already paid — set deadline far in the future
-    payment_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-    state: "protected",
-    payment_type: details.paymentType || "single",
-    sport_category_id: sportCategoryIdOverride,
-  });
-
   // Create session
-  let { data: session, error: sessionError } = await supabaseAdmin
+  const { data: session, error: sessionError } = await supabaseAdmin
     .from("sessions")
-    .insert(buildSessionInsertPayload(details.sportCategoryId || null))
+    .insert({
+      group_id: details.groupId,
+      court_id: details.courtId,
+      session_date: details.sessionDate,
+      start_time: details.startTime,
+      duration_minutes: details.durationMinutes,
+      court_price: details.courtPrice,
+      min_players: details.paymentType === "split" && details.splitPlayers ? details.splitPlayers : 6,
+      max_players: details.courtCapacity,
+      // Already paid — set deadline far in the future
+      payment_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      state: "protected",
+      payment_type: details.paymentType || "single",
+      sport_category_id: details.sportCategoryId,
+    })
     .select("id")
     .single();
-
-  if (sessionError?.code === "23503" && details.sportCategoryId) {
-    console.warn("Deferred record fallback failed with sport category FK, retrying without category", {
-      sportCategoryId: details.sportCategoryId,
-      error: sessionError,
-    });
-    const retry = await supabaseAdmin
-      .from("sessions")
-      .insert(buildSessionInsertPayload(null))
-      .select("id")
-      .single();
-    session = retry.data;
-    sessionError = retry.error;
-  }
 
   if (sessionError || !session) throw sessionError ?? new Error("Failed to create session");
 
