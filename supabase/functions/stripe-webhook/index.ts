@@ -787,30 +787,39 @@ async function handleDeferredSessionPayment(
     ? totalChargeCents / 100
     : (stripeSession.amount_total || 0) / 100;
 
-  const { error: paymentError } = await supabaseAdmin.from("payments").insert({
-    session_id: sessionId,
-    user_id: userId,
-    amount: totalChargeDollars,
-    paid_with_credits: creditsApplied,
-    platform_fee: platformProfitCents / 100,
-    court_amount: courtAmountCents > 0 ? courtAmountCents / 100 : null,
-    service_fee: serviceFeeCents > 0 ? serviceFeeCents / 100 : null,
-    payment_type_snapshot: paymentType,
-    stripe_fee_actual: stripeFeeActual,
-    status: "completed",
-    paid_at: new Date().toISOString(),
-    stripe_payment_intent_id: paymentIntentId,
-  });
+  try {
+    const { error: paymentError } = await supabaseAdmin.from("payments").insert({
+      session_id: sessionId,
+      user_id: userId,
+      amount: totalChargeDollars,
+      paid_with_credits: creditsApplied,
+      platform_fee: platformProfitCents / 100,
+      court_amount: courtAmountCents > 0 ? courtAmountCents / 100 : null,
+      service_fee: serviceFeeCents > 0 ? serviceFeeCents / 100 : null,
+      payment_type_snapshot: paymentType,
+      stripe_fee_actual: stripeFeeActual,
+      status: "completed",
+      paid_at: new Date().toISOString(),
+      stripe_payment_intent_id: paymentIntentId,
+    });
 
-  if (paymentError) {
-    // Unique constraint on stripe_payment_intent_id = fallback already created it
-    if (paymentError.code === '23505') {
-      console.log("Deferred payment already created by fallback, skipping:", paymentIntentId);
+    if (paymentError) {
+      if (paymentError.code === '23505') {
+        console.log("Deferred payment already created by fallback, skipping:", paymentIntentId);
+        return true;
+      }
+      throw paymentError;
+    }
+  } catch (e: any) {
+    if (e instanceof WebhookProcessingError) throw e;
+    if (e?.code === '23505') {
+      console.log("Deferred payment already created by fallback (catch), skipping:", paymentIntentId);
       return true;
     }
-    throw new WebhookProcessingError("Failed to create deferred payment", {
-      operation: "payments.insert",
-      error: paymentError,
+    throw new WebhookProcessingError("STEP:payment_insert: " + (e?.message || String(e)), {
+      step: "payment_insert",
+      code: e?.code,
+      originalError: String(e),
     });
   }
 
