@@ -719,27 +719,31 @@ async function handleDeferredSessionPayment(
     }
   }
 
-  // Create court_availability
-  const { data: bookingRecord, error: caError } = await supabaseAdmin
-    .from("court_availability")
-    .insert({
-      court_id: courtId,
-      available_date: sessionDate,
-      start_time: startTime,
-      end_time: endTime,
-      is_booked: true,
-      booked_by_user_id: userId,
-      booked_by_group_id: groupId,
-      booked_by_session_id: sessionId,
-      payment_status: "completed",
-    })
-    .select("id")
-    .single();
-
-  if (caError) {
-    throw new WebhookProcessingError("Failed to create court availability", {
-      operation: "court_availability.insert",
-      error: caError,
+  // STEP: Create court_availability
+  let bookingRecord: any = null;
+  try {
+    const { data: caData, error: caError } = await supabaseAdmin
+      .from("court_availability")
+      .insert({
+        court_id: courtId,
+        available_date: sessionDate,
+        start_time: startTime,
+        end_time: endTime,
+        is_booked: true,
+        booked_by_user_id: userId,
+        booked_by_group_id: groupId,
+        booked_by_session_id: sessionId,
+        payment_status: "completed",
+      })
+      .select("id")
+      .single();
+    if (caError) throw caError;
+    bookingRecord = caData;
+  } catch (e: any) {
+    throw new WebhookProcessingError("STEP:court_availability_insert: " + (e?.message || String(e)), {
+      step: "court_availability_insert",
+      code: e?.code,
+      originalError: String(e),
     });
   }
 
