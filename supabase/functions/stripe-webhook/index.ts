@@ -85,6 +85,10 @@ Deno.serve(async (req) => {
       JSON.stringify({
         received: false,
         error: "Webhook event processing failed",
+        errorName: error.name,
+        errorMessage: error.message,
+        errorDetails: details,
+        errorStack: error.stack,
       }),
       {
         status: 500,
