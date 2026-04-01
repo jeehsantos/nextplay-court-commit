@@ -657,54 +657,64 @@ async function handleDeferredSessionPayment(
     }
   }
 
-  // Create session
-  const { data: session, error: sessionError } = await supabaseAdmin
-    .from("sessions")
-    .insert({
-      group_id: groupId,
-      court_id: courtId,
-      session_date: sessionDate,
-      start_time: startTime,
-      duration_minutes: durationMinutes,
-      court_price: courtPriceDollars,
-      min_players: paymentType === "split" && splitPlayers ? splitPlayers : 6,
-      max_players: courtCapacity,
-      payment_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      state: "protected",
-      payment_type: paymentType,
-      sport_category_id: sportCategoryId,
-    })
-    .select("id")
-    .single();
+  // STEP: Create session
+  let sessionId: string;
+  try {
+    const { data: sessionData, error: sessionError } = await supabaseAdmin
+      .from("sessions")
+      .insert({
+        group_id: groupId,
+        court_id: courtId,
+        session_date: sessionDate,
+        start_time: startTime,
+        duration_minutes: durationMinutes,
+        court_price: courtPriceDollars,
+        min_players: paymentType === "split" && splitPlayers ? splitPlayers : 6,
+        max_players: courtCapacity,
+        payment_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        state: "protected",
+        payment_type: paymentType,
+        sport_category_id: sportCategoryId || null,
+      })
+      .select("id")
+      .single();
 
-  if (sessionError || !session) {
-    // If session insert failed, the fallback may have already created everything
-    if (sessionError?.code === '23505') {
-      console.log("Deferred session already created by fallback, skipping:", paymentIntentId);
-      return true;
+    if (sessionError) {
+      if (sessionError.code === '23505') {
+        console.log("Deferred session already created by fallback, skipping:", paymentIntentId);
+        return true;
+      }
+      throw sessionError;
     }
-    throw new WebhookProcessingError("Failed to create deferred session", {
-      operation: "sessions.insert",
-      error: sessionError,
+    if (!sessionData) throw new Error("No session data returned");
+    sessionId = sessionData.id;
+    console.log("Deferred session created:", sessionId);
+  } catch (e: any) {
+    throw new WebhookProcessingError("STEP:session_insert: " + (e?.message || String(e)), {
+      step: "session_insert",
+      code: e?.code,
+      details: e?.details,
+      hint: e?.hint,
+      originalError: String(e),
     });
   }
 
-  const sessionId = session.id;
-  console.log("Deferred session created:", sessionId);
-
-  // Create session_player — only if organizer plays
+  // STEP: Create session_player — only if organizer plays
   const organizerPlays = metadata.organizer_plays !== "false";
   if (organizerPlays) {
-    const { error: spError } = await supabaseAdmin.from("session_players").insert({
-      session_id: sessionId,
-      user_id: userId,
-      is_confirmed: true,
-      confirmed_at: new Date().toISOString(),
-    });
-    if (spError) {
-      throw new WebhookProcessingError("Failed to create session player", {
-        operation: "session_players.insert",
-        error: spError,
+    try {
+      const { error: spError } = await supabaseAdmin.from("session_players").insert({
+        session_id: sessionId,
+        user_id: userId,
+        is_confirmed: true,
+        confirmed_at: new Date().toISOString(),
+      });
+      if (spError) throw spError;
+    } catch (e: any) {
+      throw new WebhookProcessingError("STEP:session_player_insert: " + (e?.message || String(e)), {
+        step: "session_player_insert",
+        code: e?.code,
+        originalError: String(e),
       });
     }
   }
