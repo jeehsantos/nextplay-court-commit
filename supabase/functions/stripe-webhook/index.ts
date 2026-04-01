@@ -179,6 +179,13 @@ async function handleCheckoutCompleted(
   const session = event.data.object as Stripe.Checkout.Session;
   const metadata = session.metadata || {};
 
+  // Normalize empty strings to undefined to prevent downstream issues
+  for (const key of Object.keys(metadata)) {
+    if ((metadata as any)[key] === "") {
+      (metadata as any)[key] = undefined;
+    }
+  }
+
   // Early idempotency guard for deferred payments — prevent race with verify-payment fallback
   if (metadata.deferred === "true") {
     const pi = session.payment_intent as string;
