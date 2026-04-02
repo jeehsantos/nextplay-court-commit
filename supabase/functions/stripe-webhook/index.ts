@@ -1,6 +1,8 @@
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
+const WEBHOOK_VERSION = "2026-04-02-v1";
+
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2026-02-25.clover",
 });
@@ -18,89 +20,105 @@ class WebhookProcessingError extends Error {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "*",
-      },
-    });
-  }
-
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
-
-  const signature = req.headers.get("stripe-signature");
-  if (!signature) {
-    console.error("Missing Stripe-Signature header");
-    return new Response("Missing signature", { status: 400 });
-  }
-
-  const body = await req.text();
-
-  let event: Stripe.Event;
   try {
-    event = await stripe.webhooks.constructEventAsync(
-      body,
-      signature,
-      webhookSecret,
-      undefined,
-      Stripe.createSubtleCryptoProvider()
-    );
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("Webhook signature verification failed:", msg);
-    return new Response("Invalid signature", { status: 400 });
-  }
-
-  const supabaseAdmin = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
-
-  console.log("Webhook event received:", event.type, event.id);
-
-  let idempotentDuplicate = false;
-  try {
-    if (event.type === "checkout.session.completed") {
-      idempotentDuplicate = await handleCheckoutCompleted(event, supabaseAdmin);
-    } else if (event.type === "payment_intent.succeeded") {
-      await handlePaymentIntentSucceeded(event, supabaseAdmin);
+    if (req.method === "OPTIONS") {
+      return new Response(null, {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "*",
+        },
+      });
     }
-  } catch (err) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    const details = err instanceof WebhookProcessingError ? err.details : {};
 
-    console.error("stripe_webhook_event_failed", JSON.stringify({
-      eventId: event.id,
-      eventType: event.type,
-      errorName: error.name,
-      errorMessage: error.message,
-      errorStack: error.stack,
-      details,
-    }));
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Method not allowed", version: WEBHOOK_VERSION }), { status: 405, headers: { "Content-Type": "application/json" } });
+    }
 
+    const signature = req.headers.get("stripe-signature");
+    if (!signature) {
+      console.error("Missing Stripe-Signature header");
+      return new Response(JSON.stringify({ error: "Missing signature", version: WEBHOOK_VERSION }), { status: 400, headers: { "Content-Type": "application/json" } });
+    }
+
+    const body = await req.text();
+
+    let event: Stripe.Event;
+    try {
+      event = await stripe.webhooks.constructEventAsync(
+        body,
+        signature,
+        webhookSecret,
+        undefined,
+        Stripe.createSubtleCryptoProvider()
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Webhook signature verification failed:", msg);
+      return new Response(JSON.stringify({ error: "Invalid signature", version: WEBHOOK_VERSION, detail: msg }), { status: 400, headers: { "Content-Type": "application/json" } });
+    }
+
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    console.log(`[${WEBHOOK_VERSION}] Webhook event received:`, event.type, event.id);
+
+    let idempotentDuplicate = false;
+    try {
+      if (event.type === "checkout.session.completed") {
+        idempotentDuplicate = await handleCheckoutCompleted(event, supabaseAdmin);
+      } else if (event.type === "payment_intent.succeeded") {
+        await handlePaymentIntentSucceeded(event, supabaseAdmin);
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      const details = err instanceof WebhookProcessingError ? err.details : {};
+
+      console.error(`[${WEBHOOK_VERSION}] stripe_webhook_event_failed`, JSON.stringify({
+        eventId: event.id,
+        eventType: event.type,
+        errorName: error.name,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        details,
+      }));
+
+      return new Response(
+        JSON.stringify({
+          received: false,
+          error: "Webhook event processing failed",
+          version: WEBHOOK_VERSION,
+          errorName: error.name,
+          errorMessage: error.message,
+          errorDetails: details,
+          errorStack: error.stack,
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    return new Response(JSON.stringify({ received: true, duplicate: idempotentDuplicate, version: WEBHOOK_VERSION }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (outerErr: unknown) {
+    const e = outerErr instanceof Error ? outerErr : new Error(String(outerErr));
+    console.error(`[${WEBHOOK_VERSION}] TOP-LEVEL CRASH:`, e.message, e.stack);
     return new Response(
       JSON.stringify({
         received: false,
-        error: "Webhook event processing failed",
-        errorName: error.name,
-        errorMessage: error.message,
-        errorDetails: details,
-        errorStack: error.stack,
+        error: "Unhandled top-level error",
+        version: WEBHOOK_VERSION,
+        message: e.message,
+        stack: e.stack,
       }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-
-  return new Response(JSON.stringify({ received: true, duplicate: idempotentDuplicate }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
 });
 
 // ── payment_intent.succeeded: store actual Stripe fee ──────────────────────
