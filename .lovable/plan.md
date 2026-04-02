@@ -2,66 +2,61 @@
 
 ## Problem
 
-The `stripe-webhook` function returns 500 for `checkout.session.completed` but produces **zero visible logs**. We've made multiple code changes (import specifiers, idempotency guards, constraint handling) but none fixed it because we've been guessing at the cause — we literally cannot see what error is thrown.
+The `stripe-webhook` function returns `{"received": false, "error": "Webhook event processing failed"}` but **without** the `errorName`/`errorMessage`/`errorDetails` fields that are present in the current code (lines 84-92). Combined with **zero logs** (not even the "Webhook event received" log on line 62), this proves the live function is running an **older version** — the recent deployments are not taking effect.
 
-## Root Cause Analysis
+## Root Cause
 
-Since the function boots correctly (returns 400 "Missing signature" on manual test) but produces no logs even when processing real events, the logging system is not capturing this function's output. This means we're debugging blind.
+The deployed function code does not match what's in the repo. This explains every symptom:
+- Old code has the generic error response without diagnostic fields
+- Old code may be crashing in a handler that was since refactored
+- No logs appear because the old code path may not log before throwing
 
-## Solution: Make the error visible in the Stripe response body
+## Solution: Force parity with a version marker + top-level mega try-catch
 
-Instead of returning a generic `{"error": "Webhook event processing failed"}`, include the **actual error details** in the 500 response body. The user can then see exactly what failed directly in the Stripe dashboard's webhook response viewer.
+### 1. Add a version constant at the top of the file
 
-Additionally, add step-tracking throughout `handleDeferredSessionPayment` so if it fails, we know exactly which step threw.
-
-### Changes in `supabase/functions/stripe-webhook/index.ts`
-
-**1. Return detailed error in the 500 response body (line 84-93):**
 ```typescript
-return new Response(
-  JSON.stringify({
-    received: false,
-    error: "Webhook event processing failed",
-    errorName: error.name,
-    errorMessage: error.message,
-    errorDetails: details,
-  }),
-  { status: 500, headers: { "Content-Type": "application/json" } }
-);
+const WEBHOOK_VERSION = "2026-04-02-v1";
 ```
 
-**2. Add step tracking in `handleDeferredSessionPayment`:**
-Wrap each major operation in individual try-catch blocks that re-throw with the step name prepended, so the error message in the response tells us exactly which database operation failed:
+Include this in **every** response (200 and 500) so you can verify in Stripe dashboard that the new code is actually running.
+
+### 2. Wrap the entire `Deno.serve` callback in a top-level try-catch
+
+Right now, if anything throws before the inner try-catch (e.g., `req.text()`, `constructEventAsync`, `createClient`), it bypasses the diagnostic error handler. Add an outer try-catch that returns the version and error:
+
 ```typescript
-// Example for session insert:
-let session;
-try {
-  const result = await supabaseAdmin.from("sessions").insert({...}).select("id").single();
-  if (result.error) throw result.error;
-  session = result.data;
-} catch (e) {
-  throw new WebhookProcessingError("STEP:session_insert: " + (e?.message || e), { step: "session_insert", error: e });
-}
+Deno.serve(async (req) => {
+  try {
+    // ... all existing code ...
+  } catch (outerErr) {
+    return new Response(JSON.stringify({
+      received: false,
+      error: "Unhandled top-level error",
+      version: WEBHOOK_VERSION,
+      message: outerErr?.message,
+      stack: outerErr?.stack,
+    }), { status: 500, headers: { "Content-Type": "application/json" } });
+  }
+});
 ```
 
-Apply this pattern to: session insert, session_player insert, court_availability insert, payment insert, and the Stripe PI retrieve.
+### 3. Add version to both the 200 and 500 responses
 
-**3. Sanitize empty metadata strings:**
-At the top of `handleCheckoutCompleted`, normalize empty string metadata values to prevent downstream issues:
-```typescript
-// Normalize empty strings to undefined in metadata
-for (const key of Object.keys(metadata)) {
-  if (metadata[key] === "") metadata[key] = undefined as any;
-}
-```
+- 200: `{ received: true, duplicate: ..., version: WEBHOOK_VERSION }`
+- 500: `{ received: false, error: ..., version: WEBHOOK_VERSION, errorName: ..., errorMessage: ... }`
+
+### 4. Deploy and verify
+
+After deploying, trigger a test payment. Check the Stripe webhook response for the `version` field:
+- If `version` is present → the new code is running, and you can see the actual error
+- If `version` is absent → the deployment pipeline is broken and needs investigation outside of code changes
 
 ### Files to change
 
 | File | Change |
 |------|--------|
-| `supabase/functions/stripe-webhook/index.ts` | 1. Include error details in 500 response body. 2. Add step-tracking in deferred handler. 3. Normalize empty metadata strings. |
+| `supabase/functions/stripe-webhook/index.ts` | Add `WEBHOOK_VERSION` constant, outer try-catch around entire handler, include version in all responses |
 
-### What happens next
-
-After deploying, the user triggers another test payment. The Stripe dashboard will show the **exact error name, message, and step** in the webhook response body. We can then fix the actual root cause with certainty instead of guessing.
+This is a small, targeted change (< 20 lines modified) with zero risk to payment logic.
 
