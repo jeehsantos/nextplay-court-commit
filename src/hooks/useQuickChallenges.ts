@@ -99,6 +99,10 @@ export function useQuickChallenges(filters?: {
         queryBuilder = queryBuilder.in("status", ["open", "full", "pending_payment"]);
       }
 
+      // Exclude past challenges — only show today or future
+      const today = new Date().toISOString().split("T")[0];
+      queryBuilder = queryBuilder.gte("scheduled_date", today);
+
       const { data, error } = await queryBuilder;
       if (error) throw error;
 
