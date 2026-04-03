@@ -64,6 +64,29 @@ serve(async (req) => {
         .maybeSingle();
 
       stripeAccountId = paymentSettings?.stripe_account_id || null;
+
+      // Fallback: if venue has no payment settings, check owner's profile
+      if (!stripeAccountId) {
+        const { data: ownerProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("stripe_account_id")
+          .eq("user_id", venue.owner_id)
+          .single();
+
+        stripeAccountId = ownerProfile?.stripe_account_id || null;
+
+        // Auto-link to venue for future lookups
+        if (stripeAccountId) {
+          await supabaseAdmin
+            .from("venue_payment_settings")
+            .upsert({
+              venue_id: venueId,
+              stripe_account_id: stripeAccountId,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: "venue_id" });
+          console.log(`Auto-linked Stripe account ${stripeAccountId} to venue ${venueId}`);
+        }
+      }
     } else {
       // User-level check (no venue yet)
       const { data: profile } = await supabaseAdmin
