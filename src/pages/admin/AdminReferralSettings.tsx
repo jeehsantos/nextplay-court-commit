@@ -67,6 +67,11 @@ function AdminReferralSettingsContent() {
           .update({ credit_amount: amount, is_active: isActive, updated_at: new Date().toISOString() })
           .eq("id", settings.id);
         if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("referral_settings")
+          .insert({ credit_amount: amount, is_active: isActive });
+        if (error) throw error;
       }
       
       queryClient.invalidateQueries({ queryKey: ["admin-referral-settings"] });
