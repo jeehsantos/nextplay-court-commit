@@ -17,6 +17,11 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
   );
 
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
+
   try {
     const { venueId } = await req.json();
 
@@ -33,19 +38,31 @@ serve(async (req) => {
     }
     const user = userData.user;
 
-    // Get venue with stripe account id
-    const { data: venue, error: venueError } = await supabaseClient
+    // Get venue with stripe account id using admin client to bypass RLS
+    const { data: venue, error: venueError } = await supabaseAdmin
       .from("venues")
-      .select("stripe_account_id")
+      .select("id, owner_id")
       .eq("id", venueId)
-      .eq("owner_id", user.id)
       .single();
 
     if (venueError || !venue) {
-      throw new Error("Venue not found or you don't have permission");
+      throw new Error("Venue not found");
     }
 
-    if (!venue.stripe_account_id) {
+    if (venue.owner_id !== user.id) {
+      throw new Error("You don't have permission to access this venue");
+    }
+
+    // Get stripe account from venue_payment_settings
+    const { data: paymentSettings } = await supabaseAdmin
+      .from("venue_payment_settings")
+      .select("stripe_account_id")
+      .eq("venue_id", venueId)
+      .maybeSingle();
+
+    const stripeAccountId = paymentSettings?.stripe_account_id;
+
+    if (!stripeAccountId) {
       throw new Error("No Stripe account connected");
     }
 
@@ -54,7 +71,7 @@ serve(async (req) => {
     });
 
     // Create a login link to the Express Dashboard
-    const loginLink = await stripe.accounts.createLoginLink(venue.stripe_account_id);
+    const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
 
     return new Response(JSON.stringify({ url: loginLink.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
