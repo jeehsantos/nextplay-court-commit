@@ -65,8 +65,8 @@ export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
     >
       <div className={`rounded-xl overflow-hidden transition-all duration-300 ${
         isHighlighted 
-          ? "ring-2 ring-primary shadow-lg shadow-primary/20 scale-[1.02]" 
-          : "hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 hover:scale-[1.01]"
+          ? "shadow-lg shadow-primary/20 scale-[1.02] bg-card/70 backdrop-blur-md" 
+          : "hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 hover:scale-[1.01] hover:bg-card/70 hover:backdrop-blur-md"
       }`}>
         {/* Image Container */}
         <div className="relative aspect-[4/3] bg-muted overflow-hidden rounded-xl">
