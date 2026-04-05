@@ -101,7 +101,7 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
         <div className="flex items-center justify-between h-full px-4">
           <Link to="/manager" className="flex items-center" aria-label="Sport Arena manager home">
             <img
-              src="/sportarena-logo.png"
+              src="/sportarena-logo.webp"
               alt="Sport Arena logo"
               className="h-10 w-auto object-contain" />
           </Link>
@@ -133,7 +133,7 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
           <div className="h-14 flex items-center px-4 border-b border-border">
             <Link to="/manager" className="flex items-center gap-3" aria-label="Sport Arena manager home">
               <img
-                src="/sportarena-logo.png"
+                src="/sportarena-logo.webp"
                 alt="Sport Arena logo"
                 className="h-14 w-auto object-contain" />
               <div></div>
