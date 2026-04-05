@@ -63,8 +63,10 @@ export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
       onMouseEnter={() => onHover?.(court.id)}
       onMouseLeave={() => onHover?.(null)}
     >
-      <div className={`rounded-xl overflow-hidden transition-all duration-200 ${
-        isHighlighted ? "ring-2 ring-primary shadow-lg" : ""
+      <div className={`rounded-xl overflow-hidden transition-all duration-300 ${
+        isHighlighted 
+          ? "ring-2 ring-primary shadow-lg shadow-primary/20 scale-[1.02]" 
+          : "hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 hover:scale-[1.01]"
       }`}>
         {/* Image Container */}
         <div className="relative aspect-[4/3] bg-muted overflow-hidden rounded-xl">
@@ -74,13 +76,16 @@ export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
               alt={court.name}
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-muted">
-              <SportIcon sport={court.allowed_sports?.[0] || "other"} className="h-16 w-16 text-muted-foreground/50" />
+              <SportIcon sport={court.allowed_sports?.[0] || "other"} className="h-16 w-16 text-muted-foreground/50 transition-transform duration-300 group-hover:scale-110" />
             </div>
           )}
+
+          {/* Hover gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
           {/* Indoor Badge */}
           {court.is_indoor && (
@@ -93,12 +98,12 @@ export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-3 right-3 h-8 w-8 rounded-full bg-card/20 backdrop-blur-sm hover:bg-card/40"
+            className="absolute top-3 right-3 h-8 w-8 rounded-full bg-card/20 backdrop-blur-sm hover:bg-card/40 transition-all duration-200 group-hover:bg-card/40"
             onClick={handleFavoriteClick}
           >
             <Heart
-              className={`h-5 w-5 transition-colors ${
-                isFavorite ? "fill-destructive text-destructive" : "text-white"
+              className={`h-5 w-5 transition-all duration-200 ${
+                isFavorite ? "fill-destructive text-destructive scale-110" : "text-white group-hover:scale-110"
               }`}
             />
           </Button>
@@ -142,7 +147,7 @@ export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
         <div className="pt-3 pb-1">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground truncate">{court.venues?.name || court.name}</h3>
+              <h3 className="font-semibold text-foreground truncate transition-colors duration-200 group-hover:text-primary">{court.venues?.name || court.name}</h3>
               {court.venues && (
                 <p className="text-sm text-muted-foreground truncate">
                   {court.venues.city}
