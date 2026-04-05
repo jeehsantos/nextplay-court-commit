@@ -63,7 +63,7 @@ export function MobileLayout({
         <div className="h-14 flex items-center justify-center px-4 border-b border-border">
           <Link to="/" className="flex items-center" aria-label="Sport Arena home">
             <img
-              src="/sportarena-logo.png"
+              src="/sportarena-logo.webp"
               alt="Sport Arena logo"
               className="h-8 w-auto object-contain"
             />

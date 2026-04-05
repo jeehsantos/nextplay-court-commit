@@ -29,7 +29,7 @@ export function Header({ title, showBack = false, rightAction }: HeaderProps) {
           ) : (
             <div className="flex items-center">
               <img
-                src="/sportarena-logo.png"
+                src="/sportarena-logo.webp"
                 alt="Sport Arena logo"
                 className="h-8 w-auto object-contain"
               />
