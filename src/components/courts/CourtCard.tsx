@@ -17,10 +17,11 @@ interface CourtCardProps {
   court: CourtWithVenue;
   onHover?: (courtId: string | null) => void;
   isHighlighted?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: (courtId: string) => void;
 }
 
-export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
-  const [isFavorite, setIsFavorite] = useState(false);
+export function CourtCard({ court, onHover, isHighlighted, isFavorite = false, onToggleFavorite }: CourtCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
   const location = useLocation();
   
@@ -35,7 +36,7 @@ export function CourtCard({ court, onHover, isHighlighted }: CourtCardProps) {
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsFavorite(!isFavorite);
+    onToggleFavorite?.(court.id);
   };
 
   const handlePrevImage = (e: React.MouseEvent) => {
