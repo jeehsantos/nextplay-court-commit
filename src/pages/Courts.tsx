@@ -8,7 +8,7 @@ import { CourtsPagination } from "@/components/courts/CourtsPagination";
 import { MobileCourtSheet } from "@/components/courts/MobileCourtSheet";
 import { MobileCourtFilters } from "@/components/courts/MobileCourtFilters";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, SlidersHorizontal, Building2, Loader2, Zap, X, Filter, ArrowLeft } from "lucide-react";
+import { Search, MapPin, SlidersHorizontal, Building2, Loader2, Zap, X, Filter, ArrowLeft, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -16,6 +16,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useSurfaceTypes } from "@/hooks/useSurfaceTypes";
 import { usePaginationThreshold } from "@/hooks/usePaginationThreshold";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useCourtFavorites } from "@/hooks/useCourtFavorites";
 import { useSportCategories } from "@/hooks/useSportCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -31,6 +32,7 @@ interface CourtWithVenue extends Court {
 export default function Courts() {
   const { user } = useAuth();
   const { preferredSports } = useUserProfile();
+  const { isFavorite, toggleFavorite, favoriteCourtIds } = useCourtFavorites();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
