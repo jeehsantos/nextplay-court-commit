@@ -36,6 +36,7 @@ const genderOptions = [
   { value: "mixed", label: "Mixed (Any Gender)" },
   { value: "male", label: "Men Only" },
   { value: "female", label: "Women Only" },
+  { value: "non-binary", label: "Non-binary Only" },
 ];
 
 export function QuickGameModal({ open, onOpenChange }: QuickGameModalProps) {
