@@ -24,5 +24,8 @@
   "noVenuesFoundDesc": "Check back soon for new venue listings.",
   "noCourtsAddedYet": "No courts available at this venue.",
   "indoor": "Indoor",
-  "outdoor": "Outdoor"
+  "outdoor": "Outdoor",
+  "favorites": "Favorites",
+  "showFavoritesOnly": "Show Favorites Only",
+  "showingFavorites": "Showing Favorites"
 }

@@ -197,6 +197,35 @@ export type Database = {
           },
         ]
       }
+      court_favorites: {
+        Row: {
+          court_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          court_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          court_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "court_favorites_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courts: {
         Row: {
           allowed_sports: string[] | null

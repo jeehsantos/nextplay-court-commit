@@ -8,7 +8,7 @@ import { CourtsPagination } from "@/components/courts/CourtsPagination";
 import { MobileCourtSheet } from "@/components/courts/MobileCourtSheet";
 import { MobileCourtFilters } from "@/components/courts/MobileCourtFilters";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, SlidersHorizontal, Building2, Loader2, Zap, X, Filter, ArrowLeft } from "lucide-react";
+import { Search, MapPin, SlidersHorizontal, Building2, Loader2, Zap, X, Filter, ArrowLeft, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -16,6 +16,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useSurfaceTypes } from "@/hooks/useSurfaceTypes";
 import { usePaginationThreshold } from "@/hooks/usePaginationThreshold";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useCourtFavorites } from "@/hooks/useCourtFavorites";
 import { useSportCategories } from "@/hooks/useSportCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -31,6 +32,7 @@ interface CourtWithVenue extends Court {
 export default function Courts() {
   const { user } = useAuth();
   const { preferredSports } = useUserProfile();
+  const { isFavorite, toggleFavorite, favoriteCourtIds } = useCourtFavorites();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,6 +52,7 @@ export default function Courts() {
   const [showPagination, setShowPagination] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showDesktopFilters, setShowDesktopFilters] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
@@ -238,7 +241,9 @@ export default function Courts() {
         ? (preferredSports.length === 0 || preferredSports.some((sport) => sportMatchesForCourt(sport)))
         : sportMatchesForCourt(selectedSport);
 
-    return matchesSearch && matchesGroundType && matchesVenueType && matchesCity && matchesSport;
+    const matchesFavorite = !showFavoritesOnly || favoriteCourtIds.has(court.id);
+
+    return matchesSearch && matchesGroundType && matchesVenueType && matchesCity && matchesSport && matchesFavorite;
   });
 
   // Pagination (desktop only)
@@ -251,7 +256,7 @@ export default function Courts() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedGroundType, selectedVenueType, selectedCity, selectedSport]);
+  }, [searchQuery, selectedGroundType, selectedVenueType, selectedCity, selectedSport, showFavoritesOnly]);
 
   // Scroll detection for pagination visibility
   const handleScroll = useCallback(() => {
@@ -285,6 +290,7 @@ export default function Courts() {
     selectedVenueType !== "all",
     selectedCity !== "all",
     selectedSport !== "all",
+    showFavoritesOnly,
   ].filter(Boolean).length;
 
   const clearAllFilters = () => {
@@ -292,6 +298,7 @@ export default function Courts() {
     setSelectedVenueType("all");
     setSelectedCity("all");
     setSelectedSport("all");
+    setShowFavoritesOnly(false);
   };
 
   const Layout = user ? MobileLayout : PublicLayout;
@@ -435,7 +442,7 @@ export default function Courts() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="city" className="border-b-0">
+                <AccordionItem value="city" className={user ? "border-b border-border" : "border-b-0"}>
                   <AccordionTrigger className="px-4 py-4 hover:no-underline"><span className="font-medium">City</span></AccordionTrigger>
                   <AccordionContent className="px-4 pb-4">
                     <div className="grid grid-cols-2 gap-2">
@@ -446,6 +453,22 @@ export default function Courts() {
                     </div>
                   </AccordionContent>
                 </AccordionItem>
+
+                {user && (
+                  <AccordionItem value="favorites" className="border-b-0">
+                    <AccordionTrigger className="px-4 py-4 hover:no-underline"><span className="font-medium">Favorites</span></AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <Button
+                        variant={showFavoritesOnly ? "default" : "outline"}
+                        className="justify-start gap-2"
+                        onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                      >
+                        <Heart className={`h-4 w-4 ${showFavoritesOnly ? "fill-current" : ""}`} />
+                        {showFavoritesOnly ? "Showing Favorites" : "Show Favorites Only"}
+                      </Button>
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
               </Accordion>
             </div>
 
@@ -560,6 +583,8 @@ export default function Courts() {
             loading={loading}
             highlightedCourtId={highlightedCourtId}
             onHighlight={setHighlightedCourtId}
+            isFavorite={isFavorite}
+            onToggleFavorite={toggleFavorite}
           />
 
           {/* Mobile Filters Sheet */}
@@ -579,6 +604,9 @@ export default function Courts() {
             setSelectedSport={setSelectedSport}
             sportOptions={sportFilterOptions}
             loadingSports={loadingSports}
+            showFavoritesOnly={showFavoritesOnly}
+            setShowFavoritesOnly={setShowFavoritesOnly}
+            isLoggedIn={!!user}
           />
         </div>
       </MobileLayout>
@@ -631,6 +659,8 @@ export default function Courts() {
                         court={court}
                         onHover={setHighlightedCourtId}
                         isHighlighted={court.id === highlightedCourtId}
+                        isFavorite={isFavorite(court.id)}
+                        onToggleFavorite={toggleFavorite}
                       />
                     </div>
                   ))}
