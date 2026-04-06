@@ -241,7 +241,9 @@ export default function Courts() {
         ? (preferredSports.length === 0 || preferredSports.some((sport) => sportMatchesForCourt(sport)))
         : sportMatchesForCourt(selectedSport);
 
-    return matchesSearch && matchesGroundType && matchesVenueType && matchesCity && matchesSport;
+    const matchesFavorite = !showFavoritesOnly || favoriteCourtIds.has(court.id);
+
+    return matchesSearch && matchesGroundType && matchesVenueType && matchesCity && matchesSport && matchesFavorite;
   });
 
   // Pagination (desktop only)
@@ -254,7 +256,7 @@ export default function Courts() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedGroundType, selectedVenueType, selectedCity, selectedSport]);
+  }, [searchQuery, selectedGroundType, selectedVenueType, selectedCity, selectedSport, showFavoritesOnly]);
 
   // Scroll detection for pagination visibility
   const handleScroll = useCallback(() => {
@@ -288,6 +290,7 @@ export default function Courts() {
     selectedVenueType !== "all",
     selectedCity !== "all",
     selectedSport !== "all",
+    showFavoritesOnly,
   ].filter(Boolean).length;
 
   const clearAllFilters = () => {
@@ -295,6 +298,7 @@ export default function Courts() {
     setSelectedVenueType("all");
     setSelectedCity("all");
     setSelectedSport("all");
+    setShowFavoritesOnly(false);
   };
 
   const Layout = user ? MobileLayout : PublicLayout;
