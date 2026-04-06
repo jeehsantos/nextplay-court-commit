@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -33,6 +34,9 @@ interface MobileCourtFiltersProps {
   setSelectedSport: (value: string) => void;
   sportOptions: SportFilterOption[];
   loadingSports?: boolean;
+  showFavoritesOnly?: boolean;
+  setShowFavoritesOnly?: (value: boolean) => void;
+  isLoggedIn?: boolean;
 }
 
 const venueTypeData = [
@@ -57,6 +61,9 @@ export function MobileCourtFilters({
   setSelectedSport,
   sportOptions,
   loadingSports = false,
+  showFavoritesOnly = false,
+  setShowFavoritesOnly,
+  isLoggedIn = false,
 }: MobileCourtFiltersProps) {
   // Build ground type data from database
   const groundTypeData = useMemo(() => {
