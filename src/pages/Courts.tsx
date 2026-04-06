@@ -654,6 +654,8 @@ export default function Courts() {
                         court={court}
                         onHover={setHighlightedCourtId}
                         isHighlighted={court.id === highlightedCourtId}
+                        isFavorite={isFavorite(court.id)}
+                        onToggleFavorite={toggleFavorite}
                       />
                     </div>
                   ))}
