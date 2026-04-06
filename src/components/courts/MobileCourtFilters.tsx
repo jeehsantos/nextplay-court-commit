@@ -212,7 +212,7 @@ export function MobileCourtFilters({
                 </AccordionItem>
 
                 {cities.length > 0 && (
-                  <AccordionItem value="city" className="border-b-0">
+                  <AccordionItem value="city" className={isLoggedIn ? "border-b border-border" : "border-b-0"}>
                     <AccordionTrigger className="px-4 py-4 hover:no-underline">
                       <Label className="text-sm font-medium">City</Label>
                     </AccordionTrigger>
@@ -228,6 +228,24 @@ export function MobileCourtFilters({
                           </Button>
                         ))}
                       </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
+
+                {isLoggedIn && (
+                  <AccordionItem value="favorites" className="border-b-0">
+                    <AccordionTrigger className="px-4 py-4 hover:no-underline">
+                      <Label className="text-sm font-medium">Favorites</Label>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <Button
+                        variant={showFavoritesOnly ? "default" : "outline"}
+                        className="justify-start gap-2"
+                        onClick={() => setShowFavoritesOnly?.(!showFavoritesOnly)}
+                      >
+                        <Heart className={`h-4 w-4 ${showFavoritesOnly ? "fill-current" : ""}`} />
+                        {showFavoritesOnly ? "Showing Favorites" : "Show Favorites Only"}
+                      </Button>
                     </AccordionContent>
                   </AccordionItem>
                 )}
