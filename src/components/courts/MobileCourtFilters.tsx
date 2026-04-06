@@ -93,13 +93,15 @@ export function MobileCourtFilters({
     setSelectedVenueType("all");
     setSelectedCity("all");
     setSelectedSport("all");
+    setShowFavoritesOnly?.(false);
   };
 
   const hasActiveFilters =
     selectedGroundType !== "all" ||
     selectedVenueType !== "all" ||
     selectedCity !== "all" ||
-    selectedSport !== "all";
+    selectedSport !== "all" ||
+    showFavoritesOnly;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
