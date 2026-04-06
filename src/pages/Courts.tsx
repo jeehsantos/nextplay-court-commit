@@ -442,7 +442,7 @@ export default function Courts() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="city" className="border-b-0">
+                <AccordionItem value="city" className={user ? "border-b border-border" : "border-b-0"}>
                   <AccordionTrigger className="px-4 py-4 hover:no-underline"><span className="font-medium">City</span></AccordionTrigger>
                   <AccordionContent className="px-4 pb-4">
                     <div className="grid grid-cols-2 gap-2">
@@ -453,6 +453,22 @@ export default function Courts() {
                     </div>
                   </AccordionContent>
                 </AccordionItem>
+
+                {user && (
+                  <AccordionItem value="favorites" className="border-b-0">
+                    <AccordionTrigger className="px-4 py-4 hover:no-underline"><span className="font-medium">Favorites</span></AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <Button
+                        variant={showFavoritesOnly ? "default" : "outline"}
+                        className="justify-start gap-2"
+                        onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                      >
+                        <Heart className={`h-4 w-4 ${showFavoritesOnly ? "fill-current" : ""}`} />
+                        {showFavoritesOnly ? "Showing Favorites" : "Show Favorites Only"}
+                      </Button>
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
               </Accordion>
             </div>
 
