@@ -583,6 +583,8 @@ export default function Courts() {
             loading={loading}
             highlightedCourtId={highlightedCourtId}
             onHighlight={setHighlightedCourtId}
+            isFavorite={isFavorite}
+            onToggleFavorite={toggleFavorite}
           />
 
           {/* Mobile Filters Sheet */}
