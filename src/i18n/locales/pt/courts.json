@@ -24,5 +24,8 @@
   "noVenuesFoundDesc": "Volte em breve para novos espaços.",
   "noCourtsAddedYet": "Nenhuma quadra disponível neste espaço.",
   "indoor": "Coberto",
-  "outdoor": "Aberto"
+  "outdoor": "Aberto",
+  "favorites": "Favoritos",
+  "showFavoritesOnly": "Mostrar Apenas Favoritos",
+  "showingFavorites": "Mostrando Favoritos"
 }
