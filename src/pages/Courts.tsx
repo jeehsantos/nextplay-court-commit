@@ -52,6 +52,7 @@ export default function Courts() {
   const [showPagination, setShowPagination] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showDesktopFilters, setShowDesktopFilters] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
