@@ -17,11 +17,13 @@ interface MobileCourtSheetProps {
   loading: boolean;
   highlightedCourtId: string | null;
   onHighlight: (id: string | null) => void;
+  isFavorite?: (courtId: string) => boolean;
+  onToggleFavorite?: (courtId: string) => void;
 }
 
 const ITEMS_PER_PAGE = 14;
 
-export function MobileCourtSheet({ courts, loading, highlightedCourtId, onHighlight }: MobileCourtSheetProps) {
+export function MobileCourtSheet({ courts, loading, highlightedCourtId, onHighlight, isFavorite, onToggleFavorite }: MobileCourtSheetProps) {
   const [snap, setSnap] = useState<number | string | null>(0.15);
   const [currentPage, setCurrentPage] = useState(1);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -131,6 +133,8 @@ export function MobileCourtSheet({ courts, loading, highlightedCourtId, onHighli
                       court={court}
                       onHover={onHighlight}
                       isHighlighted={court.id === highlightedCourtId}
+                      isFavorite={isFavorite?.(court.id)}
+                      onToggleFavorite={onToggleFavorite}
                     />
                   ))}
                 </div>
