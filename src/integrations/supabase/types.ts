@@ -1704,6 +1704,10 @@ export type Database = {
         Args: { p_invite_code: string }
         Returns: undefined
       }
+      is_challenge_creator: {
+        Args: { _challenge_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_challenge_participant: {
         Args: { _challenge_id: string; _user_id: string }
         Returns: boolean
@@ -1742,6 +1746,10 @@ export type Database = {
       record_failed_login: { Args: { p_email: string }; Returns: Json }
       release_booking_hold: {
         Args: { p_hold_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      shares_challenge_with: {
+        Args: { _profile_user_id: string; _viewer_id: string }
         Returns: boolean
       }
       use_user_credits: {
