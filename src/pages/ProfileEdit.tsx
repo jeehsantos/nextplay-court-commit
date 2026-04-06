@@ -293,10 +293,10 @@ export default function ProfileEdit() {
                     <SelectValue placeholder="Select your gender" />
                   </SelectTrigger>
                   <SelectContent className="bg-background border shadow-lg z-50">
-                    <SelectItem value="male">{t("profile:male")}</SelectItem>
-                    <SelectItem value="female">{t("profile:female")}</SelectItem>
-                    <SelectItem value="non-binary">{t("profile:nonBinary")}</SelectItem>
-                    <SelectItem value="prefer-not-to-say">{t("profile:preferNotToSay")}</SelectItem>
+                    <SelectItem value="male">Man</SelectItem>
+                    <SelectItem value="female">Woman</SelectItem>
+                    <SelectItem value="non-binary">Non-binary</SelectItem>
+                    <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
