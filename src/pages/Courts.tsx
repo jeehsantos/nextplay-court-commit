@@ -604,6 +604,9 @@ export default function Courts() {
             setSelectedSport={setSelectedSport}
             sportOptions={sportFilterOptions}
             loadingSports={loadingSports}
+            showFavoritesOnly={showFavoritesOnly}
+            setShowFavoritesOnly={setShowFavoritesOnly}
+            isLoggedIn={!!user}
           />
         </div>
       </MobileLayout>
