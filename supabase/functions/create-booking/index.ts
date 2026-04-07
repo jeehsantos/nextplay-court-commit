@@ -257,6 +257,9 @@ serve(async (req) => {
         state: "protected",
         payment_type: paymentType,
         sport_category_id: sportCategoryId,
+        organizer_fee_cents: organizerFeeCents,
+        organizer_user_id: group.organizer_id,
+        organizer_payout_status: organizerFeeCents > 0 ? "PENDING" : "NOT_APPLICABLE",
       })
       .select("id")
       .single();
