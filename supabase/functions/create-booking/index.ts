@@ -99,11 +99,24 @@ serve(async (req) => {
       equipment = [],
       holdId,
       organizerPlays = true,
+      organizerFee = 0,
     } = await req.json();
 
     if (!groupId || !courtId || !sessionDate || !startTime || !durationMinutes || !paymentType || !sportCategoryId) {
       throw new Error("Missing required fields");
     }
+
+    // Validate organizer fee
+    const organizerFeeDollars = Math.max(0, Number(organizerFee) || 0);
+    const organizerFeeCents = Math.round(organizerFeeDollars * 100);
+
+    // Fetch group to get organizer_id
+    const { data: group, error: groupError } = await supabaseAdmin
+      .from("groups")
+      .select("organizer_id")
+      .eq("id", groupId)
+      .single();
+    if (groupError || !group) throw new Error("Group not found");
 
     const { data: court, error: courtError } = await supabaseAdmin
       .from("courts")
@@ -199,6 +212,7 @@ serve(async (req) => {
           service_fee_total: serviceFee,
           total_charge: totalAmount,
           price_per_player: splitPricePerPlayer + serviceFee,
+          organizer_fee_cents: organizerFeeCents,
           booking_details: {
             groupId,
             courtId,
@@ -214,6 +228,8 @@ serve(async (req) => {
             courtPrice: courtAmountWithEquipment,
             holdId: holdId || null,
             organizerPlays,
+            organizerFeeCents,
+            organizerUserId: group.organizer_id,
           },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
@@ -241,6 +257,9 @@ serve(async (req) => {
         state: "protected",
         payment_type: paymentType,
         sport_category_id: sportCategoryId,
+        organizer_fee_cents: organizerFeeCents,
+        organizer_user_id: group.organizer_id,
+        organizer_payout_status: organizerFeeCents > 0 ? "PENDING" : "NOT_APPLICABLE",
       })
       .select("id")
       .single();

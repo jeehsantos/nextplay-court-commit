@@ -60,6 +60,8 @@ serve(async (req) => {
       throw new Error("Session not found");
     }
 
+    const sessionOrganizerFeeCents = Number(session.organizer_fee_cents || 0);
+
     const court = session.courts;
     const venue = court?.venues;
     if (!court || !venue) {
@@ -215,6 +217,7 @@ serve(async (req) => {
       platformFeeCents,
       stripePercent,
       stripeFixedCents,
+      organizerFeeCents: sessionOrganizerFeeCents,
     });
     const { serviceFeeTotalCents, stripeFeeCoverageCents, totalChargeCents, grossTotalCents } = grossUp;
 
@@ -264,6 +267,7 @@ serve(async (req) => {
         user_id: user.id,
         recipient_cents: remainingCourtAmountCents.toString(),
         platform_fee_cents: platformFeeCents.toString(),
+        organizer_fee_cents: sessionOrganizerFeeCents.toString(),
         stripe_percent: stripePercent.toString(),
         stripe_fixed_cents: stripeFixedCents.toString(),
         gross_total_cents: grossTotalCents.toString(),
@@ -306,6 +310,7 @@ serve(async (req) => {
         platform_fee: platformFeeDollars,
         service_fee: serviceFeeTotalCents / 100,
         court_amount: remainingCourtAmountCents / 100,
+        organizer_fee_cents: sessionOrganizerFeeCents,
       }, { onConflict: "session_id,user_id" });
 
     return new Response(JSON.stringify({
@@ -337,6 +342,8 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
     equipment, courtCapacity, courtPrice, holdId,
     returnUrl, origin, useCredits, creditsAmount, attempt,
     organizerPlays = true,
+    organizerFeeCents = 0,
+    organizerUserId = null,
   } = body;
 
   if (!groupId || !courtId || !sessionDate || !startTime || !endTime || !durationMinutes) {
@@ -420,6 +427,8 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
       equipment: equipmentItems, courtCapacity: courtCapacity || court.capacity,
       courtPrice: fullCourtPriceDollars, holdId,
       organizerPlays,
+      organizerFeeCents,
+      organizerUserId,
     });
 
     await supabaseAdmin.from("payments").insert({
@@ -462,11 +471,13 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
   }
 
   // --- STRIPE CARD PAYMENT for deferred flow ---
+  const deferredOrganizerFeeCents = Number(organizerFeeCents) || 0;
   const grossUp = calculateGrossUp({
     courtAmountCents: remainingCourtAmountCents,
     platformFeeCents,
     stripePercent,
     stripeFixedCents,
+    organizerFeeCents: deferredOrganizerFeeCents,
   });
   const { serviceFeeTotalCents, stripeFeeCoverageCents, totalChargeCents, grossTotalCents } = grossUp;
 
@@ -530,6 +541,8 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
       equipment_json: JSON.stringify(equipmentItems),
       recipient_cents: remainingCourtAmountCents.toString(),
       platform_fee_cents: platformFeeCents.toString(),
+      organizer_fee_cents: deferredOrganizerFeeCents.toString(),
+      organizer_user_id: organizerUserId || "",
       stripe_percent: stripePercent.toString(),
       stripe_fixed_cents: stripeFixedCents.toString(),
       gross_total_cents: grossTotalCents.toString(),
@@ -606,6 +619,9 @@ async function createDeferredRecords(supabaseAdmin: any, details: any): Promise<
       state: "protected",
       payment_type: details.paymentType || "single",
       sport_category_id: details.sportCategoryId,
+      organizer_fee_cents: details.organizerFeeCents || 0,
+      organizer_user_id: details.organizerUserId || null,
+      organizer_payout_status: (details.organizerFeeCents || 0) > 0 ? "PENDING" : "NOT_APPLICABLE",
     })
     .select("id")
     .single();
@@ -699,14 +715,18 @@ async function applyHeldLiabilities(supabaseAdmin: any, userId: string, newSessi
 }
 
 async function triggerPayout(sessionId: string) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  // Trigger court payout
   try {
     const payoutResponse = await fetch(
-      `${Deno.env.get("SUPABASE_URL")}/functions/v1/payout-session`,
+      `${supabaseUrl}/functions/v1/payout-session`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          Authorization: `Bearer ${serviceKey}`,
         },
         body: JSON.stringify({ sessionId }),
       }
@@ -717,5 +737,19 @@ async function triggerPayout(sessionId: string) {
     }
   } catch (err) {
     console.error("Payout call error (non-fatal):", err);
+  }
+
+  // Trigger organizer payout (fire-and-forget)
+  try {
+    fetch(`${supabaseUrl}/functions/v1/process-organizer-payout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ sessionId }),
+    }).catch((e) => console.error("Organizer payout call error (non-fatal):", e));
+  } catch (err) {
+    console.error("Organizer payout trigger error (non-fatal):", err);
   }
 }

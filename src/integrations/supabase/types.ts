@@ -718,6 +718,7 @@ export type Database = {
           court_amount: number | null
           created_at: string
           id: string
+          organizer_fee_cents: number | null
           paid_at: string | null
           paid_with_credits: number | null
           payment_type_snapshot: string | null
@@ -738,6 +739,7 @@ export type Database = {
           court_amount?: number | null
           created_at?: string
           id?: string
+          organizer_fee_cents?: number | null
           paid_at?: string | null
           paid_with_credits?: number | null
           payment_type_snapshot?: string | null
@@ -758,6 +760,7 @@ export type Database = {
           court_amount?: number | null
           created_at?: string
           id?: string
+          organizer_fee_cents?: number | null
           paid_at?: string | null
           paid_with_credits?: number | null
           payment_type_snapshot?: string | null
@@ -1248,6 +1251,11 @@ export type Database = {
           max_players: number
           min_players: number
           notes: string | null
+          organizer_fee_cents: number
+          organizer_payout_amount_cents: number
+          organizer_payout_status: string
+          organizer_stripe_transfer_id: string | null
+          organizer_user_id: string | null
           payment_deadline: string
           payment_type:
             | Database["public"]["Enums"]["booking_payment_type"]
@@ -1271,6 +1279,11 @@ export type Database = {
           max_players: number
           min_players: number
           notes?: string | null
+          organizer_fee_cents?: number
+          organizer_payout_amount_cents?: number
+          organizer_payout_status?: string
+          organizer_stripe_transfer_id?: string | null
+          organizer_user_id?: string | null
           payment_deadline: string
           payment_type?:
             | Database["public"]["Enums"]["booking_payment_type"]
@@ -1294,6 +1307,11 @@ export type Database = {
           max_players?: number
           min_players?: number
           notes?: string | null
+          organizer_fee_cents?: number
+          organizer_payout_amount_cents?: number
+          organizer_payout_status?: string
+          organizer_stripe_transfer_id?: string | null
+          organizer_user_id?: string | null
           payment_deadline?: string
           payment_type?:
             | Database["public"]["Enums"]["booking_payment_type"]

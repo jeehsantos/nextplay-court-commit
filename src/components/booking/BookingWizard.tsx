@@ -60,6 +60,7 @@ interface BookingWizardProps {
     sportCategoryId: string;
     splitPlayers?: number;
     organizerPlays?: boolean;
+    organizerFee?: number;
   }) => void;
   allowedSports?: string[];
   courtPrice: number;
@@ -118,6 +119,7 @@ export function BookingWizard({
   const [paymentType, setPaymentType] = useState<BookingPaymentType>("single");
   const [splitPlayers, setSplitPlayers] = useState(6);
   const [submitting, setSubmitting] = useState(false);
+  const [organizerFee, setOrganizerFee] = useState(0);
 
   // Fetch sport categories from database, filtered by preferred sports
   const { data: allSportCategories = [], isLoading: loadingSports } = useSportCategories();
@@ -152,6 +154,7 @@ export function BookingWizard({
       setSelectedSportCategoryId("");
       setPaymentType("single");
       setSplitPlayers(6);
+      setOrganizerFee(0);
       fetchUserGroups();
     }
   }, [open]);
@@ -257,7 +260,8 @@ export function BookingWizard({
           equipment: selectedEquipment,
           sportCategoryId: selectedSportCategoryId,
           splitPlayers: paymentType === "split" ? splitPlayers : undefined,
-          organizerPlays: true, // new groups default to organizer plays
+          organizerPlays: true,
+          organizerFee: organizerFee > 0 ? organizerFee : undefined,
         });
       } else {
         // Find the selected group to read organizer_plays
@@ -270,6 +274,7 @@ export function BookingWizard({
           sportCategoryId: selectedSportCategoryId,
           splitPlayers: paymentType === "split" ? splitPlayers : undefined,
           organizerPlays: (selectedGroup as any)?.organizer_plays !== false,
+          organizerFee: organizerFee > 0 ? organizerFee : undefined,
         });
       }
     } catch (error: any) {
@@ -656,6 +661,33 @@ export function BookingWizard({
               }
                 </div>
             }
+
+              {/* Organizer Fee (optional) */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Organizer Fee (optional)
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={organizerFee || ""}
+                  placeholder="0.00"
+                  onChange={(e) => setOrganizerFee(Math.max(0, Number(e.target.value) || 0))}
+                  className="h-12"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Add a fee to earn for organizing this session. This amount is included in the player's payment and paid out to you after the session is confirmed.
+                </p>
+                {organizerFee > 0 && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                    <p className="text-sm text-primary font-medium">
+                      You'll receive ${organizerFee.toFixed(2)} after the session is confirmed
+                    </p>
+                  </div>
+                )}
+              </div>
 
               {/* Group info */}
               {selectedGroupId && selectedGroupId !== "new" &&
