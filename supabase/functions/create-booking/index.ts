@@ -212,6 +212,7 @@ serve(async (req) => {
           service_fee_total: serviceFee,
           total_charge: totalAmount,
           price_per_player: splitPricePerPlayer + serviceFee,
+          organizer_fee_cents: organizerFeeCents,
           booking_details: {
             groupId,
             courtId,
@@ -227,6 +228,8 @@ serve(async (req) => {
             courtPrice: courtAmountWithEquipment,
             holdId: holdId || null,
             organizerPlays,
+            organizerFeeCents,
+            organizerUserId: group.organizer_id,
           },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
