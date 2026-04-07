@@ -99,11 +99,24 @@ serve(async (req) => {
       equipment = [],
       holdId,
       organizerPlays = true,
+      organizerFee = 0,
     } = await req.json();
 
     if (!groupId || !courtId || !sessionDate || !startTime || !durationMinutes || !paymentType || !sportCategoryId) {
       throw new Error("Missing required fields");
     }
+
+    // Validate organizer fee
+    const organizerFeeDollars = Math.max(0, Number(organizerFee) || 0);
+    const organizerFeeCents = Math.round(organizerFeeDollars * 100);
+
+    // Fetch group to get organizer_id
+    const { data: group, error: groupError } = await supabaseAdmin
+      .from("groups")
+      .select("organizer_id")
+      .eq("id", groupId)
+      .single();
+    if (groupError || !group) throw new Error("Group not found");
 
     const { data: court, error: courtError } = await supabaseAdmin
       .from("courts")
