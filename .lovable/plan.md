@@ -1,62 +1,111 @@
 
 
-## Problem
+# Organizer Fee + Automatic Payout (Normal Bookings Only)
 
-The `stripe-webhook` function returns `{"received": false, "error": "Webhook event processing failed"}` but **without** the `errorName`/`errorMessage`/`errorDetails` fields that are present in the current code (lines 84-92). Combined with **zero logs** (not even the "Webhook event received" log on line 62), this proves the live function is running an **older version** — the recent deployments are not taking effect.
+## Overview
 
-## Root Cause
+Allow session organizers to optionally earn a fee per session. The organizer fee is collected as part of the single Stripe charge from the player, then automatically paid out to the organizer's Stripe Connect account once the session is confirmed.
 
-The deployed function code does not match what's in the repo. This explains every symptom:
-- Old code has the generic error response without diagnostic fields
-- Old code may be crashing in a handler that was since refactored
-- No logs appear because the old code path may not log before throwing
+## Technical Details
 
-## Solution: Force parity with a version marker + top-level mega try-catch
+### 1. Database Migration
 
-### 1. Add a version constant at the top of the file
+**Extend `sessions` table:**
+- `organizer_fee_cents` (integer, default 0)
+- `organizer_user_id` (uuid, nullable, references auth.users)
+- `organizer_payout_status` (text, default 'NOT_APPLICABLE') — values: PENDING, PAID, NOT_APPLICABLE, PENDING_SETUP
+- `organizer_payout_amount_cents` (integer, default 0)
+- `organizer_stripe_transfer_id` (text, nullable)
 
-```typescript
-const WEBHOOK_VERSION = "2026-04-02-v1";
+**Extend `payments` table:**
+- `organizer_fee_cents` (integer, nullable) — snapshot of organizer fee for this payment
+
+**Index:**
+- `CREATE INDEX idx_sessions_organizer_payout ON sessions(organizer_payout_status) WHERE organizer_payout_status = 'PENDING'`
+
+### 2. Update `_shared/feeCalc.ts`
+
+Add `organizerFeeCents` to `GrossUpInput` (optional, default 0). Update the gross-up formula:
+
+```
+T = ceil((courtAmount + organizerFee + platformFee + stripeFixed) / (1 - stripePercent))
 ```
 
-Include this in **every** response (200 and 500) so you can verify in Stripe dashboard that the new code is actually running.
+The `application_fee_amount` becomes `serviceFeeTotalCents` (which now includes organizer fee + platform fee + stripe coverage). Court still receives `courtAmount` via destination charge.
 
-### 2. Wrap the entire `Deno.serve` callback in a top-level try-catch
+### 3. Update `create-booking` Edge Function
 
-Right now, if anything throws before the inner try-catch (e.g., `req.text()`, `constructEventAsync`, `createClient`), it bypasses the diagnostic error handler. Add an outer try-catch that returns the version and error:
+Accept optional `organizerFee` input (number, dollars). Store `organizer_fee_cents`, `organizer_user_id` (from the group's organizer_id), and `organizer_payout_status` on session insert. Pass organizer fee info in the deferred response metadata so `create-payment` can use it.
 
-```typescript
-Deno.serve(async (req) => {
-  try {
-    // ... all existing code ...
-  } catch (outerErr) {
-    return new Response(JSON.stringify({
-      received: false,
-      error: "Unhandled top-level error",
-      version: WEBHOOK_VERSION,
-      message: outerErr?.message,
-      stack: outerErr?.stack,
-    }), { status: 500, headers: { "Content-Type": "application/json" } });
-  }
-});
-```
+### 4. Update `create-payment` Edge Function
 
-### 3. Add version to both the 200 and 500 responses
+- Read `organizer_fee_cents` from the session record
+- Include organizer fee in gross-up calculation: `courtAmountCents` stays the same for the court, but the application_fee_amount now includes organizer fee
+- Updated Stripe checkout: `application_fee_amount = platformFeeCents + organizerFeeCents + stripeFeeCoverageCents` (platform keeps platform fee + organizer fee; organizer is paid later from platform balance)
+- Add `organizer_fee_cents` to metadata and to payment record
+- For deferred flow: same adjustments
 
-- 200: `{ received: true, duplicate: ..., version: WEBHOOK_VERSION }`
-- 500: `{ received: false, error: ..., version: WEBHOOK_VERSION, errorName: ..., errorMessage: ... }`
+### 5. Update `stripe-webhook`
 
-### 4. Deploy and verify
+- Persist `organizer_fee_cents` on payment record from metadata
+- No organizer payout here (just record keeping)
 
-After deploying, trigger a test payment. Check the Stripe webhook response for the `version` field:
-- If `version` is present → the new code is running, and you can see the actual error
-- If `version` is absent → the deployment pipeline is broken and needs investigation outside of code changes
+### 6. Create `process-organizer-payout` Edge Function
 
-### Files to change
+New edge function triggered after session confirmation (called from webhook/payout-session flow):
+
+1. Query sessions where `organizer_payout_status = 'PENDING'` and session is confirmed
+2. Filter: only normal bookings (exclude quick challenges by checking session exists in sessions table with group_id)
+3. Look up organizer's `stripe_account_id` from their profile
+4. If no Stripe account: set status to `PENDING_SETUP`, skip
+5. Use `transferring_at`-style claim pattern for idempotency
+6. `stripe.transfers.create({ amount: organizer_fee_cents, destination: organizer_stripe_account_id })`
+7. Update session: `organizer_payout_status = 'PAID'`, store transfer ID
+
+### 7. Integration Points
+
+- After `payout-session` runs (court payout), also call `process-organizer-payout` for the same session
+- Add the call in `triggerPayout` helper used by create-payment and stripe-webhook
+- Also callable as standalone for retry/cron
+
+### 8. Frontend Changes (Thin Client)
+
+**BookingWizard (Step 3 - Payment):**
+- Add optional numeric input: "Organizer fee per player (optional)" — only visible when payment type is selected
+- Pass `organizerFee` in the `onConfirm` callback
+
+**BookingWizardProps / CourtDetail.tsx:**
+- Thread `organizerFee` through to `create-booking` call
+
+**Profile / Settings:**
+- If organizer has sessions with `PENDING_SETUP`, show alert: "Connect Stripe to receive organizer payouts" linking to Stripe Connect setup
+
+### 9. Translation Updates
+
+Add entries in `en/manager.json` and `pt/manager.json` for organizer fee labels.
+
+### 10. Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/stripe-webhook/index.ts` | Add `WEBHOOK_VERSION` constant, outer try-catch around entire handler, include version in all responses |
+| `supabase/migrations/new.sql` | Add columns, index |
+| `supabase/functions/_shared/feeCalc.ts` | Add organizerFeeCents to gross-up |
+| `supabase/functions/create-booking/index.ts` | Accept & store organizer fee |
+| `supabase/functions/create-payment/index.ts` | Include organizer fee in charge |
+| `supabase/functions/stripe-webhook/index.ts` | Persist organizer_fee_cents |
+| `supabase/functions/process-organizer-payout/index.ts` | New: automated payout |
+| `supabase/functions/payout-session/index.ts` | Trigger organizer payout after court payout |
+| `src/components/booking/BookingWizard.tsx` | Add organizer fee input |
+| `src/pages/CourtDetail.tsx` | Thread organizerFee to create-booking |
+| `src/i18n/locales/en/manager.json` | New strings |
+| `src/i18n/locales/pt/manager.json` | New strings |
 
-This is a small, targeted change (< 20 lines modified) with zero risk to payment logic.
+### Safety Guarantees
+
+- Quick challenge flows completely untouched
+- Single Stripe charge per player
+- Court paid via destination charge (automatic)
+- Organizer fee held by platform, then transferred via `stripe.transfers.create`
+- No double Stripe fees (organizer fee included in single gross-up)
+- Idempotent payout with claim pattern
 
