@@ -427,6 +427,8 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
       equipment: equipmentItems, courtCapacity: courtCapacity || court.capacity,
       courtPrice: fullCourtPriceDollars, holdId,
       organizerPlays,
+      organizerFeeCents,
+      organizerUserId,
     });
 
     await supabaseAdmin.from("payments").insert({
@@ -469,11 +471,13 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
   }
 
   // --- STRIPE CARD PAYMENT for deferred flow ---
+  const deferredOrganizerFeeCents = Number(organizerFeeCents) || 0;
   const grossUp = calculateGrossUp({
     courtAmountCents: remainingCourtAmountCents,
     platformFeeCents,
     stripePercent,
     stripeFixedCents,
+    organizerFeeCents: deferredOrganizerFeeCents,
   });
   const { serviceFeeTotalCents, stripeFeeCoverageCents, totalChargeCents, grossTotalCents } = grossUp;
 
@@ -537,6 +541,8 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
       equipment_json: JSON.stringify(equipmentItems),
       recipient_cents: remainingCourtAmountCents.toString(),
       platform_fee_cents: platformFeeCents.toString(),
+      organizer_fee_cents: deferredOrganizerFeeCents.toString(),
+      organizer_user_id: organizerUserId || "",
       stripe_percent: stripePercent.toString(),
       stripe_fixed_cents: stripeFixedCents.toString(),
       gross_total_cents: grossTotalCents.toString(),
