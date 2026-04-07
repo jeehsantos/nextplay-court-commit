@@ -60,6 +60,8 @@ serve(async (req) => {
       throw new Error("Session not found");
     }
 
+    const sessionOrganizerFeeCents = Number(session.organizer_fee_cents || 0);
+
     const court = session.courts;
     const venue = court?.venues;
     if (!court || !venue) {
@@ -215,6 +217,7 @@ serve(async (req) => {
       platformFeeCents,
       stripePercent,
       stripeFixedCents,
+      organizerFeeCents: sessionOrganizerFeeCents,
     });
     const { serviceFeeTotalCents, stripeFeeCoverageCents, totalChargeCents, grossTotalCents } = grossUp;
 
@@ -264,6 +267,7 @@ serve(async (req) => {
         user_id: user.id,
         recipient_cents: remainingCourtAmountCents.toString(),
         platform_fee_cents: platformFeeCents.toString(),
+        organizer_fee_cents: sessionOrganizerFeeCents.toString(),
         stripe_percent: stripePercent.toString(),
         stripe_fixed_cents: stripeFixedCents.toString(),
         gross_total_cents: grossTotalCents.toString(),
@@ -306,6 +310,7 @@ serve(async (req) => {
         platform_fee: platformFeeDollars,
         service_fee: serviceFeeTotalCents / 100,
         court_amount: remainingCourtAmountCents / 100,
+        organizer_fee_cents: sessionOrganizerFeeCents,
       }, { onConflict: "session_id,user_id" });
 
     return new Response(JSON.stringify({
