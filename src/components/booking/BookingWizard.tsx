@@ -60,6 +60,7 @@ interface BookingWizardProps {
     sportCategoryId: string;
     splitPlayers?: number;
     organizerPlays?: boolean;
+    organizerFee?: number;
   }) => void;
   allowedSports?: string[];
   courtPrice: number;
@@ -118,6 +119,7 @@ export function BookingWizard({
   const [paymentType, setPaymentType] = useState<BookingPaymentType>("single");
   const [splitPlayers, setSplitPlayers] = useState(6);
   const [submitting, setSubmitting] = useState(false);
+  const [organizerFee, setOrganizerFee] = useState(0);
 
   // Fetch sport categories from database, filtered by preferred sports
   const { data: allSportCategories = [], isLoading: loadingSports } = useSportCategories();
@@ -152,6 +154,7 @@ export function BookingWizard({
       setSelectedSportCategoryId("");
       setPaymentType("single");
       setSplitPlayers(6);
+      setOrganizerFee(0);
       fetchUserGroups();
     }
   }, [open]);
@@ -257,7 +260,8 @@ export function BookingWizard({
           equipment: selectedEquipment,
           sportCategoryId: selectedSportCategoryId,
           splitPlayers: paymentType === "split" ? splitPlayers : undefined,
-          organizerPlays: true, // new groups default to organizer plays
+          organizerPlays: true,
+          organizerFee: organizerFee > 0 ? organizerFee : undefined,
         });
       } else {
         // Find the selected group to read organizer_plays
@@ -270,6 +274,7 @@ export function BookingWizard({
           sportCategoryId: selectedSportCategoryId,
           splitPlayers: paymentType === "split" ? splitPlayers : undefined,
           organizerPlays: (selectedGroup as any)?.organizer_plays !== false,
+          organizerFee: organizerFee > 0 ? organizerFee : undefined,
         });
       }
     } catch (error: any) {

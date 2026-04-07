@@ -693,6 +693,9 @@ async function handleDeferredSessionPayment(
         state: "protected",
         payment_type: paymentType,
         sport_category_id: sportCategoryId || null,
+        organizer_fee_cents: parseInt(metadata.organizer_fee_cents || "0"),
+        organizer_user_id: metadata.organizer_user_id || null,
+        organizer_payout_status: parseInt(metadata.organizer_fee_cents || "0") > 0 ? "PENDING" : "NOT_APPLICABLE",
       })
       .select("id")
       .single();
