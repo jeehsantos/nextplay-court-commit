@@ -715,14 +715,18 @@ async function applyHeldLiabilities(supabaseAdmin: any, userId: string, newSessi
 }
 
 async function triggerPayout(sessionId: string) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  // Trigger court payout
   try {
     const payoutResponse = await fetch(
-      `${Deno.env.get("SUPABASE_URL")}/functions/v1/payout-session`,
+      `${supabaseUrl}/functions/v1/payout-session`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          Authorization: `Bearer ${serviceKey}`,
         },
         body: JSON.stringify({ sessionId }),
       }
@@ -733,5 +737,19 @@ async function triggerPayout(sessionId: string) {
     }
   } catch (err) {
     console.error("Payout call error (non-fatal):", err);
+  }
+
+  // Trigger organizer payout (fire-and-forget)
+  try {
+    fetch(`${supabaseUrl}/functions/v1/process-organizer-payout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ sessionId }),
+    }).catch((e) => console.error("Organizer payout call error (non-fatal):", e));
+  } catch (err) {
+    console.error("Organizer payout trigger error (non-fatal):", err);
   }
 }
