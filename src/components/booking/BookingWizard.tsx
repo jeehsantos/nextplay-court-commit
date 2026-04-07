@@ -662,6 +662,33 @@ export function BookingWizard({
                 </div>
             }
 
+              {/* Organizer Fee (optional) */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Organizer Fee (optional)
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={organizerFee || ""}
+                  placeholder="0.00"
+                  onChange={(e) => setOrganizerFee(Math.max(0, Number(e.target.value) || 0))}
+                  className="h-12"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Add a fee to earn for organizing this session. This amount is included in the player's payment and paid out to you after the session is confirmed.
+                </p>
+                {organizerFee > 0 && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                    <p className="text-sm text-primary font-medium">
+                      You'll receive ${organizerFee.toFixed(2)} after the session is confirmed
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Group info */}
               {selectedGroupId && selectedGroupId !== "new" &&
             <div className="text-sm text-muted-foreground">
