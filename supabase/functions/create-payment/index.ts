@@ -619,6 +619,9 @@ async function createDeferredRecords(supabaseAdmin: any, details: any): Promise<
       state: "protected",
       payment_type: details.paymentType || "single",
       sport_category_id: details.sportCategoryId,
+      organizer_fee_cents: details.organizerFeeCents || 0,
+      organizer_user_id: details.organizerUserId || null,
+      organizer_payout_status: (details.organizerFeeCents || 0) > 0 ? "PENDING" : "NOT_APPLICABLE",
     })
     .select("id")
     .single();
