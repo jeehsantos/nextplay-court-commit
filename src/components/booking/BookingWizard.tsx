@@ -125,6 +125,7 @@ export function BookingWizard({
   // Fetch sport categories from database, filtered by preferred sports
   const { data: allSportCategories = [], isLoading: loadingSports } = useSportCategories();
   const { preferredSports } = useUserProfile();
+  const { isConnected: organizerStripeConnected } = useOrganizerStripeStatus();
 
   const sportCategories = useMemo(() => {
     // Filter by court's allowed sports first
