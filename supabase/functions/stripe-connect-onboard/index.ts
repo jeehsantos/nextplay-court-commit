@@ -23,7 +23,7 @@ serve(async (req) => {
   );
 
   try {
-    const { venueId, origin: requestOrigin } = await req.json();
+    const { venueId, origin: requestOrigin, returnPath } = await req.json();
 
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
@@ -147,10 +147,11 @@ serve(async (req) => {
     }
 
     // Create an account link for onboarding
+    const basePath = returnPath || "/manager/settings";
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: `${origin}/manager/settings?refresh=true`,
-      return_url: `${origin}/manager/settings?success=true`,
+      refresh_url: `${origin}${basePath}?refresh=true`,
+      return_url: `${origin}${basePath}?success=true`,
       type: "account_onboarding",
     });
 

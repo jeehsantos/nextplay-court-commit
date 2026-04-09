@@ -78,5 +78,15 @@
   "deleteConfirmBtn": "Yes, delete my account",
   "deleteConfirmCancel": "Cancel",
   "accountDeleted": "Account deleted",
-  "accountDeletedDesc": "Your account has been successfully deleted."
+  "accountDeletedDesc": "Your account has been successfully deleted.",
+  "organizerPayouts": "Organizer Payouts",
+  "organizerPayoutsDesc": "Receive fees for organizing sessions",
+  "stripeConnected": "Connected",
+  "stripeNotConnected": "Not Connected",
+  "connectStripe": "Connect Stripe",
+  "connectStripeDesc": "Connect your Stripe account to receive organizer fee payouts automatically after sessions are confirmed.",
+  "organizerPayoutNote": "Once connected, your organizer fees will be paid out automatically after each session is confirmed.",
+  "connectingStripe": "Connecting...",
+  "stripeConnectError": "Failed to start Stripe setup. Please try again.",
+  "organizerFeeWarning": "You need to connect your Stripe account in your Profile to receive organizer payouts."
 }
