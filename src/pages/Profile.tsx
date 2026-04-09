@@ -39,6 +39,7 @@ import {
   CheckCircle2,
   XCircle,
   Archive,
+  Banknote,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -50,6 +51,7 @@ import { useUserCredits } from "@/hooks/useUserCredits";
 import { CreditsDisplay } from "@/components/profile/CreditsDisplay";
 import { ReferralSection } from "@/components/profile/ReferralSection";
 import { NationalityCombobox } from "@/components/ui/nationality-combobox";
+import { useOrganizerStripeStatus } from "@/hooks/useOrganizerStripeStatus";
 
 interface ProfileData {
   full_name: string;
@@ -75,12 +77,16 @@ export default function Profile() {
   const [exportingData, setExportingData] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [connectingStripe, setConnectingStripe] = useState(false);
   
   // Fetch sports from database - NO FALLBACKS
   const { data: sportCategories = [], isLoading: loadingSports } = useSportCategories();
   
   // Fetch user credits
   const { balance: credits, loading: loadingCredits } = useUserCredits();
+
+  // Organizer Stripe status
+  const { isOrganizer, isConnected: stripeConnected, detailsSubmitted, isLoading: stripeStatusLoading } = useOrganizerStripeStatus();
 
   // Profile stats
   const [gamesPlayed, setGamesPlayed] = useState<number>(0);
@@ -360,6 +366,27 @@ export default function Profile() {
     }));
   };
 
+  const handleConnectStripe = async () => {
+    setConnectingStripe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("stripe-connect-onboard", {
+        body: { venueId: null, returnPath: "/profile", origin: window.location.origin },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      toast({
+        title: t("profileError"),
+        description: t("stripeConnectError"),
+        variant: "destructive",
+      });
+    } finally {
+      setConnectingStripe(false);
+    }
+  };
+
   if (isLoading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -591,6 +618,75 @@ export default function Profile() {
               </div>
               <ChevronDown className="h-5 w-5 text-muted-foreground rotate-[-90deg]" />
             </button>
+
+            {/* Organizer Payouts - only visible for group organizers */}
+            {isOrganizer && (
+              <Collapsible
+                open={expandedSections.includes("organizer-payouts")}
+                onOpenChange={() => toggleSection("organizer-payouts")}
+              >
+                <CollapsibleTrigger asChild>
+                  <button className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors border-b border-border">
+                    <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                      <Banknote className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-sm">{t("organizerPayouts")}</p>
+                      <p className="text-xs text-muted-foreground">{t("organizerPayoutsDesc")}</p>
+                    </div>
+                    <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${
+                      expandedSections.includes("organizer-payouts") ? 'rotate-180' : ''
+                    }`} />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-4 pb-4 pt-2 space-y-4 border-b border-border">
+                  {stripeStatusLoading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Loading...</span>
+                    </div>
+                  ) : detailsSubmitted ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800">
+                          {t("stripeConnected")}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {t("organizerPayoutNote")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <XCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                        <Badge variant="outline" className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
+                          {t("stripeNotConnected")}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {t("connectStripeDesc")}
+                      </p>
+                      <Button
+                        onClick={handleConnectStripe}
+                        disabled={connectingStripe}
+                        size="sm"
+                      >
+                        {connectingStripe ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            {t("connectingStripe")}
+                          </>
+                        ) : (
+                          t("connectStripe")
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
             {/* Privacy & Security */}
             <Collapsible 
