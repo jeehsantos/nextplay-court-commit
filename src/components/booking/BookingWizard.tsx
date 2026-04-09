@@ -22,6 +22,7 @@ import { PaymentTypeSelector } from "@/components/booking/PaymentTypeSelector";
 import { EquipmentSelector, type SelectedEquipment } from "@/components/booking/EquipmentSelector";
 import { useSportCategories } from "@/hooks/useSportCategories";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useOrganizerStripeStatus } from "@/hooks/useOrganizerStripeStatus";
 import { usePlatformFee } from "@/hooks/usePlatformFee";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
