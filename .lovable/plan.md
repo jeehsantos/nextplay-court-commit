@@ -1,111 +1,61 @@
 
 
-# Organizer Fee + Automatic Payout (Normal Bookings Only)
+# Organizer Stripe Connect Setup in Player Profile
 
 ## Overview
 
-Allow session organizers to optionally earn a fee per session. The organizer fee is collected as part of the single Stripe charge from the player, then automatically paid out to the organizer's Stripe Connect account once the session is confirmed.
+Add a Stripe Connect section to the player Profile page, visible only to users who are organizers of active groups. This section lets organizers connect their Stripe account to receive organizer fee payouts. Additionally, validate in the BookingWizard that if an organizer fee > 0, the organizer has a connected Stripe account — otherwise show a warning.
 
 ## Technical Details
 
-### 1. Database Migration
+### 1. Update `stripe-connect-onboard` Edge Function
 
-**Extend `sessions` table:**
-- `organizer_fee_cents` (integer, default 0)
-- `organizer_user_id` (uuid, nullable, references auth.users)
-- `organizer_payout_status` (text, default 'NOT_APPLICABLE') — values: PENDING, PAID, NOT_APPLICABLE, PENDING_SETUP
-- `organizer_payout_amount_cents` (integer, default 0)
-- `organizer_stripe_transfer_id` (text, nullable)
+The return URL currently hardcodes `/manager/settings`. Add support for a `returnPath` parameter so the organizer flow redirects back to `/profile` instead.
 
-**Extend `payments` table:**
-- `organizer_fee_cents` (integer, nullable) — snapshot of organizer fee for this payment
+- Accept optional `returnPath` in request body (default: `/manager/settings`)
+- Use it for `refresh_url` and `return_url` in `stripe.accountLinks.create`
 
-**Index:**
-- `CREATE INDEX idx_sessions_organizer_payout ON sessions(organizer_payout_status) WHERE organizer_payout_status = 'PENDING'`
+### 2. Create `useOrganizerStripeStatus` Hook
 
-### 2. Update `_shared/feeCalc.ts`
+New hook: `src/hooks/useOrganizerStripeStatus.ts`
 
-Add `organizerFeeCents` to `GrossUpInput` (optional, default 0). Update the gross-up formula:
+- Uses `useUserGroups()` to check if user is an organizer (`isOrganizer`)
+- If organizer, calls `stripe-connect-status` edge function with `venueId: null` (user-level check)
+- Returns `{ isOrganizer, isConnected, detailsSubmitted, isLoading }`
 
-```
-T = ceil((courtAmount + organizerFee + platformFee + stripeFixed) / (1 - stripePercent))
-```
+### 3. Update Profile Page (`src/pages/Profile.tsx`)
 
-The `application_fee_amount` becomes `serviceFeeTotalCents` (which now includes organizer fee + platform fee + stripe coverage). Court still receives `courtAmount` via destination charge.
+Add a new collapsible section "Organizer Payouts" between Preferences and Data Management, conditionally rendered when `isOrganizer === true`:
 
-### 3. Update `create-booking` Edge Function
+- Shows Stripe Connect status (connected/not connected)
+- "Connect Stripe" button if not connected → calls `stripe-connect-onboard` with `venueId: null, returnPath: '/profile'`
+- If connected, shows green badge "Connected" and a note about automatic payouts
 
-Accept optional `organizerFee` input (number, dollars). Store `organizer_fee_cents`, `organizer_user_id` (from the group's organizer_id), and `organizer_payout_status` on session insert. Pass organizer fee info in the deferred response metadata so `create-payment` can use it.
+### 4. Update BookingWizard Validation
 
-### 4. Update `create-payment` Edge Function
+In `BookingWizard.tsx`, when `organizerFee > 0`:
 
-- Read `organizer_fee_cents` from the session record
-- Include organizer fee in gross-up calculation: `courtAmountCents` stays the same for the court, but the application_fee_amount now includes organizer fee
-- Updated Stripe checkout: `application_fee_amount = platformFeeCents + organizerFeeCents + stripeFeeCoverageCents` (platform keeps platform fee + organizer fee; organizer is paid later from platform balance)
-- Add `organizer_fee_cents` to metadata and to payment record
-- For deferred flow: same adjustments
+- Check organizer's `stripe_account_id` from their profile (already loaded via `useUserProfile`)
+- If no Stripe account, show a warning alert below the fee input: "You need to connect your Stripe account in your Profile to receive organizer payouts"
+- Still allow booking (payout will be marked `PENDING_SETUP`) but make the warning prominent
 
-### 5. Update `stripe-webhook`
+### 5. Translation Updates
 
-- Persist `organizer_fee_cents` on payment record from metadata
-- No organizer payout here (just record keeping)
+Add new keys to `en/profile.json` and `pt/profile.json`:
 
-### 6. Create `process-organizer-payout` Edge Function
+- `organizerPayouts` / `organizerPayoutsDesc`
+- `stripeConnected` / `stripeNotConnected`
+- `connectStripe` / `connectStripeDesc`
+- `organizerPayoutNote`
 
-New edge function triggered after session confirmation (called from webhook/payout-session flow):
-
-1. Query sessions where `organizer_payout_status = 'PENDING'` and session is confirmed
-2. Filter: only normal bookings (exclude quick challenges by checking session exists in sessions table with group_id)
-3. Look up organizer's `stripe_account_id` from their profile
-4. If no Stripe account: set status to `PENDING_SETUP`, skip
-5. Use `transferring_at`-style claim pattern for idempotency
-6. `stripe.transfers.create({ amount: organizer_fee_cents, destination: organizer_stripe_account_id })`
-7. Update session: `organizer_payout_status = 'PAID'`, store transfer ID
-
-### 7. Integration Points
-
-- After `payout-session` runs (court payout), also call `process-organizer-payout` for the same session
-- Add the call in `triggerPayout` helper used by create-payment and stripe-webhook
-- Also callable as standalone for retry/cron
-
-### 8. Frontend Changes (Thin Client)
-
-**BookingWizard (Step 3 - Payment):**
-- Add optional numeric input: "Organizer fee per player (optional)" — only visible when payment type is selected
-- Pass `organizerFee` in the `onConfirm` callback
-
-**BookingWizardProps / CourtDetail.tsx:**
-- Thread `organizerFee` through to `create-booking` call
-
-**Profile / Settings:**
-- If organizer has sessions with `PENDING_SETUP`, show alert: "Connect Stripe to receive organizer payouts" linking to Stripe Connect setup
-
-### 9. Translation Updates
-
-Add entries in `en/manager.json` and `pt/manager.json` for organizer fee labels.
-
-### 10. Files Changed
+### 6. Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/migrations/new.sql` | Add columns, index |
-| `supabase/functions/_shared/feeCalc.ts` | Add organizerFeeCents to gross-up |
-| `supabase/functions/create-booking/index.ts` | Accept & store organizer fee |
-| `supabase/functions/create-payment/index.ts` | Include organizer fee in charge |
-| `supabase/functions/stripe-webhook/index.ts` | Persist organizer_fee_cents |
-| `supabase/functions/process-organizer-payout/index.ts` | New: automated payout |
-| `supabase/functions/payout-session/index.ts` | Trigger organizer payout after court payout |
-| `src/components/booking/BookingWizard.tsx` | Add organizer fee input |
-| `src/pages/CourtDetail.tsx` | Thread organizerFee to create-booking |
-| `src/i18n/locales/en/manager.json` | New strings |
-| `src/i18n/locales/pt/manager.json` | New strings |
-
-### Safety Guarantees
-
-- Quick challenge flows completely untouched
-- Single Stripe charge per player
-- Court paid via destination charge (automatic)
-- Organizer fee held by platform, then transferred via `stripe.transfers.create`
-- No double Stripe fees (organizer fee included in single gross-up)
-- Idempotent payout with claim pattern
+| `src/hooks/useOrganizerStripeStatus.ts` | New hook |
+| `src/pages/Profile.tsx` | Add Organizer Payouts section |
+| `src/components/booking/BookingWizard.tsx` | Add Stripe warning when fee > 0 and no account |
+| `supabase/functions/stripe-connect-onboard/index.ts` | Support `returnPath` param |
+| `src/i18n/locales/en/profile.json` | New translation keys |
+| `src/i18n/locales/pt/profile.json` | New translation keys |
 
