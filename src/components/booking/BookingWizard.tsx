@@ -683,10 +683,20 @@ export function BookingWizard({
                   Add a fee to earn for organizing this session. This amount is included in the player's payment and paid out to you after the session is confirmed.
                 </p>
                 {organizerFee > 0 && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                    <p className="text-sm text-primary font-medium">
-                      You'll receive ${organizerFee.toFixed(2)} after the session is confirmed
-                    </p>
+                  <div className="space-y-2">
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                      <p className="text-sm text-primary font-medium">
+                        You'll receive ${organizerFee.toFixed(2)} after the session is confirmed
+                      </p>
+                    </div>
+                    {!organizerStripeConnected && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-800 dark:text-amber-200">
+                          You need to connect your Stripe account in your Profile to receive organizer payouts.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
