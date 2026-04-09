@@ -366,6 +366,27 @@ export default function Profile() {
     }));
   };
 
+  const handleConnectStripe = async () => {
+    setConnectingStripe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("stripe-connect-onboard", {
+        body: { venueId: null, returnPath: "/profile", origin: window.location.origin },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      toast({
+        title: t("profileError"),
+        description: t("stripeConnectError"),
+        variant: "destructive",
+      });
+    } finally {
+      setConnectingStripe(false);
+    }
+  };
+
   if (isLoading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
