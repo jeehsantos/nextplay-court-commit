@@ -39,6 +39,7 @@ import {
   CheckCircle2,
   XCircle,
   Archive,
+  Banknote,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -50,6 +51,7 @@ import { useUserCredits } from "@/hooks/useUserCredits";
 import { CreditsDisplay } from "@/components/profile/CreditsDisplay";
 import { ReferralSection } from "@/components/profile/ReferralSection";
 import { NationalityCombobox } from "@/components/ui/nationality-combobox";
+import { useOrganizerStripeStatus } from "@/hooks/useOrganizerStripeStatus";
 
 interface ProfileData {
   full_name: string;
@@ -75,12 +77,16 @@ export default function Profile() {
   const [exportingData, setExportingData] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [connectingStripe, setConnectingStripe] = useState(false);
   
   // Fetch sports from database - NO FALLBACKS
   const { data: sportCategories = [], isLoading: loadingSports } = useSportCategories();
   
   // Fetch user credits
   const { balance: credits, loading: loadingCredits } = useUserCredits();
+
+  // Organizer Stripe status
+  const { isOrganizer, isConnected: stripeConnected, detailsSubmitted, isLoading: stripeStatusLoading } = useOrganizerStripeStatus();
 
   // Profile stats
   const [gamesPlayed, setGamesPlayed] = useState<number>(0);
