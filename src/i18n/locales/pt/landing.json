@@ -38,6 +38,17 @@
     "createAccount": "Criar Conta Grátis",
     "contactUs": "Fale Conosco"
   },
+  "demo": {
+    "tryDemo": "Testar Demo",
+    "chooseRole": "Escolha uma visualização",
+    "chooseRoleDesc": "Selecione qual experiência você quer explorar.",
+    "playerRole": "Jogador / Organizador",
+    "managerRole": "Gestor de Quadras",
+    "exitDemo": "Sair do Demo",
+    "demoBanner": "Modo Demo",
+    "playerView": "Visão do Jogador",
+    "managerView": "Visão do Gestor"
+  },
   "landingFooter": {
     "tagline": "O jeito mais esperto de reservar quadras e garantir seus jogos.",
     "location": "Auckland, Nova Zelândia",

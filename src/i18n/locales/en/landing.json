@@ -38,6 +38,17 @@
     "createAccount": "Create Free Account",
     "contactUs": "Contact Us"
   },
+  "demo": {
+    "tryDemo": "Try Demo",
+    "chooseRole": "Choose a demo view",
+    "chooseRoleDesc": "Select which experience you'd like to explore.",
+    "playerRole": "Player / Organizer",
+    "managerRole": "Court Manager",
+    "exitDemo": "Exit Demo",
+    "demoBanner": "Demo Mode",
+    "playerView": "Player View",
+    "managerView": "Court Manager View"
+  },
   "landingFooter": {
     "tagline": "The smarter way to book courts and guarantee games.",
     "location": "Auckland, New Zealand",
