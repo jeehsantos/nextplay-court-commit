@@ -8,12 +8,20 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MapPin, Clock, Users, DollarSign, Star, Trophy, CreditCard } from "lucide-react";
 import { demoCourts, demoGroups, demoGames, demoProfile } from "./demoData";
 
-function getStateColor(status: "protected" | "rescue" | "released") {
+function getStateColor(status: string) {
   switch (status) {
     case "protected": return "bg-blue-500/10 text-blue-600 border-blue-200";
     case "rescue": return "bg-amber-500/10 text-amber-600 border-amber-200";
     case "released": return "bg-red-500/10 text-red-600 border-red-200";
     default: return "bg-muted text-muted-foreground";
+  }
+}
+
+function getStateLabel(status: string) {
+  switch (status) {
+    case "protected": return "Confirmed";
+    case "rescue": return "Rescue Mode";
+    default: return status;
   }
 }
 
@@ -98,7 +106,7 @@ function PlayerContent() {
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-sm truncate">{game.groupName}</h3>
                           <Badge className={`${getStateColor(game.status)} text-[10px]`}>
-                            {game.status === "protected" ? "Confirmed" : game.status === "rescue" ? "Rescue Mode" : game.status}
+                            {getStateLabel(game.status)}
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">{game.sport}</p>
