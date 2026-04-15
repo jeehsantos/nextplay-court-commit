@@ -1,10 +1,11 @@
 import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, MapPin, Sparkles, Users } from "lucide-react";
+import { CheckCircle2, MapPin, Sparkles, Users, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSportCategories } from "@/hooks/useSportCategories";
 import { GuestNavbar } from "@/components/layout/GuestNavbar";
 import { useTranslation } from "react-i18next";
+import { DemoRolePickerDialog } from "@/demo/DemoRolePickerDialog";
 
 const Landing = forwardRef<HTMLDivElement>((_props, ref) => {
   const { data: sportCategories = [] } = useSportCategories();
@@ -47,9 +48,12 @@ const Landing = forwardRef<HTMLDivElement>((_props, ref) => {
     { step: "3", title: t("howItWorks.managerStep3Title"), description: t("howItWorks.managerStep3Desc") },
   ];
 
+  const [demoOpen, setDemoOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <GuestNavbar />
+      <DemoRolePickerDialog open={demoOpen} onOpenChange={setDemoOpen} />
 
       <main className="pt-20">
         <section className="min-h-[calc(100dvh-5rem)] flex items-center overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100 dark:from-background dark:to-muted px-6 py-10 lg:py-8 xl:py-10 min-[1600px]:py-16">
@@ -87,6 +91,15 @@ const Landing = forwardRef<HTMLDivElement>((_props, ref) => {
                   </Button>
                 </Link>
               </div>
+
+              <Button
+                variant="ghost"
+                className="mt-3 h-11 gap-2 text-base font-medium text-muted-foreground hover:text-primary min-[1600px]:h-12 min-[1600px]:text-lg"
+                onClick={() => setDemoOpen(true)}
+              >
+                <Play className="h-4 w-4 min-[1600px]:h-5 min-[1600px]:w-5" />
+                {t("demo.tryDemo")}
+              </Button>
 
               <div className="mt-8 flex gap-8 lg:mt-10 xl:mt-12 min-[1600px]:mt-16">
                 <div>

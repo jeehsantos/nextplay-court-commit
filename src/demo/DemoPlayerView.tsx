@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MapPin, Clock, Users, DollarSign, Star, Trophy, CreditCard } from "lucide-react";
 import { demoCourts, demoGroups, demoGames, demoProfile } from "./demoData";
 
-function getStateColor(status: string) {
+function getStateColor(status: "protected" | "rescue" | "released") {
   switch (status) {
     case "protected": return "bg-blue-500/10 text-blue-600 border-blue-200";
     case "rescue": return "bg-amber-500/10 text-amber-600 border-amber-200";
