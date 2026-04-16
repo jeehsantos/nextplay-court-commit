@@ -502,7 +502,7 @@ export default function Discover() {
           currentPlayers: count || 0,
           minPlayers: session.min_players,
           maxPlayers: session.max_players,
-          state: session.state as DiscoverGame["state"],
+          state: session.state === "rescue" ? "rescue" : "open",
         });
       }
 
