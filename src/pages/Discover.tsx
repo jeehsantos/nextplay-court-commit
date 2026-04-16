@@ -416,6 +416,99 @@ export default function Discover() {
         });
       }
 
+      // Fetch sessions from public groups (upcoming, not cancelled)
+      const { data: publicSessions } = await supabase
+        .from("sessions")
+        .select(`
+          id,
+          session_date,
+          start_time,
+          court_price,
+          min_players,
+          max_players,
+          state,
+          is_cancelled,
+          payment_type,
+          groups!inner (
+            id,
+            name,
+            sport_category_id,
+            city,
+            is_public,
+            is_active,
+            sport_categories ( name, display_name, icon )
+          ),
+          courts (
+            name,
+            ground_type,
+            venues (
+              name,
+              city
+            )
+          )
+        `)
+        .eq("is_cancelled", false)
+        .eq("groups.is_public", true)
+        .eq("groups.is_active", true)
+        .gte("session_date", today)
+        .order("session_date", { ascending: true });
+
+      // Track IDs already added from rescue sessions
+      const addedSessionIds = new Set(rescueGamesData.map(g => g.id));
+
+      for (const session of (publicSessions || [])) {
+        // Skip if already added as rescue game
+        if (addedSessionIds.has(session.id)) continue;
+
+        // Check if current user is already in this session
+        const { data: existingPlayer } = await supabase
+          .from("session_players")
+          .select("id")
+          .eq("session_id", session.id)
+          .eq("user_id", user!.id)
+          .maybeSingle();
+
+        if (existingPlayer) continue;
+
+        const { count } = await supabase
+          .from("session_players")
+          .select("*", { count: "exact", head: true })
+          .eq("session_id", session.id);
+
+        const group = session.groups as {
+          name?: string;
+          sport_categories?: { name?: string; display_name?: string; icon?: string } | null;
+          city?: string;
+        } | null;
+        const court = session.courts as {
+          name?: string;
+          ground_type?: string;
+          venues?: { name?: string; city?: string } | null;
+        } | null;
+
+        const isFreeForPlayers = session.payment_type === "single";
+
+        rescueGamesData.push({
+          id: session.id,
+          groupName: group?.name || "Unknown Group",
+          sport: (group?.sport_categories?.name || "other") as SportType,
+          courtName: court?.name || "Court",
+          venueName: court?.venues?.name || "Venue",
+          city: court?.venues?.city || group?.city || "",
+          groundType: court?.ground_type || null,
+          date: new Date(session.session_date),
+          time: session.start_time.slice(0, 5),
+          price: isFreeForPlayers ? 0 : session.court_price / session.min_players,
+          currentPlayers: count || 0,
+          minPlayers: session.min_players,
+          maxPlayers: session.max_players,
+          state: session.state as DiscoverGame["state"],
+        });
+      }
+
+      // Sort all games by date
+      rescueGamesData.sort((a, b) => a.date.getTime() - b.date.getTime());
+
       setRescueGames(rescueGamesData);
 
       // Quick challenges are fetched separately via useQuickChallenges hook
