@@ -32,7 +32,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 type SportType = string;
 
-interface RescueGame {
+interface DiscoverGame {
   id: string;
   groupName: string;
   sport: SportType;
@@ -46,7 +46,7 @@ interface RescueGame {
   currentPlayers: number;
   minPlayers: number;
   maxPlayers: number;
-  state: "rescue";
+  state: "rescue" | "protected" | "pending" | "released";
 }
 
 export default function Discover() {
