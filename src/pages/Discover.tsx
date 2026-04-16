@@ -46,7 +46,7 @@ interface DiscoverGame {
   currentPlayers: number;
   minPlayers: number;
   maxPlayers: number;
-  state: "rescue" | "protected" | "pending" | "released";
+  state: "rescue" | "protected" | "pending" | "released" | "open";
 }
 
 export default function Discover() {
