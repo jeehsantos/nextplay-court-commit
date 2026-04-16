@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Unlock, Clock, CheckCircle, Shield } from "lucide-react";
+import { AlertTriangle, Unlock, Clock, CheckCircle, Shield, Users } from "lucide-react";
 
 const sessionBadgeVariants = cva(
   "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide font-display",
@@ -13,6 +13,7 @@ const sessionBadgeVariants = cva(
         rescue: "bg-warning/15 text-warning border border-warning/30",
         released: "bg-destructive/15 text-destructive border border-destructive/30",
         completed: "bg-primary/15 text-primary border border-primary/30",
+        open: "bg-primary/15 text-primary border border-primary/30",
       },
     },
     defaultVariants: {
@@ -35,6 +36,7 @@ const stateIcons: Record<SessionBadgeState, React.ComponentType<{ className?: st
   rescue: AlertTriangle,
   released: Unlock,
   completed: CheckCircle,
+  open: Users,
 };
 
 const stateLabels: Record<SessionBadgeState, string> = {
@@ -43,6 +45,7 @@ const stateLabels: Record<SessionBadgeState, string> = {
   rescue: "Featured",
   released: "Released",
   completed: "Completed",
+  open: "Open",
 };
 
 export function SessionBadge({

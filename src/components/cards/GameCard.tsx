@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import type { Database } from "@/integrations/supabase/types";
 
-type SessionState = "protected" | "pending" | "rescue" | "released";
+type SessionState = "protected" | "pending" | "rescue" | "released" | "open";
 type SportType = string;
 type SportCategory = Database["public"]["Tables"]["sport_categories"]["Row"];
 
