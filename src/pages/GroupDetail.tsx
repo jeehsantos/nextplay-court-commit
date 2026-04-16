@@ -833,7 +833,7 @@ export default function GroupDetail() {
                       {regularMembers.map((member) => (
                         <div
                           key={member.id}
-                          className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                          className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 overflow-hidden w-full"
                         >
                           <Avatar className="h-10 w-10">
                             <AvatarImage src={member.profile?.avatar_url || undefined} />
