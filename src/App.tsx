@@ -53,8 +53,6 @@ const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const VenueLanding = lazy(() => import("./pages/VenueLanding"));
 const VenueDirectory = lazy(() => import("./pages/VenueDirectory"));
 const ArchivedSessions = lazy(() => import("./pages/ArchivedSessions"));
-const DemoPlayerView = lazy(() => import("./demo/DemoPlayerView"));
-const DemoManagerView = lazy(() => import("./demo/DemoManagerView"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Cookies = lazy(() => import("./pages/Cookies"));
@@ -127,9 +125,6 @@ const App = () => (
                 {/* Public venue pages */}
                 <Route path="/venue" element={<VenueDirectory />} />
                 <Route path="/venue/:slug" element={<VenueLanding />} />
-                {/* Demo Routes */}
-                <Route path="/demo/player" element={<DemoPlayerView />} />
-                <Route path="/demo/manager" element={<DemoManagerView />} />
                 {/* User Routes */}
                 <Route path="/archived-sessions" element={<ArchivedSessions />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

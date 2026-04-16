@@ -1,105 +1,61 @@
 
 
-# Demo Mode for Platform Prospection
+# Organizer Stripe Connect Setup in Player Profile
 
 ## Overview
 
-Create a self-contained demo layer that renders static/mock data for each user role (Player/Organizer, Court Manager) without touching real data, auth, or existing components. A "Try Demo" button on the Landing page opens a role picker dialog, then redirects to dedicated demo routes that render purpose-built demo pages with hardcoded data.
-
-## Architecture
-
-```text
-Landing Page
-  └─ [Try Demo] button
-       └─ Dialog: "Player/Organizer" | "Court Manager"
-            ├─ Player → /demo/player (tabs: Courts, Groups, Games, Profile)
-            └─ Manager → /demo/manager (Dashboard with static stats)
-```
-
-Key principle: **zero changes to existing pages/hooks/components**. Demo pages are entirely new files that import only shared UI primitives (Card, Badge, Button, etc.) and render static data inline.
+Add a Stripe Connect section to the player Profile page, visible only to users who are organizers of active groups. This section lets organizers connect their Stripe account to receive organizer fee payouts. Additionally, validate in the BookingWizard that if an organizer fee > 0, the organizer has a connected Stripe account — otherwise show a warning.
 
 ## Technical Details
 
-### 1. Demo Data File
+### 1. Update `stripe-connect-onboard` Edge Function
 
-**`src/demo/demoData.ts`** — All mock records in one place:
+The return URL currently hardcodes `/manager/settings`. Add support for a `returnPath` parameter so the organizer flow redirects back to `/profile` instead.
 
-- `demoCourts`: 4-6 courts with venue info, photos (placeholder URLs), sports, prices
-- `demoGroups`: 2-3 groups with member counts, schedules
-- `demoGames`: 3-4 upcoming sessions with dates, players, status
-- `demoProfile`: A sample player profile (name, avatar, city, preferred sports, credits)
-- `demoDashboardStats`: Bookings count, revenue, utilization for manager view
-- `demoLiveCourts`: 3 courts with in-use/available/upcoming status
-- `demoUpcomingBookings`: 3-4 bookings with booker info, payment status
-- `demoWeeklyPerformance`: 7 days of revenue/bookings data
+- Accept optional `returnPath` in request body (default: `/manager/settings`)
+- Use it for `refresh_url` and `return_url` in `stripe.accountLinks.create`
 
-### 2. Demo Context
+### 2. Create `useOrganizerStripeStatus` Hook
 
-**`src/demo/DemoContext.tsx`** — React context providing:
-- `isDemoMode: boolean`
-- `demoRole: "player" | "manager" | null`
-- `exitDemo(): void` → navigates back to `/`
+New hook: `src/hooks/useOrganizerStripeStatus.ts`
 
-Used by demo pages to show an "Exit Demo" banner at the top.
+- Uses `useUserGroups()` to check if user is an organizer (`isOrganizer`)
+- If organizer, calls `stripe-connect-status` edge function with `venueId: null` (user-level check)
+- Returns `{ isOrganizer, isConnected, detailsSubmitted, isLoading }`
 
-### 3. Demo Pages
+### 3. Update Profile Page (`src/pages/Profile.tsx`)
 
-**`src/demo/DemoPlayerView.tsx`**
-- Renders a tabbed layout (Courts / Groups / Games / Profile) using existing UI components (Card, Badge, Tabs, Avatar, etc.)
-- Each tab maps over the static arrays from `demoData.ts`
-- Court cards show name, venue, sport badges, price — no click-through
-- Games tab shows upcoming/past mock sessions
-- Profile tab shows the mock profile with credits, preferences
-- Top banner: "Demo Mode — Player View" + [Exit Demo] button
+Add a new collapsible section "Organizer Payouts" between Preferences and Data Management, conditionally rendered when `isOrganizer === true`:
 
-**`src/demo/DemoManagerView.tsx`**
-- Reuses the existing `StatsCards`, `LiveCourtStatus`, `WeeklyPerformance`, `UpcomingBookings` dashboard components directly — they already accept data via props
-- Passes static mock data from `demoData.ts` as props with `loading={false}`
-- Wraps in a simplified layout (not ManagerLayout, to avoid auth checks)
-- Top banner: "Demo Mode — Court Manager View" + [Exit Demo] button
+- Shows Stripe Connect status (connected/not connected)
+- "Connect Stripe" button if not connected → calls `stripe-connect-onboard` with `venueId: null, returnPath: '/profile'`
+- If connected, shows green badge "Connected" and a note about automatic payouts
 
-**`src/demo/DemoRolePickerDialog.tsx`**
-- Modal dialog with two role cards (same style as RoleSelection)
-- On selection, navigates to `/demo/player` or `/demo/manager`
+### 4. Update BookingWizard Validation
 
-### 4. Landing Page Update
+In `BookingWizard.tsx`, when `organizerFee > 0`:
 
-**`src/pages/Landing.tsx`**
-- Add a "Try Demo" outline button next to existing CTAs in the hero section
-- On click, opens `DemoRolePickerDialog`
+- Check organizer's `stripe_account_id` from their profile (already loaded via `useUserProfile`)
+- If no Stripe account, show a warning alert below the fee input: "You need to connect your Stripe account in your Profile to receive organizer payouts"
+- Still allow booking (payout will be marked `PENDING_SETUP`) but make the warning prominent
 
-### 5. Routes
+### 5. Translation Updates
 
-**`src/App.tsx`**
-- Add two new routes (lazy loaded):
-  - `/demo/player` → `DemoPlayerView`
-  - `/demo/manager` → `DemoManagerView`
-- No auth protection on these routes
+Add new keys to `en/profile.json` and `pt/profile.json`:
 
-### 6. Translation Updates
+- `organizerPayouts` / `organizerPayoutsDesc`
+- `stripeConnected` / `stripeNotConnected`
+- `connectStripe` / `connectStripeDesc`
+- `organizerPayoutNote`
 
-Add demo-specific keys to `en/landing.json` and `pt/landing.json`:
-- `demo.tryDemo`, `demo.chooseRole`, `demo.playerRole`, `demo.managerRole`
-- `demo.exitDemo`, `demo.demoBanner`, `demo.playerView`, `demo.managerView`
-
-### 7. Files Changed
+### 6. Files Changed
 
 | File | Change |
 |------|--------|
-| `src/demo/demoData.ts` | New: all static mock data |
-| `src/demo/DemoContext.tsx` | New: demo mode context |
-| `src/demo/DemoPlayerView.tsx` | New: player demo page |
-| `src/demo/DemoManagerView.tsx` | New: manager demo page |
-| `src/demo/DemoRolePickerDialog.tsx` | New: role selection dialog |
-| `src/pages/Landing.tsx` | Add "Try Demo" button |
-| `src/App.tsx` | Add `/demo/*` routes |
-| `src/i18n/locales/en/landing.json` | Demo translation keys |
-| `src/i18n/locales/pt/landing.json` | Demo translation keys |
-
-### Safety
-
-- No database queries, no auth checks, no Supabase imports in demo pages
-- Existing pages/hooks/components remain completely untouched
-- Manager dashboard sub-components are reused safely since they accept data via props
-- Demo routes are public (no ProtectedRoute wrapper)
+| `src/hooks/useOrganizerStripeStatus.ts` | New hook |
+| `src/pages/Profile.tsx` | Add Organizer Payouts section |
+| `src/components/booking/BookingWizard.tsx` | Add Stripe warning when fee > 0 and no account |
+| `supabase/functions/stripe-connect-onboard/index.ts` | Support `returnPath` param |
+| `src/i18n/locales/en/profile.json` | New translation keys |
+| `src/i18n/locales/pt/profile.json` | New translation keys |
 
