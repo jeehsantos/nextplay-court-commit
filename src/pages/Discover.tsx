@@ -65,7 +65,7 @@ export default function Discover() {
   const [selectedCity, setSelectedCity] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [todayOnly, setTodayOnly] = useState(false);
-  const [rescueGames, setRescueGames] = useState<RescueGame[]>([]);
+  const [rescueGames, setRescueGames] = useState<DiscoverGame[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [quickGameModalOpen, setQuickGameModalOpen] = useState(false);
   const [selectedQuickChallengeId, setSelectedQuickChallengeId] = useState<string | null>(null);
@@ -365,7 +365,7 @@ export default function Discover() {
         .order("session_date", { ascending: true });
 
       // Get player counts for each session and filter out sessions user already joined
-      const rescueGamesData: RescueGame[] = [];
+      const rescueGamesData: DiscoverGame[] = [];
       
       for (const session of (rescueSessions || [])) {
         // Check if current user is already in this session
