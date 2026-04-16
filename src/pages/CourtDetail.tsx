@@ -1890,7 +1890,7 @@ export default function CourtDetail() {
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 px-4 py-2 rounded-full flex items-center gap-2">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 text-gray-900 px-4 py-2 rounded-full flex items-center gap-2">
                         <Expand className="h-4 w-4" />
                         <span className="text-sm font-medium">View photos</span>
                       </div>
