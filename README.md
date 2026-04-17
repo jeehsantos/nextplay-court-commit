@@ -1,4 +1,16 @@
-# Welcome to your Lovable project
+# NextPlay Court - Multi-Sport Booking Platform
+
+A comprehensive sports booking platform that connects players, venues, and communities across multiple sports.
+
+## 📚 Documentation
+
+Before making changes, please review:
+
+- **[Architecture Documentation](docs/ARCHITECTURE.md)** - System architecture, tech stack, and design patterns
+- **[Feature Inventory](docs/FEATURE_INVENTORY.md)** - Complete list of implemented features (avoid duplication!)
+- **[Product Roadmap](docs/ROADMAP.md)** - Future features and implementation phases
+- **[Lovable Best Practices](docs/LOVABLE_BEST_PRACTICES.md)** - Guidelines for working with Lovable AI
+- **[Playtomic Feature Analysis](docs/PLAYTOMIC_FEATURE_ANALYSIS.md)** - Competitive analysis and feature gaps
 
 ## Project info
 
