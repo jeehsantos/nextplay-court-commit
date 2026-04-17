@@ -1455,6 +1455,59 @@ export type Database = {
         }
         Relationships: []
       }
+      venue_api_keys: {
+        Row: {
+          allowed_origins: string[]
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          theme: Json
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          allowed_origins?: string[]
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          theme?: Json
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          allowed_origins?: string[]
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          theme?: Json
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_api_keys_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_date_overrides: {
         Row: {
           court_id: string
@@ -1695,6 +1748,54 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      widget_analytics: {
+        Row: {
+          api_key_id: string | null
+          created_at: string
+          event_data: Json
+          event_type: string
+          id: string
+          origin: string | null
+          user_agent: string | null
+          venue_id: string
+        }
+        Insert: {
+          api_key_id?: string | null
+          created_at?: string
+          event_data?: Json
+          event_type: string
+          id?: string
+          origin?: string | null
+          user_agent?: string | null
+          venue_id: string
+        }
+        Update: {
+          api_key_id?: string | null
+          created_at?: string
+          event_data?: Json
+          event_type?: string
+          id?: string
+          origin?: string | null
+          user_agent?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widget_analytics_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "venue_api_keys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "widget_analytics_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
