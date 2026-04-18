@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   Settings,
-  Package } from
+  Package,
+  Code2 } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
     { icon: Calendar, label: t("nav.availability"), path: "/manager/availability" },
     { icon: Package, label: t("nav.equipment"), path: "/manager/equipment" },
     { icon: CreditCard, label: t("nav.bookings"), path: "/manager/bookings" },
+    { icon: Code2, label: "Widget", path: "/manager/widget" },
     { icon: Settings, label: t("nav.settings"), path: "/manager/settings" },
   ], [t]);
 

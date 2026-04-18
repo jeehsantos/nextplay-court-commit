@@ -1,0 +1,22 @@
+Contact: mailto:security@yourdomain.com
+Expires: 2026-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://yourdomain.com/.well-known/security.txt
+Policy: https://yourdomain.com/security-policy
+Acknowledgments: https://yourdomain.com/security-acknowledgments
+
+# For security researchers
+# Please report security vulnerabilities responsibly
+# Do not disclose publicly until we've had a chance to address them
+
+# Response time
+# We aim to respond to security reports within 48 hours
+# Critical issues will be addressed within 7 days
+
+# Scope
+# In scope: All production systems and applications
+# Out of scope: Third-party services (Supabase, Vercel, Stripe)
+
+# Safe harbor
+# We will not pursue legal action against security researchers
+# who follow responsible disclosure practices
