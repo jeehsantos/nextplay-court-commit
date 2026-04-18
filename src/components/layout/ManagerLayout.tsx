@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState, useMemo } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useTranslation } from "react-i18next";
@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface ManagerLayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export function ManagerLayout({ children }: ManagerLayoutProps) {
@@ -182,7 +182,7 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
 
       {/* Main Content */}
       <main className="lg:ml-64 pt-16 lg:pt-0 h-[calc(100dvh-4rem)] overflow-y-auto scrollbar-hide lg:h-auto lg:min-h-screen lg:overflow-visible pb-20 lg:pb-0">
-        {children}
+        {children ?? <Outlet />}
       </main>
 
       {/* Mobile Bottom Navigation */}
