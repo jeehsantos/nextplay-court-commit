@@ -41,6 +41,7 @@ const ManagerAvailability = lazy(() => import("./pages/manager/ManagerAvailabili
 const ManagerSettings = lazy(() => import("./pages/manager/ManagerSettings"));
 const ManagerEquipment = lazy(() => import("./pages/manager/ManagerEquipment"));
 const ManagerBookings = lazy(() => import("./pages/manager/ManagerBookings"));
+const ManagerWidget = lazy(() => import("./pages/manager/ManagerWidget"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminSportCategories = lazy(() => import("./pages/admin/AdminSportCategories"));
 const AdminSurfaceTypes = lazy(() => import("./pages/admin/AdminSurfaceTypes"));
@@ -107,6 +108,7 @@ const App = () => (
                 <Route path="/manager/equipment" element={<ProtectedRoute allowedRoles={["court_manager", "venue_staff"]}><ManagerEquipment /></ProtectedRoute>} />
                 <Route path="/manager/bookings" element={<ProtectedRoute allowedRoles={["court_manager", "venue_staff"]}><ManagerBookings /></ProtectedRoute>} />
                 <Route path="/manager/settings" element={<ProtectedRoute allowedRoles={["court_manager", "venue_staff"]}><ManagerSettings /></ProtectedRoute>} />
+                <Route path="/manager/widget" element={<ProtectedRoute allowedRoles={["court_manager"]}><ManagerWidget /></ProtectedRoute>} />
                 {/* Admin Routes */}
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
