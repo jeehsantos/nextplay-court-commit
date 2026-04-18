@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { nzCities, getSuburbsForCity } from "@/data/nzLocations";
@@ -423,7 +422,7 @@ export default function ManagerCourtsNew() {
   };
 
   return (
-    <ManagerLayout>
+    <>
       <div className="p-4 md:p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -917,6 +916,6 @@ export default function ManagerCourtsNew() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </ManagerLayout>
+    </>
   );
 }

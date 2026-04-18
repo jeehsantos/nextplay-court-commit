@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -202,16 +201,16 @@ export default function ManagerSettings() {
 
   if (loading) {
     return (
-      <ManagerLayout>
+      <>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </ManagerLayout>
+      </>
     );
   }
 
   return (
-    <ManagerLayout>
+    <>
       <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
           <div>
@@ -483,6 +482,6 @@ export default function ManagerSettings() {
           </Card>
         )}
       </div>
-    </ManagerLayout>
+    </>
   );
 }

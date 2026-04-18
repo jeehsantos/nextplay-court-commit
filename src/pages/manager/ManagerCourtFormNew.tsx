@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -495,11 +494,11 @@ export default function ManagerCourtFormNew() {
 
   if (loading) {
     return (
-      <ManagerLayout>
+      <>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </ManagerLayout>
+      </>
     );
   }
 
@@ -507,7 +506,7 @@ export default function ManagerCourtFormNew() {
   const activeIsSubCourt = isAddingNewSubCourt || (activeCourt?.parent_court_id != null);
 
   return (
-    <ManagerLayout>
+    <>
       {/* Sticky Header - outside padded container */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm px-4 md:px-6 py-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -903,7 +902,7 @@ export default function ManagerCourtFormNew() {
           )}
         </div>
       </div>
-    </ManagerLayout>
+    </>
   );
 }
 

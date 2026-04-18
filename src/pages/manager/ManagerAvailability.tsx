@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { SportIcon } from "@/components/ui/sport-icon";
 import {
@@ -77,16 +76,16 @@ export default function ManagerAvailability() {
 
   if (venuesLoading || courtsLoading) {
     return (
-      <ManagerLayout>
+      <>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </ManagerLayout>
+      </>
     );
   }
 
   return (
-    <ManagerLayout>
+    <>
       <div className="manager-availability-mobile p-4 md:p-6 space-y-5 md:space-y-6">
         <div>
           <h1 className="font-display text-2xl font-bold">{t("availability.title")}</h1>
@@ -159,6 +158,6 @@ export default function ManagerAvailability() {
           </>
         )}
       </div>
-    </ManagerLayout>
+    </>
   );
 }
