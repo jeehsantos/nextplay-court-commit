@@ -14,7 +14,7 @@ export default defineConfig({
     },
     outDir: "public/widget/v1",
     emptyOutDir: true,
-    minify: "esbuild",
+    minify: "terser",
     sourcemap: false,
     rollupOptions: {
       output: { extend: true },
