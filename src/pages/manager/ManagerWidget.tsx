@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,7 +132,7 @@ export default function ManagerWidget() {
 </script>`;
 
   return (
-    <ManagerLayout>
+    <>
       <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
         <div>
           <h1 className="font-display text-2xl font-bold flex items-center gap-2">
@@ -287,6 +286,6 @@ export default function ManagerWidget() {
           </>
         )}
       </div>
-    </ManagerLayout>
+    </>
   );
 }

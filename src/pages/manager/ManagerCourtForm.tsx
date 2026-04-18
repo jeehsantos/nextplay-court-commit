@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,11 +83,11 @@ export default function ManagerCourtForm() {
   };
 
   if (loading) {
-    return (<ManagerLayout><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></ManagerLayout>);
+    return (<><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></>);
   }
 
   return (
-    <ManagerLayout>
+    <>
       <div className="p-4 md:p-6 space-y-6 max-w-2xl">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-5 w-5" /></Button>
@@ -135,6 +134,6 @@ export default function ManagerCourtForm() {
           </Button>
         </form>
       </div>
-    </ManagerLayout>
+    </>
   );
 }

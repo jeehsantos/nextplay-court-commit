@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Plus, Calendar as CalendarIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -32,7 +31,7 @@ export default function ManagerDashboard() {
   const today = format(new Date(), "EEEE, MMMM d");
 
   return (
-    <ManagerLayout>
+    <>
       <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -74,5 +73,5 @@ export default function ManagerDashboard() {
           <UpcomingBookings bookings={upcomingBookings} loading={loading} onRefresh={refreshAll} />
         </div>
       </div>
-    </ManagerLayout>);
+    </>);
 }

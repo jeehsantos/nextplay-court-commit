@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { RescheduleBookingDialog } from "@/components/manager/RescheduleBookingDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -480,16 +479,16 @@ export default function ManagerBookings() {
 
   if (initLoading) {
     return (
-      <ManagerLayout>
+      <>
         <div className="p-4 md:p-6 flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </ManagerLayout>
+      </>
     );
   }
 
   return (
-    <ManagerLayout>
+    <>
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -626,6 +625,6 @@ export default function ManagerBookings() {
           onSuccess={fetchBookings}
         />
       )}
-    </ManagerLayout>
+    </>
   );
 }

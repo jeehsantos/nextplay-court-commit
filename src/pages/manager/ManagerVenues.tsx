@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +32,7 @@ export default function ManagerVenues() {
   };
 
   return (
-    <ManagerLayout>
+    <>
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -94,6 +93,6 @@ export default function ManagerVenues() {
           </div>
         )}
       </div>
-    </ManagerLayout>
+    </>
   );
 }

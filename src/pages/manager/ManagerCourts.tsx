@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,11 +49,11 @@ export default function ManagerCourts() {
   };
 
   if (loading) {
-    return (<ManagerLayout><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></ManagerLayout>);
+    return (<><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></>);
   }
 
   return (
-    <ManagerLayout>
+    <>
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate("/manager/venues")}><ArrowLeft className="h-5 w-5" /></Button>
@@ -110,6 +109,6 @@ export default function ManagerCourts() {
           </div>
         )}
       </div>
-    </ManagerLayout>
+    </>
   );
 }

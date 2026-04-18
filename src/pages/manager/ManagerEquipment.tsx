@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { ManagerLayout } from "@/components/layout/ManagerLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -90,12 +89,12 @@ export default function ManagerEquipment() {
   };
 
   if (loadingVenues) {
-    return (<ManagerLayout><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></ManagerLayout>);
+    return (<><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></>);
   }
 
   if (venues.length === 0) {
     return (
-      <ManagerLayout>
+      <>
         <div className="p-4 md:p-6">
           <Card>
             <CardContent className="py-12 text-center">
@@ -106,12 +105,12 @@ export default function ManagerEquipment() {
             </CardContent>
           </Card>
         </div>
-      </ManagerLayout>
+      </>
     );
   }
 
   return (
-    <ManagerLayout>
+    <>
       <div className="p-4 md:p-6 space-y-6 max-w-4xl">
         <div className="flex items-center justify-between">
           <div>
@@ -255,6 +254,6 @@ export default function ManagerEquipment() {
           </CardContent>
         </Card>
       </div>
-    </ManagerLayout>
+    </>
   );
 }
