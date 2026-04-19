@@ -815,7 +815,10 @@ export default function CourtDetail() {
     const startDatetime = new Date(`${dateStr}T${startTime}:00`);
     const endDatetime = new Date(`${dateStr}T${endTime}:00`);
 
-    const holdResult = await createHold(bookingCourtId, startDatetime, endDatetime);
+    // Demo mode: skip the real hold (court IDs aren't UUIDs)
+    const holdResult = isDemoMode()
+      ? { success: true as const }
+      : await createHold(bookingCourtId, startDatetime, endDatetime);
 
     if (!holdResult.success) {
       // Reset ref since wizard won't open
