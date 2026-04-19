@@ -1,5 +1,6 @@
 // Mock GameData for src/pages/GameDetail.tsx in demo mode.
 import { DEMO_MY_GAMES } from "./bookings";
+import { getDemoGroupDetail } from "./groupDetail";
 
 const NAMES = ["Liam Walker", "Olivia Hughes", "Noah Patel", "Ava Smith", "Mason Lee", "Sophia Brown", "Ethan Wilson", "Mia Thompson", "Lucas Davis", "Charlotte Wright", "Benjamin Clark", "Amelia Scott"];
 
@@ -31,8 +32,51 @@ const buildPlayer = (sessionId: string, idx: number, isPaid: boolean) => ({
 });
 
 export function getDemoGameData(id: string, currentUserId: string) {
+  // Support session IDs from group detail: "demo-session-{groupId}-{idx}"
+  if (id.startsWith("demo-session-")) {
+    const rest = id.slice("demo-session-".length);
+    const lastDash = rest.lastIndexOf("-");
+    const groupId = lastDash >= 0 ? rest.slice(0, lastDash) : rest;
+    const detail = getDemoGroupDetail(groupId);
+    const sess = detail.sessions.find((s: any) => s.id === id) || detail.sessions[0];
+    if (!sess) return null;
+    const court = sess.courts;
+    const playerCount = sess.playerCount || sess.min_players;
+    const synthGame = {
+      id,
+      groupName: detail.group.name,
+      sport: detail.group.sport_category_id,
+      sportCategory: undefined as any,
+      courtName: court.name,
+      venueName: court.venues.name,
+      date: new Date(sess.session_date),
+      time: sess.start_time.slice(0, 5),
+      endTime: "",
+      price: sess.court_price / (sess.min_players || 1),
+      currentPlayers: playerCount,
+      minPlayers: sess.min_players,
+      maxPlayers: sess.max_players,
+      state: sess.state,
+      isPaid: true,
+      durationMinutes: sess.duration_minutes,
+    };
+    return buildFromGame(id, synthGame as any, currentUserId, {
+      groupOverride: detail.group,
+      courtOverride: court,
+    });
+  }
+
   const game = DEMO_MY_GAMES.find((g) => g.id === id);
   if (!game) return null;
+  return buildFromGame(id, game, currentUserId);
+}
+
+function buildFromGame(
+  id: string,
+  game: any,
+  currentUserId: string,
+  opts?: { groupOverride?: any; courtOverride?: any }
+) {
 
   const dateStr = game.date.toISOString().split("T")[0];
   const groupId = `demo-group-${id}`;
