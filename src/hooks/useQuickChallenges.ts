@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "@/hooks/use-toast";
+import { isDemoMode } from "@/lib/demo-mode";
+import { DEMO_QUICK_CHALLENGES } from "@/data/demo/quickChallenges";
 
 interface QuickChallengePlayer {
   id: string;
@@ -69,6 +71,18 @@ export function useQuickChallenges(filters?: {
   const query = useQuery({
     queryKey: ["quick-challenges", filters],
     queryFn: async () => {
+      // Demo mode: short-circuit with mock fixtures
+      if (isDemoMode()) {
+        let list = DEMO_QUICK_CHALLENGES as unknown as QuickChallenge[];
+        if (filters?.sportCategoryId) {
+          list = list.filter((c) => c.sport_category_id === filters.sportCategoryId);
+        }
+        if (filters?.status) {
+          list = list.filter((c) => c.status === filters.status);
+        }
+        return list;
+      }
+
       let queryBuilder = supabase
         .from("quick_challenges")
         .select(`
