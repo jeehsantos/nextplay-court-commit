@@ -187,9 +187,9 @@ function buildFromGame(
 
   return {
     session,
-    group,
+    group: opts?.groupOverride || group,
     sportCategory: game.sportCategory,
-    court,
+    court: opts?.courtOverride || court,
     players,
     waitingList: [],
     courtManagerId: "demo-owner",
