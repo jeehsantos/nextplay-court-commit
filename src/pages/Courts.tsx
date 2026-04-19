@@ -247,10 +247,11 @@ export default function Courts() {
         c.allowed_sports && c.allowed_sports.includes(sportName)
       );
 
-    // "all" now means "all of my preferred sports"
+    // "all" now means "all of my preferred sports".
+    // In demo mode, ignore preferred-sports filter so all demo courts are visible.
     const matchesSport =
       selectedSport === "all"
-        ? (preferredSports.length === 0 || preferredSports.some((sport) => sportMatchesForCourt(sport)))
+        ? (isDemoMode() || preferredSports.length === 0 || preferredSports.some((sport) => sportMatchesForCourt(sport)))
         : sportMatchesForCourt(selectedSport);
 
     const matchesFavorite = !showFavoritesOnly || favoriteCourtIds.has(court.id);
