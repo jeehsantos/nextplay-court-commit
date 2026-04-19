@@ -25,6 +25,8 @@ import { useUserCredits } from "@/hooks/useUserCredits";
 import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import { useManagerStripeReady } from "@/hooks/useStripeConnectStatus";
 import { getSportCategory } from "@/lib/sport-category-utils";
+import { isDemoMode } from "@/lib/demo-mode";
+import { getDemoGameData } from "@/data/demo/gameDetail";
 
 import {
   Dialog,
@@ -168,6 +170,12 @@ export default function GameDetail() {
 
     setLoading(true);
     try {
+      if (isDemoMode()) {
+        const demo = getDemoGameData(id, user.id);
+        setGameData(demo as any);
+        setLoading(false);
+        return;
+      }
       // Fetch session with court, venue, and sport category
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
