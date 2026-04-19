@@ -537,7 +537,7 @@ export default function Discover() {
       // If explicit sport filter is set, use it; otherwise auto-filter by preferred sports
       const matchesSport =
         selectedSport === "all"
-          ? (normalizedPreferredSports.length === 0 || normalizedPreferredSports.includes(game.sport))
+          ? (isDemoMode() || normalizedPreferredSports.length === 0 || normalizedPreferredSports.includes(game.sport))
           : game.sport === selectedSport;
       const matchesCourtType = selectedCourtType === "all" || game.groundType === selectedCourtType;
       const matchesCity = selectedCity === "all" || game.city === selectedCity;
@@ -570,7 +570,7 @@ export default function Discover() {
     });
     
     // "all" now means "all of my preferred sports"
-    if (selectedSport === "all" && normalizedPreferredSports.length > 0) {
+    if (selectedSport === "all" && normalizedPreferredSports.length > 0 && !isDemoMode()) {
       filtered = filtered.filter((challenge) => {
         const sportName = challenge.sport_categories?.name || "";
         return normalizedPreferredSports.includes(sportName);
