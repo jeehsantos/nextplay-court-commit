@@ -170,6 +170,12 @@ export default function GameDetail() {
 
     setLoading(true);
     try {
+      if (isDemoMode()) {
+        const demo = getDemoGameData(id, user.id);
+        setGameData(demo as any);
+        setLoading(false);
+        return;
+      }
       // Fetch session with court, venue, and sport category
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
