@@ -304,6 +304,18 @@ export default function CourtDetail() {
     try {
       // Demo mode: synthesize a full day of available 30-min slots
       if (isDemoMode()) {
+        const demoCourt = DEMO_COURTS.find((c) => c.id === courtId);
+        const venueCourt: AvailableCourt = {
+          id: courtId,
+          name: demoCourt?.name || "Court",
+          hourly_rate: demoCourt?.hourly_rate || 50,
+          ground_type: demoCourt?.ground_type || null,
+          rules: null,
+          photo_urls: demoCourt?.photo_urls || null,
+          allowed_sports: demoCourt?.allowed_sports || null,
+          payment_timing: demoCourt?.payment_timing || "at_booking",
+          payment_hours_before: demoCourt?.payment_hours_before || null,
+        };
         const slots: AvailableSlot[] = [];
         for (let h = 8; h < 22; h++) {
           for (const m of [0, 30]) {
@@ -313,6 +325,7 @@ export default function CourtDetail() {
               start_time: `${hh}:${mm}:00`,
               status: "AVAILABLE",
               available_durations: [60, 90, 120],
+              available_courts: [venueCourt],
             });
           }
         }
@@ -321,6 +334,7 @@ export default function CourtDetail() {
           slot_interval_minutes: 30,
           max_booking_minutes: 240,
           slots,
+          venue_courts: [venueCourt],
         });
         setAvailabilityLoading(false);
         return;
