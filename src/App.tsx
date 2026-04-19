@@ -8,6 +8,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ManagerLayout } from "@/components/layout/ManagerLayout";
+import { DemoModeBanner } from "@/components/DemoModeBanner";
 import { Loader2 } from "lucide-react";
 
 // Eagerly load the landing/index pages for fastest LCP
@@ -75,6 +76,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <DemoModeBanner />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Index />} />

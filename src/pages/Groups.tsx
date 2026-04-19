@@ -11,6 +11,8 @@ import { Plus, Loader2, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Database } from "@/integrations/supabase/types";
 import { useTranslation } from "react-i18next";
+import { isDemoMode } from "@/lib/demo-mode";
+import { DEMO_GROUPS } from "@/data/demo/groups";
 
 type Group = Database["public"]["Tables"]["groups"]["Row"];
 
@@ -46,6 +48,11 @@ export default function Groups() {
     queryKey: ["my-groups", user?.id],
     queryFn: async () => {
       if (!user) return [];
+
+      // Demo mode: short-circuit with mock fixtures
+      if (isDemoMode()) {
+        return DEMO_GROUPS as unknown as GroupWithMemberCount[];
+      }
 
       const { data: organizerGroups, error: orgError } = await supabase
         .from("groups")

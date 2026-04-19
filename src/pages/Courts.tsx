@@ -21,6 +21,8 @@ import { useSportCategories } from "@/hooks/useSportCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import type { Database } from "@/integrations/supabase/types";
+import { isDemoMode } from "@/lib/demo-mode";
+import { DEMO_COURTS, DEMO_CITIES } from "@/data/demo/venues";
 
 type Court = Database["public"]["Tables"]["courts"]["Row"];
 type Venue = Database["public"]["Tables"]["venues"]["Row"];
@@ -180,6 +182,16 @@ export default function Courts() {
   
   const fetchCourts = async () => {
     try {
+      // Demo mode: short-circuit with mock fixtures
+      if (isDemoMode()) {
+        const demo = DEMO_COURTS as unknown as CourtWithVenue[];
+        setAllVenueCourts(demo);
+        setCourts(demo.filter((c) => !c.parent_court_id));
+        setCities(DEMO_CITIES);
+        setLoading(false);
+        return;
+      }
+
       // Fetch all courts (main + sub) for filtering purposes
       const { data: allCourts, error: allError } = await supabase
         .from("courts")
