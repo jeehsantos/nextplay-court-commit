@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getSportCategoriesMap } from "@/lib/sport-category-utils";
 import type { Database } from "@/integrations/supabase/types";
+import { isDemoMode } from "@/lib/demo-mode";
+import { DEMO_MY_GAMES } from "@/data/demo/bookings";
 
 type SportCategory = Database["public"]["Tables"]["sport_categories"]["Row"];
 
@@ -213,8 +215,8 @@ async function fetchQuickChallenges(userId: string): Promise<GameData[]> {
 export function useMyGames(userId: string | undefined) {
   return useQuery({
     queryKey: ["my-games", userId],
-    queryFn: () => fetchGames(userId!),
-    enabled: !!userId,
+    queryFn: () => (isDemoMode() ? Promise.resolve(DEMO_MY_GAMES) : fetchGames(userId!)),
+    enabled: isDemoMode() || !!userId,
     staleTime: 1000 * 60 * 2, // 2 min cache
   });
 }

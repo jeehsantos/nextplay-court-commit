@@ -2,6 +2,14 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, eachDayOfInterval, eachWeekOfInterval, getDay } from "date-fns";
+import { isDemoMode } from "@/lib/demo-mode";
+import {
+  DEMO_DASHBOARD_STATS,
+  DEMO_LIVE_COURTS,
+  DEMO_WEEKLY_PERFORMANCE,
+  DEMO_UPCOMING_BOOKINGS,
+  DEMO_DASHBOARD_COURTS,
+} from "@/data/demo/managerDashboard";
 
 export type DashboardPeriod = "daily" | "weekly" | "monthly";
 
@@ -73,6 +81,19 @@ export function useManagerDashboard(period: DashboardPeriod) {
   const [venueIds, setVenueIds] = useState<string[]>([]);
   const [allCourtIds, setAllCourtIds] = useState<string[]>([]);
   const [courts, setCourts] = useState<CourtWithVenue[]>([]);
+
+  // Demo mode: return static fixtures and skip every Supabase query below.
+  if (isDemoMode()) {
+    return {
+      stats: DEMO_DASHBOARD_STATS,
+      liveCourts: DEMO_LIVE_COURTS,
+      weeklyPerformance: DEMO_WEEKLY_PERFORMANCE,
+      upcomingBookings: DEMO_UPCOMING_BOOKINGS,
+      loading: false,
+      courts: DEMO_DASHBOARD_COURTS,
+      refreshAll: () => {},
+    };
+  }
 
   const dateRange = useMemo(() => {
     const now = new Date();
