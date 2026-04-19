@@ -29,6 +29,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { isDemoMode } from "@/lib/demo-mode";
+import { DEMO_RESCUE_GAMES } from "@/data/demo/discover";
 
 type SportType = string;
 
@@ -327,6 +329,13 @@ export default function Discover() {
   const fetchData = async () => {
     setLoadingData(true);
     try {
+      // Demo mode: short-circuit with mock rescue/community games
+      if (isDemoMode()) {
+        setRescueGames(DEMO_RESCUE_GAMES as DiscoverGame[]);
+        setLoadingData(false);
+        return;
+      }
+
       // Fetch rescue sessions (sessions in rescue mode that are open)
       const today = new Date().toISOString().split('T')[0];
       const { data: rescueSessions } = await supabase

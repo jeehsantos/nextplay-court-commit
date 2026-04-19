@@ -43,6 +43,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { isDemoMode } from "@/lib/demo-mode";
+import { getDemoGroupDetail } from "@/data/demo/groupDetail";
 import type { Database } from "@/integrations/supabase/types";
 
 type Group = Database["public"]["Tables"]["groups"]["Row"];
@@ -101,6 +103,18 @@ export default function GroupDetail() {
 
     setLoading(true);
     try {
+      // Demo mode: short-circuit with mock group, members, sessions
+      if (isDemoMode()) {
+        const demo = getDemoGroupDetail(id);
+        setGroup(demo.group as unknown as Group);
+        setMembers(demo.members as unknown as MemberWithProfile[]);
+        setSessions(demo.sessions as unknown as SessionWithDetails[]);
+        setIsOrganizer(true);
+        setIsMember(true);
+        setLoading(false);
+        return;
+      }
+
       // Fetch group
       const { data: groupData, error: groupError } = await supabase
         .from("groups")
