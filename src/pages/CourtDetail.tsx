@@ -41,6 +41,8 @@ import { checkProfileComplete } from "@/lib/profile-utils";
 import { useVenueEquipment } from "@/hooks/useVenueEquipment";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { PaymentMethodDialog } from "@/components/payment/PaymentMethodDialog";
+import { isDemoMode } from "@/lib/demo-mode";
+import { DEMO_COURTS } from "@/data/demo/venues";
 
 import { HoldCountdown } from "@/components/booking/HoldCountdown";
 import { SlotStatusBadge } from "@/components/booking/SlotStatusBadge";
@@ -219,6 +221,20 @@ export default function CourtDetail() {
   // Function declarations first (before useEffects that use them)
   const fetchCourt = useCallback(async () => {
     try {
+      // Demo mode: short-circuit to static fixture
+      if (isDemoMode()) {
+        const demo = DEMO_COURTS.find((c) => c.id === id);
+        if (demo) {
+          hasAutoSelectedRef.current = true;
+          setCourt(demo as unknown as CourtWithVenue);
+          setSelectedCourtId(demo.id);
+        } else {
+          navigate("/courts");
+        }
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("courts")
         .select(`
@@ -286,6 +302,30 @@ export default function CourtDetail() {
     setAvailabilityError(null);
 
     try {
+      // Demo mode: synthesize a full day of available 30-min slots
+      if (isDemoMode()) {
+        const slots: AvailableSlot[] = [];
+        for (let h = 8; h < 22; h++) {
+          for (const m of [0, 30]) {
+            const hh = String(h).padStart(2, "0");
+            const mm = String(m).padStart(2, "0");
+            slots.push({
+              start_time: `${hh}:${mm}:00`,
+              status: "AVAILABLE",
+              available_durations: [60, 90, 120],
+            });
+          }
+        }
+        setAvailabilityData({
+          available: true,
+          slot_interval_minutes: 30,
+          max_booking_minutes: 240,
+          slots,
+        });
+        setAvailabilityLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("get-availability", {
         body: {
           venueId,
