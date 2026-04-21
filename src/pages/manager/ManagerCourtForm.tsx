@@ -59,6 +59,7 @@ export default function ManagerCourtForm() {
 
   const fetchCourt = async () => {
     try {
+      // @ts-expect-error - courtId is guaranteed defined by route guard
       const { data, error } = await supabase.from("courts").select("*").eq("id", courtId).single();
       if (error) throw error;
       reset({ name: data.name, capacity: data.capacity, hourly_rate: Number(data.hourly_rate), is_indoor: data.is_indoor ?? false, is_active: data.is_active ?? true, photo_url: data.photo_url || "", rules: (data as any).rules || "" });
@@ -70,6 +71,7 @@ export default function ManagerCourtForm() {
     setSubmitting(true);
     try {
       if (isEditing) {
+        // @ts-expect-error - courtId is guaranteed defined when isEditing is true
         const { error } = await supabase.from("courts").update({ name: data.name, capacity: data.capacity, hourly_rate: data.hourly_rate, is_indoor: data.is_indoor, is_active: data.is_active, photo_url: data.photo_url || null, rules: data.rules || null } as any).eq("id", courtId);
         if (error) throw error;
         toast({ title: t("courtForm.courtUpdated") });

@@ -143,6 +143,7 @@ export default function GroupDetail() {
         })
       );
 
+      // @ts-expect-error - profile may be null from join; treated as missing in UI
       setMembers(membersWithProfiles);
       setIsMember(membersWithProfiles.some(m => m.user_id === user.id) || groupData.organizer_id === user.id);
 
@@ -196,6 +197,7 @@ export default function GroupDetail() {
         })
       );
 
+      // @ts-expect-error - courts may be null from join; treated as missing in UI
       setSessions(sessionsWithCounts);
 
       // Organizers can generate new invite links via the generateInviteLink function

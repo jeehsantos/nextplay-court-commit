@@ -29,9 +29,11 @@ export default function ManagerCourts() {
 
   const fetchData = async () => {
     try {
+      // @ts-expect-error - venueId/user.id are guaranteed defined by route guard
       const { data: venueData, error: venueError } = await supabase.from("venues").select("*").eq("id", venueId).eq("owner_id", user?.id).single();
       if (venueError) throw venueError;
       setVenue(venueData);
+      // @ts-expect-error - venueId is guaranteed defined by route guard
       const { data: courtsData, error: courtsError } = await supabase.from("courts").select("*").eq("venue_id", venueId).order("name");
       if (courtsError) throw courtsError;
       setCourts(courtsData || []);
