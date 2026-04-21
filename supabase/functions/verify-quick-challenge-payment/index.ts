@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,7 +113,7 @@ serve(async (req) => {
     }
 
     // --- FALLBACK: Stripe paid but webhook hasn't processed yet ---
-    console.log("Verify fallback: completing payment for challenge", resolvedChallengeId, "user", user.id);
+    logger.log("Verify fallback: completing payment for challenge", resolvedChallengeId, "user", user.id);
 
     const paymentIntentId = typeof checkoutSession.payment_intent === "string"
       ? checkoutSession.payment_intent
@@ -215,10 +216,10 @@ serve(async (req) => {
     try {
       await supabaseAdmin.rpc("process_referral_credit", { p_referred_user_id: user.id });
     } catch (e) {
-      console.log("Referral credit processing skipped:", e);
+      logger.log("Referral credit processing skipped:", e);
     }
 
-    console.log("Verify fallback completed successfully for challenge", resolvedChallengeId);
+    logger.log("Verify fallback completed successfully for challenge", resolvedChallengeId);
 
     return buildResponse({
       success: true,

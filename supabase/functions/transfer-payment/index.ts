@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -107,7 +108,7 @@ serve(async (req) => {
 
     // Check if already transferred
     if (payment.transferred_at) {
-      console.log("Payment already transferred:", payment.id);
+      logger.log("Payment already transferred:", payment.id);
       return new Response(JSON.stringify({ 
         success: true,
         alreadyTransferred: true,
@@ -150,7 +151,7 @@ serve(async (req) => {
             })
             .eq("id", payment.id);
 
-          console.log(`Destination-charge payment ${payment.id} marked transferred (auto: ${autoTransferId})`);
+          logger.log(`Destination-charge payment ${payment.id} marked transferred (auto: ${autoTransferId})`);
 
           return new Response(JSON.stringify({
             success: true,
@@ -185,7 +186,7 @@ serve(async (req) => {
     }
 
     if (!claimedPayment) {
-      console.log("Payment already claimed or transferred by another request:", payment.id);
+      logger.log("Payment already claimed or transferred by another request:", payment.id);
       return new Response(JSON.stringify({
         success: true,
         alreadyProcessing: true,
@@ -260,7 +261,7 @@ serve(async (req) => {
     }
 
     if (!connectedAccountId) {
-      console.log("No Stripe Connect account for venue:", venue?.id);
+      logger.log("No Stripe Connect account for venue:", venue?.id);
       await supabaseAdmin
         .from("payments")
         .update({
@@ -288,7 +289,7 @@ serve(async (req) => {
     const transferAmountCents = Math.round(courtAmount * 100);
 
     if (transferAmountCents <= 0) {
-      console.log("No amount to transfer after fees");
+      logger.log("No amount to transfer after fees");
       await supabaseAdmin
         .from("payments")
         .update({
@@ -356,7 +357,7 @@ serve(async (req) => {
       throw new Error("Failed to update payment record after transfer");
     }
 
-    console.log("Payment transferred successfully:", {
+    logger.log("Payment transferred successfully:", {
       paymentId: payment.id,
       transferId: transfer.id,
       amount: courtAmount,

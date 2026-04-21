@@ -1,6 +1,7 @@
 import Stripe from "https://esm.sh/stripe@17.7.0?target=denonext";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { calculateGrossUp } from "../_shared/feeCalc.ts";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -255,7 +256,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("Pay-for-players checkout created:", {
+    logger.log("Pay-for-players checkout created:", {
       sessionId,
       payerUserId: userId,
       playerCount: unpaidPlayerIds.length,
