@@ -17,8 +17,45 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
+  // AUTH: Allow either (a) cron with valid CRON_SECRET header, or
+  // (b) authenticated admin user via Bearer token.
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const providedCronSecret = req.headers.get("x-cron-secret");
+  const isCronCall = !!cronSecret && providedCronSecret === cronSecret;
+
+  if (!isCronCall) {
+    const authHeader = req.headers.get("authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: "UNAUTHORIZED" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return new Response(
+        JSON.stringify({ error: "UNAUTHORIZED" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: adminRole } = await supabaseAdmin
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", userData.user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!adminRole) {
+      return new Response(
+        JSON.stringify({ error: "FORBIDDEN" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  }
+
   try {
-    const { sessionId } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { sessionId } = body as { sessionId?: string };
 
     // If a specific sessionId is provided, process just that one.
     // Otherwise, process all pending organizer payouts (batch/cron mode).
