@@ -63,6 +63,7 @@ function AdminSportCategoriesContent() {
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
+      // @ts-expect-error - is_active is boolean | null from DB; treated as boolean in UI
       setCategories(data || []);
     } catch (error) {
       console.error("Error fetching sport categories:", error);

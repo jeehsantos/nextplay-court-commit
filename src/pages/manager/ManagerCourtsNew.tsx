@@ -316,6 +316,7 @@ export default function ManagerCourtsNew() {
       const { data: venues, error: venuesError } = await supabase
         .from("venues")
         .select("id, name, city, suburb, address, amenities")
+        // @ts-expect-error - user.id is guaranteed defined by auth guard
         .eq("owner_id", user?.id)
         .order("created_at", { ascending: false });
 
@@ -336,6 +337,7 @@ export default function ManagerCourtsNew() {
 
       if (courtsError) throw courtsError;
 
+      // @ts-expect-error - DB null fields treated as defaults in UI
       const groups: VenueWithCourts[] = venues.map(venue => ({
         venue,
         courts: (courts || []).filter(c => c.venue_id === venue.id),

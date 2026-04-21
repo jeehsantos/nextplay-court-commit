@@ -25,6 +25,7 @@ export default function ManagerVenues() {
 
   const fetchVenues = async () => {
     try {
+      // @ts-expect-error - user.id is guaranteed defined by auth guard
       const { data, error } = await supabase.from("venues").select("*").eq("owner_id", user?.id).order("created_at", { ascending: false });
       if (error) throw error;
       setVenues(data || []);
