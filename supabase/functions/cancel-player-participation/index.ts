@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -129,7 +130,7 @@ serve(async (req) => {
           console.error("Error creating liability:", liabilityError);
           // Non-fatal: log but don't block cancellation
         } else {
-          console.log(`Liability created: ${courtShareCents} cents for user ${userId}`);
+          logger.log(`Liability created: ${courtShareCents} cents for user ${userId}`);
         }
       }
 
@@ -149,7 +150,7 @@ serve(async (req) => {
         throw new Error("Failed to update payment status");
       }
 
-      console.log(`Payment ${payment.id} status updated to '${newStatus}'`);
+      logger.log(`Payment ${payment.id} status updated to '${newStatus}'`);
     }
 
     // Remove player from session
@@ -164,7 +165,7 @@ serve(async (req) => {
       throw new Error("Failed to leave the session");
     }
 
-    console.log(`Player ${userId} left session ${sessionId}. Credits added: ${creditsAdded}`);
+    logger.log(`Player ${userId} left session ${sessionId}. Credits added: ${creditsAdded}`);
 
     return new Response(
       JSON.stringify({

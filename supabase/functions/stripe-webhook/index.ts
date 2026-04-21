@@ -1,5 +1,6 @@
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { logger } from "../_shared/logger.ts";
 
 const WEBHOOK_VERSION = "2026-04-02-v1";
 
@@ -62,7 +63,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    console.log(`[${WEBHOOK_VERSION}] Webhook event received:`, event.type, event.id);
+    logger.log(`[${WEBHOOK_VERSION}] Webhook event received:`, event.type, event.id);
 
     let idempotentDuplicate = false;
     try {
@@ -168,7 +169,7 @@ async function handlePaymentIntentSucceeded(
         error,
       });
     } else {
-      console.log("Stored stripe_fee_actual:", stripeFeeActual / 100, "for PI:", piId);
+      logger.log("Stored stripe_fee_actual:", stripeFeeActual / 100, "for PI:", piId);
     }
 
     const { error: quickChallengeFeeUpdateError } = await supabaseAdmin
@@ -214,7 +215,7 @@ async function handleCheckoutCompleted(
         .eq("stripe_payment_intent_id", pi)
         .maybeSingle();
       if (existing) {
-        console.log("Deferred payment already exists (created by fallback), returning duplicate:", pi);
+        logger.log("Deferred payment already exists (created by fallback), returning duplicate:", pi);
         return true;
       }
     }
@@ -261,7 +262,7 @@ async function handlePayForPlayersPayment(
     .in("status", ["completed", "transferred"]);
 
   if (existingPayments && existingPayments.length === playerUserIds.length) {
-    console.log("Pay-for-players already processed, skipping:", paymentIntentId);
+    logger.log("Pay-for-players already processed, skipping:", paymentIntentId);
     return true;
   }
 
@@ -346,7 +347,7 @@ async function handlePayForPlayersPayment(
 
     const result = rpcResult as any;
     if (result?.session_confirmed) {
-      console.log("Session confirmed after pay-for-players — triggering payout:", sessionId);
+      logger.log("Session confirmed after pay-for-players — triggering payout:", sessionId);
       try {
         const payoutResponse = await fetch(
           `${Deno.env.get("SUPABASE_URL")}/functions/v1/payout-session`,
@@ -371,7 +372,7 @@ async function handlePayForPlayersPayment(
     console.error("Session recalculation error (non-fatal):", rpcErr);
   }
 
-  console.log("Pay-for-players payment processed:", {
+  logger.log("Pay-for-players payment processed:", {
     sessionId,
     payerUserId,
     playerCount: playerUserIds.length,
@@ -413,7 +414,7 @@ async function handleSessionPayment(
     .maybeSingle();
 
   if (existing?.status === "completed" || existing?.status === "transferred") {
-    console.log("Payment already processed, skipping:", paymentIntentId);
+    logger.log("Payment already processed, skipping:", paymentIntentId);
     return true;
   }
 
@@ -538,7 +539,7 @@ async function handleSessionPayment(
 
     const result = rpcResult as any;
     if (result?.session_confirmed) {
-      console.log("Session confirmed — triggering payout:", sessionId);
+      logger.log("Session confirmed — triggering payout:", sessionId);
       try {
         const payoutResponse = await fetch(
           `${Deno.env.get("SUPABASE_URL")}/functions/v1/payout-session`,
@@ -555,19 +556,19 @@ async function handleSessionPayment(
         if (!payoutResult.success) {
           console.error("Payout failed (non-fatal):", payoutResult.error);
         } else {
-          console.log("Payout completed:", payoutResult);
+          logger.log("Payout completed:", payoutResult);
         }
       } catch (payoutErr) {
         console.error("Payout call error (non-fatal):", payoutErr);
       }
     } else {
-      console.log("Session not yet confirmed:", result);
+      logger.log("Session not yet confirmed:", result);
     }
   } catch (rpcErr) {
     console.error("Session recalculation error (non-fatal):", rpcErr);
   }
 
-  console.log("Session payment processed:", {
+  logger.log("Session payment processed:", {
     sessionId,
     userId,
     totalCharge: totalChargeDollars,
@@ -607,7 +608,7 @@ async function handleDeferredSessionPayment(
     .maybeSingle();
 
   if (existing?.status === "completed" || existing?.status === "transferred") {
-    console.log("Deferred payment already processed, skipping:", paymentIntentId);
+    logger.log("Deferred payment already processed, skipping:", paymentIntentId);
     return true;
   }
 
@@ -625,7 +626,7 @@ async function handleDeferredSessionPayment(
       .eq("is_booked", true)
       .maybeSingle();
     if (existingCA?.booked_by_session_id) {
-      console.log("Deferred booking already exists for this slot, skipping. Session:", existingCA.booked_by_session_id);
+      logger.log("Deferred booking already exists for this slot, skipping. Session:", existingCA.booked_by_session_id);
       return true;
     }
   }
@@ -702,14 +703,14 @@ async function handleDeferredSessionPayment(
 
     if (sessionError) {
       if (sessionError.code === '23505') {
-        console.log("Deferred session already created by fallback, skipping:", paymentIntentId);
+        logger.log("Deferred session already created by fallback, skipping:", paymentIntentId);
         return true;
       }
       throw sessionError;
     }
     if (!sessionData) throw new Error("No session data returned");
     sessionId = sessionData.id;
-    console.log("Deferred session created:", sessionId);
+    logger.log("Deferred session created:", sessionId);
   } catch (e: any) {
     throw new WebhookProcessingError("STEP:session_insert: " + (e?.message || String(e)), {
       step: "session_insert",
@@ -826,7 +827,7 @@ async function handleDeferredSessionPayment(
 
     if (paymentError) {
       if (paymentError.code === '23505') {
-        console.log("Deferred payment already created by fallback, skipping:", paymentIntentId);
+        logger.log("Deferred payment already created by fallback, skipping:", paymentIntentId);
         return true;
       }
       throw paymentError;
@@ -834,7 +835,7 @@ async function handleDeferredSessionPayment(
   } catch (e: any) {
     if (e instanceof WebhookProcessingError) throw e;
     if (e?.code === '23505') {
-      console.log("Deferred payment already created by fallback (catch), skipping:", paymentIntentId);
+      logger.log("Deferred payment already created by fallback (catch), skipping:", paymentIntentId);
       return true;
     }
     throw new WebhookProcessingError("STEP:payment_insert: " + (e?.message || String(e)), {
@@ -858,7 +859,7 @@ async function handleDeferredSessionPayment(
     });
     const result = rpcResult as any;
     if (result?.session_confirmed) {
-      console.log("Deferred session confirmed — triggering payout:", sessionId);
+      logger.log("Deferred session confirmed — triggering payout:", sessionId);
       try {
         const payoutResponse = await fetch(
           `${Deno.env.get("SUPABASE_URL")}/functions/v1/payout-session`,
@@ -883,7 +884,7 @@ async function handleDeferredSessionPayment(
     console.error("Session recalculation error (non-fatal):", rpcErr);
   }
 
-  console.log("Deferred session payment processed:", {
+  logger.log("Deferred session payment processed:", {
     sessionId,
     userId,
     totalCharge: totalChargeDollars,
@@ -991,7 +992,7 @@ async function handleQuickChallengePayment(
       if (insertErr) {
         // Unique constraint violation = fallback already created it
         if (insertErr.code === '23505') {
-          console.log("Quick challenge payment already created by fallback, skipping:", challengeId);
+          logger.log("Quick challenge payment already created by fallback, skipping:", challengeId);
           return true;
         }
         throw new WebhookProcessingError("Failed to insert quick challenge payment snapshot", {
@@ -1003,7 +1004,7 @@ async function handleQuickChallengePayment(
   }
 
   if (player?.payment_status === "paid") {
-    console.log("Quick challenge player already paid, skipping:", playerRecordId);
+    logger.log("Quick challenge player already paid, skipping:", playerRecordId);
     return true;
   }
 
@@ -1034,7 +1035,7 @@ async function handleQuickChallengePayment(
     if (courtUpdateError) {
       console.error("Failed to mark court slot as booked (non-fatal):", courtUpdateError);
     } else {
-      console.log("Court slot marked as booked for challenge:", challengeId);
+      logger.log("Court slot marked as booked for challenge:", challengeId);
     }
   }
 
@@ -1082,7 +1083,7 @@ async function handleQuickChallengePayment(
     console.error("Referral credit error (non-fatal):", refErr);
   }
 
-  console.log("Quick challenge payment processed:", {
+  logger.log("Quick challenge payment processed:", {
     challengeId,
     playerRecordId,
     userId,

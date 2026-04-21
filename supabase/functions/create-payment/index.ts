@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { calculateGrossUp } from "../_shared/feeCalc.ts";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -458,7 +459,7 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
       }
     } catch (e) { console.error("Session recalculation error (non-fatal):", e); }
 
-    console.log(`Deferred payment completed with credits only: $${creditsToApply}, sessionId: ${sessionId}`);
+    logger.log(`Deferred payment completed with credits only: $${creditsToApply}, sessionId: ${sessionId}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -573,7 +574,7 @@ async function handleDeferredPayment(body: any, user: any, supabaseAdmin: any) {
   );
 
   // NO payments upsert for deferred flow — webhook creates it
-  console.log(`Deferred checkout created: ${checkoutSession.id} | Court: ${remainingCourtAmountCents}c, Fee: ${serviceFeeTotalCents}c, Total: ${totalChargeCents}c`);
+  logger.log(`Deferred checkout created: ${checkoutSession.id} | Court: ${remainingCourtAmountCents}c, Fee: ${serviceFeeTotalCents}c, Total: ${totalChargeCents}c`);
 
   return new Response(JSON.stringify({
     url: checkoutSession.url,
