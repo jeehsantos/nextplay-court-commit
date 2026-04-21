@@ -66,7 +66,16 @@ const PageLoader = () => (
   </div>
 );
 
-const queryClient = new QueryClient({});
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes — data considered fresh, no auto refetch
+      gcTime: 10 * 60 * 1000, // 10 minutes — cache retention (formerly cacheTime in v4)
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
