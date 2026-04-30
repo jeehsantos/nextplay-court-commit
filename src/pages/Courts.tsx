@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { CourtCard } from "@/components/courts/CourtCard";
-import { CourtsMap } from "@/components/courts/CourtsMap";
 import { CourtsPagination } from "@/components/courts/CourtsPagination";
 import { MobileCourtSheet } from "@/components/courts/MobileCourtSheet";
 import { MobileCourtFilters } from "@/components/courts/MobileCourtFilters";
@@ -23,6 +23,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import type { Database } from "@/integrations/supabase/types";
 import { isDemoMode } from "@/lib/demo-mode";
 import { DEMO_COURTS, DEMO_CITIES } from "@/data/demo/venues";
+
+// Lazy-load the map (Leaflet bundle ~150KB) so the court list paints immediately.
+const CourtsMap = lazy(() =>
+  import("@/components/courts/CourtsMap").then((m) => ({ default: m.CourtsMap }))
+);
 
 type Court = Database["public"]["Tables"]["courts"]["Row"];
 type Venue = Database["public"]["Tables"]["venues"]["Row"];
