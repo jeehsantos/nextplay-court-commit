@@ -54,6 +54,27 @@ interface PopupData {
   pixelPos: { x: number; y: number };
 }
 
+const GEOCODE_CACHE_KEY = "sa_geocode_cache_v1";
+
+const loadGeocodeCache = (): Record<string, { lat: number; lng: number }> => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(GEOCODE_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const persistGeocodeCache = (cache: Record<string, { lat: number; lng: number }>) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    /* ignore quota errors */
+  }
+};
+
 export function CourtsMap({ courts, highlightedCourtId, onMarkerHover, linkSearch = "" }: CourtsMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,7 +82,7 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover, linkSearc
   const hasInitializedBoundsRef = useRef(false);
   const geocodeInFlightRef = useRef<Set<string>>(new Set());
   const geocodeControllersRef = useRef<Map<string, AbortController>>(new Map());
-  const [geocodedPositions, setGeocodedPositions] = useState<Record<string, { lat: number; lng: number }>>({});
+  const [geocodedPositions, setGeocodedPositions] = useState<Record<string, { lat: number; lng: number }>>(() => loadGeocodeCache());
   const [popup, setPopup] = useState<PopupData | null>(null);
 
   const closePopup = useCallback(() => {
