@@ -40,18 +40,14 @@ const Index = forwardRef<HTMLDivElement>((_props, ref) => {
     }
   }, [isLoading, user, userRole, navigate]);
 
-  if (isLoading || (user && !userRole)) {
-    return (
-      <div ref={ref} className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
+  // Render Landing immediately so the user sees content instead of a blank
+  // spinner while auth resolves. Redirect effects above will navigate logged-in
+  // users to their proper dashboard once their role is known.
+  if (!user || waitingForRole) {
     return <Landing />;
   }
 
+  // Logged-in user with a known role — redirect is in flight, show a brief loader.
   return (
     <div ref={ref} className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
