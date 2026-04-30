@@ -81,8 +81,8 @@ const Landing = forwardRef<HTMLDivElement>((_props, ref) => {
                   </Button>
                 </Link>
                 <Link to="/courts" className="sm:flex-1">
-                  <Button variant="outline" className="group h-14 w-full justify-center rounded-xl border-border bg-card px-8 text-xl font-medium text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-md hover:shadow-primary/30 min-[1600px]:h-16 min-[1600px]:text-2xl">
-                    <MapPin className="mr-3 h-5 w-5 min-[1600px]:h-6 min-[1600px]:w-6" />
+                  <Button variant="outline" className="group relative h-14 w-full justify-center overflow-hidden rounded-xl border border-border/80 bg-card/60 px-8 text-xl font-medium text-foreground backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/40 hover:bg-foreground hover:text-background hover:shadow-[0_10px_30px_-10px_hsl(var(--foreground)/0.4)] min-[1600px]:h-16 min-[1600px]:text-2xl">
+                    <MapPin className="mr-3 h-5 w-5 transition-transform duration-300 group-hover:scale-110 min-[1600px]:h-6 min-[1600px]:w-6" />
                     {t("hero.ctaBrowse")}
                   </Button>
                 </Link>
