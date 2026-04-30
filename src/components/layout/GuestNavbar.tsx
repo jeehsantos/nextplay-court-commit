@@ -65,10 +65,7 @@ export const GuestNavbar = forwardRef<HTMLElement, GuestNavbarProps>(({ classNam
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3 lg:flex-1 lg:justify-end">
           <Link to="/auth" className="hidden sm:block">
-            <Button
-              variant="ghost"
-              className="font-semibold text-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:bg-primary/10 focus-visible:text-primary"
-            >
+            <Button variant="ghost" className="font-semibold text-foreground">
               {t("nav.signIn")}
             </Button>
           </Link>
