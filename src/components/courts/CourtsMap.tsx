@@ -136,7 +136,11 @@ export function CourtsMap({ courts, highlightedCourtId, onMarkerHover, linkSearc
         }
       }
       if (Object.keys(nextPositions).length > 0) {
-        setGeocodedPositions((prev) => ({ ...prev, ...nextPositions }));
+        setGeocodedPositions((prev) => {
+          const merged = { ...prev, ...nextPositions };
+          persistGeocodeCache(merged);
+          return merged;
+        });
       }
     };
     fetchGeocodes();
