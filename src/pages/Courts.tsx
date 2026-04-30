@@ -175,54 +175,35 @@ export default function Courts() {
     }
   }, [preferredSports, sportFilterOptions, hasAppliedPreferredSportDefault, isQuickGameMode, quickGameSport]);
 
-  useEffect(() => {
-    fetchCourts();
-  }, []);
-
-  // Fetch all courts including sub-courts (for filtering by sub-court properties)
-  const [allVenueCourts, setAllVenueCourts] = useState<CourtWithVenue[]>([]);
-  
-  const fetchCourts = async () => {
-    try {
-      // Demo mode: short-circuit with mock fixtures
+  // Fetch courts via React Query — cached for 5min via global QueryClient defaults,
+  // so navigating away and back is instant and back-button revisits don't re-hit the DB.
+  const { data: allVenueCourts = [], isLoading: loading } = useQuery({
+    queryKey: ["courts", "active"],
+    queryFn: async (): Promise<CourtWithVenue[]> => {
       if (isDemoMode()) {
-        const demo = DEMO_COURTS as unknown as CourtWithVenue[];
-        setAllVenueCourts(demo);
-        setCourts(demo.filter((c) => !c.parent_court_id));
-        setCities(DEMO_CITIES);
-        setLoading(false);
-        return;
+        return DEMO_COURTS as unknown as CourtWithVenue[];
       }
-
-      // Fetch all courts (main + sub) for filtering purposes
-      const { data: allCourts, error: allError } = await supabase
+      const { data, error } = await supabase
         .from("courts")
-        .select(`
-          *,
-          venues (*)
-        `)
+        .select(`*, venues (*)`)
         .eq("is_active", true);
+      if (error) throw error;
+      return (data as CourtWithVenue[]) || [];
+    },
+  });
 
-      if (allError) throw allError;
-      
-      setAllVenueCourts(allCourts as CourtWithVenue[] || []);
-      
-      // Only show parent courts in the list
-      const parentCourts = (allCourts as CourtWithVenue[] || []).filter(c => !c.parent_court_id);
-      setCourts(parentCourts);
-      
-      const uniqueCities = [...new Set(
-        parentCourts
-          .map(c => c.venues?.city)
-          .filter(Boolean)
-      )] as string[];
-      setCities(uniqueCities);
-    } catch (error) {
-      console.error("Error fetching courts:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Only parent courts in the visible list
+  const courts = useMemo(
+    () => allVenueCourts.filter((c) => !c.parent_court_id),
+    [allVenueCourts]
+  );
+
+  const cities = useMemo(() => {
+    if (isDemoMode()) return DEMO_CITIES;
+    return [
+      ...new Set(courts.map((c) => c.venues?.city).filter(Boolean)),
+    ] as string[];
+  }, [courts]);
 
   const filteredCourts = courts.filter(court => {
     const matchesSearch = 
