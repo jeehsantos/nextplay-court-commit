@@ -45,15 +45,12 @@ export default function Courts() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const itemsPerPage = usePaginationThreshold();
-  const [courts, setCourts] = useState<CourtWithVenue[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroundType, setSelectedGroundType] = useState<string>("all");
   const [selectedVenueType, setSelectedVenueType] = useState<"all" | "indoor" | "outdoor">("all");
   const [selectedCity, setSelectedCity] = useState<string>("all");
   const [selectedSport, setSelectedSport] = useState<string>("all");
   const [hasAppliedPreferredSportDefault, setHasAppliedPreferredSportDefault] = useState(false);
-  const [cities, setCities] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [highlightedCourtId, setHighlightedCourtId] = useState<string | null>(null);
   const [showPagination, setShowPagination] = useState(false);
