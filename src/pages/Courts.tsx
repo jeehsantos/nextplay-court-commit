@@ -512,12 +512,14 @@ export default function Courts() {
         <div className="fixed inset-0 top-0 bottom-16 overflow-hidden">
           {/* Full-screen map - lowest z-index */}
           <div className="absolute inset-0 top-20 z-0">
-            <CourtsMap
-              courts={filteredCourts}
-              highlightedCourtId={highlightedCourtId}
-              onMarkerHover={setHighlightedCourtId}
-              linkSearch={location.search}
-            />
+            <Suspense fallback={<div className="h-full w-full bg-muted" />}>
+              <CourtsMap
+                courts={filteredCourts}
+                highlightedCourtId={highlightedCourtId}
+                onMarkerHover={setHighlightedCourtId}
+                linkSearch={location.search}
+              />
+            </Suspense>
           </div>
 
           {/* Quick Game Banner for mobile */}
@@ -679,12 +681,14 @@ export default function Courts() {
         {/* Right Panel - Map */}
         <div className="hidden lg:block w-[45%] xl:w-[40%] h-auto sticky top-0 p-6 pt-[170px]">
           <div className="h-[calc(100vh-170px-48px)] rounded-2xl overflow-hidden shadow-sm border border-border bg-muted">
-            <CourtsMap
-              courts={filteredCourts}
-              highlightedCourtId={highlightedCourtId}
-              onMarkerHover={setHighlightedCourtId}
-              linkSearch={location.search}
-            />
+            <Suspense fallback={<div className="h-full w-full bg-muted animate-pulse" />}>
+              <CourtsMap
+                courts={filteredCourts}
+                highlightedCourtId={highlightedCourtId}
+                onMarkerHover={setHighlightedCourtId}
+                linkSearch={location.search}
+              />
+            </Suspense>
           </div>
         </div>
       </div>
