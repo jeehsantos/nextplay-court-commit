@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -176,15 +177,15 @@ serve(async (req) => {
           });
 
           const emailResult = await emailResponse.text();
-          console.log("Email send result:", emailResponse.status, emailResult);
+          logger.log("Email send result:", emailResponse.status, emailResult);
         } catch (emailErr) {
           console.error("Email send error:", emailErr);
         }
       } else {
-        console.log("LOVABLE_API_KEY not configured, skipping email notification");
+        logger.log("LOVABLE_API_KEY not configured, skipping email notification");
       }
     } else {
-      console.log("CONTACT_EMAIL not configured, skipping email notification. Message saved to database.");
+      logger.log("CONTACT_EMAIL not configured, skipping email notification. Message saved to database.");
     }
 
     return new Response(

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -202,7 +203,7 @@ async function handleDeferredVerification(
   if (checkoutSession.payment_status === "paid") {
     // After 5 polls (~7.5 seconds), attempt fallback record creation
     if (pollCount >= 5) {
-      console.log(`[verify-payment] Fallback triggered at pollCount=${pollCount} for checkout ${checkoutSessionId}`);
+      logger.log(`[verify-payment] Fallback triggered at pollCount=${pollCount} for checkout ${checkoutSessionId}`);
       try {
         const sessionId = await createDeferredRecordsFallback(
           checkoutSession,
@@ -257,7 +258,7 @@ async function createDeferredRecordsFallback(
 
   if (existingPayment) {
     // Payment already exists - return its session regardless of status
-    console.log("[fallback] Payment already exists, returning existing session:", existingPayment.session_id);
+    logger.log("[fallback] Payment already exists, returning existing session:", existingPayment.session_id);
     return existingPayment.session_id;
   }
 
@@ -295,7 +296,7 @@ async function createDeferredRecordsFallback(
     .maybeSingle();
 
   if (existingBooking) {
-    console.log("[fallback] Court already booked, returning existing session:", existingBooking.booked_by_session_id);
+    logger.log("[fallback] Court already booked, returning existing session:", existingBooking.booked_by_session_id);
     if (existingBooking.booked_by_session_id) {
       return existingBooking.booked_by_session_id;
     }
@@ -341,7 +342,7 @@ async function createDeferredRecordsFallback(
   }
 
   const sessionId = session.id;
-  console.log("[fallback] Session created:", sessionId);
+  logger.log("[fallback] Session created:", sessionId);
 
   // Create session_player — only if organizer plays
   const organizerPlays = metadata.organizer_plays !== "false";
@@ -430,7 +431,7 @@ async function createDeferredRecordsFallback(
     });
   } catch (paymentInsertErr) {
     // Unique constraint violation — another poll or webhook already created it
-    console.log("[fallback] Payment insert conflict (idempotent), returning session:", sessionId);
+    logger.log("[fallback] Payment insert conflict (idempotent), returning session:", sessionId);
   }
 
   // Process referral credit
@@ -447,7 +448,7 @@ async function createDeferredRecordsFallback(
     });
     // deno-lint-ignore no-explicit-any
     if ((rpcResult as any)?.session_confirmed) {
-      console.log("[fallback] Session confirmed — triggering payout:", sessionId);
+      logger.log("[fallback] Session confirmed — triggering payout:", sessionId);
       try {
         await fetch(
           `${Deno.env.get("SUPABASE_URL")}/functions/v1/payout-session`,
@@ -468,6 +469,6 @@ async function createDeferredRecordsFallback(
     console.error("[fallback] Session recalculation error (non-fatal):", rpcErr);
   }
 
-  console.log("[fallback] Deferred payment fully processed:", { sessionId, paymentIntentId });
+  logger.log("[fallback] Deferred payment fully processed:", { sessionId, paymentIntentId });
   return sessionId;
 }

@@ -81,8 +81,8 @@ const Landing = forwardRef<HTMLDivElement>((_props, ref) => {
                   </Button>
                 </Link>
                 <Link to="/courts" className="sm:flex-1">
-                  <Button variant="outline" className="h-14 w-full justify-center rounded-xl border-border bg-card px-8 text-xl font-medium text-foreground hover:bg-muted min-[1600px]:h-16 min-[1600px]:text-2xl">
-                    <MapPin className="mr-3 h-5 w-5 min-[1600px]:h-6 min-[1600px]:w-6" />
+                  <Button variant="outline" className="group relative h-14 w-full justify-center overflow-hidden rounded-xl border border-border/80 bg-card/60 px-8 text-xl font-medium text-foreground backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/40 hover:bg-foreground hover:text-background hover:shadow-[0_10px_30px_-10px_hsl(var(--foreground)/0.4)] min-[1600px]:h-16 min-[1600px]:text-2xl">
+                    <MapPin className="mr-3 h-5 w-5 transition-transform duration-300 group-hover:scale-110 min-[1600px]:h-6 min-[1600px]:w-6" />
                     {t("hero.ctaBrowse")}
                   </Button>
                 </Link>
@@ -211,10 +211,10 @@ const Landing = forwardRef<HTMLDivElement>((_props, ref) => {
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-20 grid gap-12 md:grid-cols-4">
             <div className="md:col-span-2">
-              <Link to="/" className="mb-0 flex items-center gap-3 leading-none" aria-label="Sport Arena home">
+              <Link to="/" className="-mt-6 mb-2 flex items-center gap-3 leading-none" aria-label="Sport Arena home">
                 <img src="/sportarena-logo.webp" alt="Sport Arena logo" width={460} height={166} className="block h-14 w-auto object-contain" />
               </Link>
-              <p className="-mt-3 mb-6 max-w-xs text-sm leading-relaxed text-muted-foreground">{t("landingFooter.tagline")}</p>
+              <p className="mb-6 max-w-xs text-sm leading-relaxed text-muted-foreground">{t("landingFooter.tagline")}</p>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> {t("landingFooter.location")}</p>
                 <p>hello@sportarena.nz</p>

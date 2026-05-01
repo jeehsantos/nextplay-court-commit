@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -123,7 +124,7 @@ serve(async (req) => {
       throw sessionCleanupResult.error;
     }
 
-    console.log(
+    logger.log(
       `Cancelled ${sessionCleanupResult.data ?? 0} expired unpaid bookings; ` +
       `cancelled ${quickChallengeCleanupResult.cancelledCount} stale quick challenges; ` +
       `released ${quickChallengeCleanupResult.releasedSlotsCount} stale court slots`

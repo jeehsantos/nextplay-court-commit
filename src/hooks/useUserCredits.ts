@@ -63,7 +63,9 @@ export function useUserCredits(): UseUserCreditsReturn {
       p_user_id: user.id,
       p_amount: amount,
       p_reason: reason,
+      // @ts-expect-error - RPC arg accepts null at runtime; types expect undefined
       p_session_id: sessionId || null,
+      // @ts-expect-error - RPC arg accepts null at runtime; types expect undefined
       p_payment_id: paymentId || null,
     });
 
@@ -92,6 +94,7 @@ export function useUserCredits(): UseUserCreditsReturn {
       p_user_id: user.id,
       p_amount: amount,
       p_reason: reason,
+      // @ts-expect-error - RPC arg accepts null at runtime; types expect undefined
       p_session_id: sessionId || null,
     });
 

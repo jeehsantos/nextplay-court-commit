@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { calculateGrossUp } from "../_shared/feeCalc.ts";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -242,7 +243,7 @@ serve(async (req) => {
         await supabaseAdmin.rpc("process_referral_credit", { p_referred_user_id: user.id });
       } catch (e) { console.error("Referral credit error (non-fatal):", e); }
 
-      console.log(`Quick challenge paid with credits - User: ${user.id}, Amount: $${pricePerPlayer}`);
+      logger.log(`Quick challenge paid with credits - User: ${user.id}, Amount: $${pricePerPlayer}`);
 
       return new Response(JSON.stringify({
         success: true,
@@ -352,7 +353,7 @@ serve(async (req) => {
       };
     }
 
-    console.log(`Quick challenge checkout: court=${courtShareCents}c, serviceFee=${serviceFeeTotalCents}c, total=${totalChargeCents}c`);
+    logger.log(`Quick challenge checkout: court=${courtShareCents}c, serviceFee=${serviceFeeTotalCents}c, total=${totalChargeCents}c`);
 
     const normalizedAttempt = Number.isFinite(Number(attempt)) && Number(attempt) > 0
       ? Math.trunc(Number(attempt))
@@ -364,7 +365,7 @@ serve(async (req) => {
       { idempotencyKey: checkoutIdempotencyKey }
     );
 
-    console.log(`Quick challenge checkout session created: ${checkoutSession.id}`);
+    logger.log(`Quick challenge checkout session created: ${checkoutSession.id}`);
 
     await supabaseAdmin
       .from("quick_challenge_players")

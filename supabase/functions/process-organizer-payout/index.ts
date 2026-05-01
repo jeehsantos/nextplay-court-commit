@@ -1,5 +1,6 @@
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,7 +113,7 @@ Deno.serve(async (req) => {
           { p_session_id: session.id }
         );
         if (!(rpcResult as any)?.session_confirmed) {
-          console.log(`Session ${session.id} not yet confirmed, skipping organizer payout`);
+          logger.log(`Session ${session.id} not yet confirmed, skipping organizer payout`);
           continue;
         }
 
@@ -131,7 +132,7 @@ Deno.serve(async (req) => {
             .eq("id", session.id)
             .eq("organizer_payout_status", "PENDING");
 
-          console.log(`Organizer ${session.organizer_user_id} has no Stripe account, marked PENDING_SETUP`);
+          logger.log(`Organizer ${session.organizer_user_id} has no Stripe account, marked PENDING_SETUP`);
           results.push({ sessionId: session.id, status: "PENDING_SETUP" });
           continue;
         }
@@ -146,7 +147,7 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (claimError || !claimed) {
-          console.log(`Session ${session.id} already claimed or status changed, skipping`);
+          logger.log(`Session ${session.id} already claimed or status changed, skipping`);
           continue;
         }
 
@@ -178,7 +179,7 @@ Deno.serve(async (req) => {
           })
           .eq("id", session.id);
 
-        console.log(`Organizer payout completed: session=${session.id}, transfer=${transfer.id}, amount=${session.organizer_fee_cents}c`);
+        logger.log(`Organizer payout completed: session=${session.id}, transfer=${transfer.id}, amount=${session.organizer_fee_cents}c`);
         results.push({ sessionId: session.id, status: "PAID", transferId: transfer.id });
       } catch (err) {
         // Revert claim on error

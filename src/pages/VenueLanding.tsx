@@ -144,6 +144,7 @@ export default function VenueLanding() {
         {(venue.banner_url || venue.photo_url) ? (
           <div className="h-64 md:h-80 w-full overflow-hidden">
             <img
+              // @ts-expect-error - photo_url may be null; img src accepts null at runtime
               src={venue.banner_url || venue.photo_url}
               alt={venue.name}
               className="w-full h-full object-cover"

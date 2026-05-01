@@ -384,6 +384,7 @@ export default function ManagerCourtFormNew() {
             rules: data.rules || null,
             allowed_sports: venueAllowedSports,
           } as any)
+          // @ts-expect-error - courtIdToUpdate is guaranteed defined in this branch
           .eq("id", courtIdToUpdate);
 
         if (courtError) throw courtError;

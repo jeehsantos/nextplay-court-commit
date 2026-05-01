@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -155,7 +156,7 @@ serve(async (req) => {
       type: "account_onboarding",
     });
 
-    console.log("Account link created for account:", accountId);
+    logger.log("Account link created for account:", accountId);
 
     return new Response(JSON.stringify({ url: accountLink.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

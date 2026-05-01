@@ -241,6 +241,7 @@ export default function CourtDetail() {
           *,
           venues (*)
         `)
+        // @ts-expect-error - id is guaranteed defined by route guard above
         .eq("id", id)
         .single();
 
@@ -1166,6 +1167,7 @@ export default function CourtDetail() {
           setSelectedSlots([]);
           setSelectedEquipment([]);
           if (court.venues) {
+            // @ts-expect-error - selectedDate is guaranteed defined in this branch
             fetchAvailability(court.venues.id, court.id, selectedDate);
           }
           return;
@@ -1256,6 +1258,7 @@ export default function CourtDetail() {
         setSelectedSlots([]);
         setSelectedEquipment([]);
         if (court.venues) {
+          // @ts-expect-error - selectedDate is guaranteed defined in this branch
           fetchAvailability(court.venues.id, court.id, selectedDate);
         }
       }

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,7 +65,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Rolled back accidental OAuth registration for user ${user.id} (${user.email})`);
+    logger.log(`Rolled back accidental OAuth registration for user ${user.id} (${user.email})`);
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

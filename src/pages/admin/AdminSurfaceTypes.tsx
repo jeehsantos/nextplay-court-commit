@@ -61,6 +61,7 @@ function AdminSurfaceTypesContent() {
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
+      // @ts-expect-error - is_active is boolean | null from DB; treated as boolean in UI
       setSurfaces(data || []);
     } catch (error) {
       console.error("Error fetching surface types:", error);

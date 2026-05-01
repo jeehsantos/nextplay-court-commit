@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { CourtCard } from "@/components/courts/CourtCard";
-import { CourtsMap } from "@/components/courts/CourtsMap";
 import { CourtsPagination } from "@/components/courts/CourtsPagination";
 import { MobileCourtSheet } from "@/components/courts/MobileCourtSheet";
 import { MobileCourtFilters } from "@/components/courts/MobileCourtFilters";
@@ -24,6 +24,11 @@ import type { Database } from "@/integrations/supabase/types";
 import { isDemoMode } from "@/lib/demo-mode";
 import { DEMO_COURTS, DEMO_CITIES } from "@/data/demo/venues";
 
+// Lazy-load the map (Leaflet bundle ~150KB) so the court list paints immediately.
+const CourtsMap = lazy(() =>
+  import("@/components/courts/CourtsMap").then((m) => ({ default: m.CourtsMap }))
+);
+
 type Court = Database["public"]["Tables"]["courts"]["Row"];
 type Venue = Database["public"]["Tables"]["venues"]["Row"];
 
@@ -40,15 +45,12 @@ export default function Courts() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const itemsPerPage = usePaginationThreshold();
-  const [courts, setCourts] = useState<CourtWithVenue[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroundType, setSelectedGroundType] = useState<string>("all");
   const [selectedVenueType, setSelectedVenueType] = useState<"all" | "indoor" | "outdoor">("all");
   const [selectedCity, setSelectedCity] = useState<string>("all");
   const [selectedSport, setSelectedSport] = useState<string>("all");
   const [hasAppliedPreferredSportDefault, setHasAppliedPreferredSportDefault] = useState(false);
-  const [cities, setCities] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [highlightedCourtId, setHighlightedCourtId] = useState<string | null>(null);
   const [showPagination, setShowPagination] = useState(false);
@@ -173,54 +175,35 @@ export default function Courts() {
     }
   }, [preferredSports, sportFilterOptions, hasAppliedPreferredSportDefault, isQuickGameMode, quickGameSport]);
 
-  useEffect(() => {
-    fetchCourts();
-  }, []);
-
-  // Fetch all courts including sub-courts (for filtering by sub-court properties)
-  const [allVenueCourts, setAllVenueCourts] = useState<CourtWithVenue[]>([]);
-  
-  const fetchCourts = async () => {
-    try {
-      // Demo mode: short-circuit with mock fixtures
+  // Fetch courts via React Query — cached for 5min via global QueryClient defaults,
+  // so navigating away and back is instant and back-button revisits don't re-hit the DB.
+  const { data: allVenueCourts = [], isLoading: loading } = useQuery({
+    queryKey: ["courts", "active"],
+    queryFn: async (): Promise<CourtWithVenue[]> => {
       if (isDemoMode()) {
-        const demo = DEMO_COURTS as unknown as CourtWithVenue[];
-        setAllVenueCourts(demo);
-        setCourts(demo.filter((c) => !c.parent_court_id));
-        setCities(DEMO_CITIES);
-        setLoading(false);
-        return;
+        return DEMO_COURTS as unknown as CourtWithVenue[];
       }
-
-      // Fetch all courts (main + sub) for filtering purposes
-      const { data: allCourts, error: allError } = await supabase
+      const { data, error } = await supabase
         .from("courts")
-        .select(`
-          *,
-          venues (*)
-        `)
+        .select(`*, venues (*)`)
         .eq("is_active", true);
+      if (error) throw error;
+      return (data as CourtWithVenue[]) || [];
+    },
+  });
 
-      if (allError) throw allError;
-      
-      setAllVenueCourts(allCourts as CourtWithVenue[] || []);
-      
-      // Only show parent courts in the list
-      const parentCourts = (allCourts as CourtWithVenue[] || []).filter(c => !c.parent_court_id);
-      setCourts(parentCourts);
-      
-      const uniqueCities = [...new Set(
-        parentCourts
-          .map(c => c.venues?.city)
-          .filter(Boolean)
-      )] as string[];
-      setCities(uniqueCities);
-    } catch (error) {
-      console.error("Error fetching courts:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Only parent courts in the visible list
+  const courts = useMemo(
+    () => allVenueCourts.filter((c) => !c.parent_court_id),
+    [allVenueCourts]
+  );
+
+  const cities = useMemo(() => {
+    if (isDemoMode()) return DEMO_CITIES;
+    return [
+      ...new Set(courts.map((c) => c.venues?.city).filter(Boolean)),
+    ] as string[];
+  }, [courts]);
 
   const filteredCourts = courts.filter(court => {
     const matchesSearch = 
@@ -529,12 +512,14 @@ export default function Courts() {
         <div className="fixed inset-0 top-0 bottom-16 overflow-hidden">
           {/* Full-screen map - lowest z-index */}
           <div className="absolute inset-0 top-20 z-0">
-            <CourtsMap
-              courts={filteredCourts}
-              highlightedCourtId={highlightedCourtId}
-              onMarkerHover={setHighlightedCourtId}
-              linkSearch={location.search}
-            />
+            <Suspense fallback={<div className="h-full w-full bg-muted" />}>
+              <CourtsMap
+                courts={filteredCourts}
+                highlightedCourtId={highlightedCourtId}
+                onMarkerHover={setHighlightedCourtId}
+                linkSearch={location.search}
+              />
+            </Suspense>
           </div>
 
           {/* Quick Game Banner for mobile */}
@@ -696,12 +681,14 @@ export default function Courts() {
         {/* Right Panel - Map */}
         <div className="hidden lg:block w-[45%] xl:w-[40%] h-auto sticky top-0 p-6 pt-[170px]">
           <div className="h-[calc(100vh-170px-48px)] rounded-2xl overflow-hidden shadow-sm border border-border bg-muted">
-            <CourtsMap
-              courts={filteredCourts}
-              highlightedCourtId={highlightedCourtId}
-              onMarkerHover={setHighlightedCourtId}
-              linkSearch={location.search}
-            />
+            <Suspense fallback={<div className="h-full w-full bg-muted animate-pulse" />}>
+              <CourtsMap
+                courts={filteredCourts}
+                highlightedCourtId={highlightedCourtId}
+                onMarkerHover={setHighlightedCourtId}
+                linkSearch={location.search}
+              />
+            </Suspense>
           </div>
         </div>
       </div>

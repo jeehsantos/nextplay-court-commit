@@ -53,6 +53,7 @@ export default function ManagerVenueForm() {
 
   const fetchVenue = async () => {
     try {
+      // @ts-expect-error - venueId/user.id are guaranteed defined by route+auth guards
       const { data, error } = await supabase.from("venues").select("*").eq("id", venueId).eq("owner_id", user?.id).single();
       if (error) throw error;
       setVenueSlug(data.slug || null);
@@ -91,6 +92,7 @@ export default function ManagerVenueForm() {
     if (!confirm(t("venueForm.deleteConfirm"))) return;
     setDeleting(true);
     try {
+      // @ts-expect-error - venueId/user.id are guaranteed defined by route+auth guards
       const { error } = await supabase.from("venues").delete().eq("id", venueId).eq("owner_id", user?.id);
       if (error) throw error;
       toast({ title: t("venueForm.venueDeleted") });

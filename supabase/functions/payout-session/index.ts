@@ -1,5 +1,6 @@
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { logger } from "../_shared/logger.ts";
 
 class HttpError extends Error {
   status: number;
@@ -125,7 +126,7 @@ Deno.serve(async (req) => {
     }
 
     if (!venueStripeAccountId) {
-      console.log("No Stripe Connect account for venue — platform retains funds");
+      logger.log("No Stripe Connect account for venue — platform retains funds");
       await supabaseAdmin
         .from("payments")
         .update({
@@ -163,7 +164,7 @@ Deno.serve(async (req) => {
     }
 
     if (!payments || payments.length === 0) {
-      console.log("No eligible payments to transfer for session:", sessionId);
+      logger.log("No eligible payments to transfer for session:", sessionId);
       return new Response(
         JSON.stringify({ success: true, message: "No payments to transfer" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -186,7 +187,7 @@ Deno.serve(async (req) => {
     );
 
     if (eligiblePayments.length === 0) {
-      console.log("No eligible payments after player filter");
+      logger.log("No eligible payments after player filter");
       return new Response(
         JSON.stringify({ success: true, message: "No eligible payments" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -244,7 +245,7 @@ Deno.serve(async (req) => {
             })
             .eq("id", payment.id);
 
-          console.log(`Destination-charge payment ${payment.id} marked transferred (auto-transfer: ${transferId})`);
+          logger.log(`Destination-charge payment ${payment.id} marked transferred (auto-transfer: ${transferId})`);
         } else {
           // No automatic transfer found — treat as legacy for manual transfer
           legacyPayments.push(payment);
@@ -257,7 +258,7 @@ Deno.serve(async (req) => {
 
     // Handle legacy payments that need manual transfer
     if (legacyPayments.length === 0) {
-      console.log("All payments were destination-charge, no manual transfer needed for session:", sessionId);
+      logger.log("All payments were destination-charge, no manual transfer needed for session:", sessionId);
       return new Response(
         JSON.stringify({ success: true, message: "All transfers handled by Stripe destination-charge" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -282,7 +283,7 @@ Deno.serve(async (req) => {
     }
 
     if (!claimedPayments || claimedPayments.length === 0) {
-      console.log("No legacy payments claimed; transfer already in progress or completed", sessionId);
+      logger.log("No legacy payments claimed; transfer already in progress or completed", sessionId);
       return new Response(
         JSON.stringify({ success: true, alreadyProcessing: true, message: "Transfer is already processing or completed" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -311,7 +312,7 @@ Deno.serve(async (req) => {
     }
 
     if (totalTransferCents <= 0) {
-      console.log("No amount to transfer after calculations");
+      logger.log("No amount to transfer after calculations");
       await supabaseAdmin
         .from("payments")
         .update({
@@ -381,7 +382,7 @@ Deno.serve(async (req) => {
       throw updateError;
     }
 
-    console.log("Session payout completed:", {
+    logger.log("Session payout completed:", {
       sessionId,
       transferId: transfer.id,
       totalCents: totalTransferCents,

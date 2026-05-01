@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,7 +35,7 @@ serve(async (req) => {
       throw error;
     }
 
-    console.log(`Expired ${data} stale holds`);
+    logger.log(`Expired ${data} stale holds`);
 
     // Purge old terminal holds (EXPIRED, CONVERTED, FAILED) older than 7 days
     const { data: purgedCount, error: purgeError } = await supabase.rpc("purge_old_booking_holds");
@@ -43,7 +44,7 @@ serve(async (req) => {
       console.error("Error purging old holds:", purgeError);
       // Non-fatal: log but don't throw - expiration already succeeded
     } else {
-      console.log(`Purged ${purgedCount} old terminal holds`);
+      logger.log(`Purged ${purgedCount} old terminal holds`);
     }
 
     // Purge old cancelled quick challenges and orphaned court availability (>14 days)
@@ -52,7 +53,7 @@ serve(async (req) => {
     if (cancelledError) {
       console.error("Error purging cancelled records:", cancelledError);
     } else {
-      console.log(`Purged cancelled records:`, cancelledPurge);
+      logger.log(`Purged cancelled records:`, cancelledPurge);
     }
 
     return new Response(

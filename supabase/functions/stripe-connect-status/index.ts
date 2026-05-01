@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -84,7 +85,7 @@ serve(async (req) => {
               stripe_account_id: stripeAccountId,
               updated_at: new Date().toISOString(),
             }, { onConflict: "venue_id" });
-          console.log(`Auto-linked Stripe account ${stripeAccountId} to venue ${venueId}`);
+          logger.log(`Auto-linked Stripe account ${stripeAccountId} to venue ${venueId}`);
         }
       }
     } else {
@@ -116,7 +117,7 @@ serve(async (req) => {
 
     const account = await stripe.accounts.retrieve(stripeAccountId);
 
-    console.log(`Stripe account ${account.id} status: details_submitted=${account.details_submitted}, payouts_enabled=${account.payouts_enabled}, charges_enabled=${account.charges_enabled}`);
+    logger.log(`Stripe account ${account.id} status: details_submitted=${account.details_submitted}, payouts_enabled=${account.payouts_enabled}, charges_enabled=${account.charges_enabled}`);
 
     return new Response(JSON.stringify({
       connected: true,

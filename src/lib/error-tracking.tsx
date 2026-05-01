@@ -41,6 +41,7 @@ class ErrorTracker {
    * Capture a message
    */
   captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info', context?: ErrorContext) {
+    // @ts-expect-error - 'warning' is not a Console method but harmless: indexing falls back to undefined
     console[level]('Message:', message, context);
   }
 

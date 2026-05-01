@@ -3,6 +3,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logger } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,7 +33,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log("Starting archiving tasks...");
+    logger.log("Starting archiving tasks...");
 
     // Run all archiving tasks with logging
     const { data, error } = await supabase.rpc("run_all_archiving_tasks_with_logging");
@@ -53,7 +54,7 @@ serve(async (req) => {
       console.error("Error fetching logs:", logsError);
     }
 
-    console.log("Archiving tasks completed successfully");
+    logger.log("Archiving tasks completed successfully");
 
     return new Response(
       JSON.stringify({
