@@ -117,6 +117,29 @@ export default function Auth() {
     }
   };
 
+  const handleAppleSignIn = async () => {
+    if (activeTab === "signup") {
+      localStorage.setItem("pendingOAuthRole", signupRole);
+      localStorage.setItem("oauthIntent", "signup");
+    } else {
+      localStorage.setItem("oauthIntent", "login");
+      localStorage.removeItem("pendingOAuthRole");
+    }
+    setIsAppleLoading(true);
+    const redirectBack = activeTab === "signup"
+      ? `${window.location.origin}/auth?tab=signup&role=${signupRole}`
+      : `${window.location.origin}/auth?tab=login`;
+    const { error } = await lovable.auth.signInWithOAuth("apple", {
+      redirect_uri: redirectBack
+    });
+    if (error) {
+      setIsAppleLoading(false);
+      localStorage.removeItem("pendingOAuthRole");
+      localStorage.removeItem("oauthIntent");
+      toast({ variant: "destructive", title: t("appleSignInFailed"), description: error.message || t("appleSignInError") });
+    }
+  };
+
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" }
