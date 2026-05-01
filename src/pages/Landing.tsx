@@ -211,10 +211,10 @@ const Landing = forwardRef<HTMLDivElement>((_props, ref) => {
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-20 grid gap-12 md:grid-cols-4">
             <div className="md:col-span-2">
-              <Link to="/" className="mb-0 flex items-center gap-3 leading-none" aria-label="Sport Arena home">
+              <Link to="/" className="-mt-6 mb-2 flex items-center gap-3 leading-none" aria-label="Sport Arena home">
                 <img src="/sportarena-logo.webp" alt="Sport Arena logo" width={460} height={166} className="block h-14 w-auto object-contain" />
               </Link>
-              <p className="-mt-3 mb-6 max-w-xs text-sm leading-relaxed text-muted-foreground">{t("landingFooter.tagline")}</p>
+              <p className="mb-6 max-w-xs text-sm leading-relaxed text-muted-foreground">{t("landingFooter.tagline")}</p>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> {t("landingFooter.location")}</p>
                 <p>hello@sportarena.nz</p>
