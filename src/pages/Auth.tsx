@@ -21,6 +21,7 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
