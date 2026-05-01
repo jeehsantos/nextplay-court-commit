@@ -89,11 +89,6 @@ Deno.serve(async (req) => {
         JSON.stringify({
           received: false,
           error: "Webhook event processing failed",
-          version: WEBHOOK_VERSION,
-          errorName: error.name,
-          errorMessage: error.message,
-          errorDetails: details,
-          errorStack: error.stack,
         }),
         {
           status: 500,
@@ -112,10 +107,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         received: false,
-        error: "Unhandled top-level error",
-        version: WEBHOOK_VERSION,
-        message: e.message,
-        stack: e.stack,
+        error: "Internal server error",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
